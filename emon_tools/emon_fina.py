@@ -4,9 +4,7 @@ Common utilities for Fina Files processing.
 from os.path import isdir, isfile, getsize
 from os.path import join as path_join
 from struct import unpack
-from enum import Enum
 from typing import List, Tuple
-from typing import Dict
 from typing import Optional
 from typing import Union
 from typing import Generator
@@ -15,20 +13,7 @@ import mmap
 import math
 import datetime as dt
 import numpy as np
-from ve_utils.utype import UType as Ut
-
-try:
-    import pandas as pd
-    PANDAS_AVAILABLE = True
-except ImportError:
-    PANDAS_AVAILABLE = False
-
-try:
-    import matplotlib.pyplot as plt
-    MATPLOTLIB_AVAILABLE = True
-except ImportError:
-    MATPLOTLIB_AVAILABLE = False
-
+from emon_tools.fina_utils import Utils
 
 logging.basicConfig()
 et_logger = logging.getLogger(__name__)
