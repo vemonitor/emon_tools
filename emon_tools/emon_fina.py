@@ -260,8 +260,10 @@ class FinaReader:
             ValueError: If parameters are invalid.
         """
         npoints = Utils.validate_positive_integer(npoints, "npoints")
-        start_pos = Utils.validate_positive_integer(start_pos, "start_pos")
         chunk_size = Utils.validate_positive_integer(chunk_size, "chunk_size")
+
+        if not isinstance(start_pos, int) or start_pos < 0:
+            raise ValueError(f"start_pos ({start_pos}) must be an integer upper or equal to zero.")
 
         if start_pos >= npoints:
             raise ValueError(f"start_pos ({start_pos}) exceeds total npoints ({npoints}).")
@@ -432,7 +434,12 @@ class FinaReader:
             IOError: If file access fails.
         """
         # Validate inputs and compute total points to read
-        total_points = self._validate_read_params(npoints, start_pos, chunk_size, window)
+        total_points = self._validate_read_params(
+            npoints=npoints,
+            start_pos=start_pos,
+            chunk_size=chunk_size,
+            window=window
+        )
 
         data_path = self._get_data_path()
         self._pos = start_pos
