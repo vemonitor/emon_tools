@@ -32,7 +32,7 @@ class MetaData:
     """
 
     def __init__(self,
-                 interval: int, 
+                 interval: int,
                  start_time: int,
                  npoints: int,
                  end_time: int
@@ -54,38 +54,6 @@ class MetaData:
         self.start_time = start_time
         self.npoints = npoints
         self.end_time = end_time
-        self._validate_date_order()
-
-    def calculate_nb_days(self) -> int:
-        """
-        Calculate the number of days covered by the data.
-
-        Returns:
-            int: Number of days.
-        """
-        start = dt.datetime.fromtimestamp(self.start_time, dt.timezone.utc)
-        end = dt.datetime.fromtimestamp(self.end_time, dt.timezone.utc)
-        delta = (end - start).total_seconds() / (3600 * 24)
-        return math.ceil(delta)
-
-    @staticmethod
-    def _validate_positive_integer(value: int, field_name: str) -> int:
-        """
-        Validate that a value is a positive integer.
-
-        Parameters:
-            value (int): The value to validate.
-            field_name (str): The name of the field for error messages.
-
-        Returns:
-            int: The validated positive integer.
-
-        Raises:
-            ValueError: If the value is not a positive integer.
-        """
-        if not isinstance(value, int) or value <= 0:
-            raise ValueError(f"{field_name} must be a positive integer.")
-        return value
 
     def _validate_date_order(self):
         """
@@ -94,7 +62,7 @@ class MetaData:
         Raises:
             ValueError: If start_time is not less than end_time.
         """
-        if self.start_time >= self.end_time:
+        if self._start_time >= self._end_time:
             raise ValueError("start_time must be less than end_time.")
 
     @property
@@ -118,7 +86,7 @@ class MetaData:
         Raises:
             ValueError: If the value is not a positive integer.
         """
-        self._interval = self._validate_positive_integer(value, "interval")
+        self._interval = Utils.validate_positive_integer(value, "interval")
 
     @property
     def start_time(self) -> int:
@@ -141,7 +109,7 @@ class MetaData:
         Raises:
             ValueError: If the value is not a positive integer.
         """
-        self._start_time = self._validate_positive_integer(value, "start_time")
+        self._start_time = Utils.validate_timestamp(value, "start_time")
         if hasattr(self, "_end_time"):
             self._validate_date_order()
 
@@ -166,7 +134,7 @@ class MetaData:
         Raises:
             ValueError: If the value is not a positive integer.
         """
-        self._npoints = self._validate_positive_integer(value, "npoints")
+        self._npoints = Utils.validate_positive_integer(value, "npoints")
 
     @property
     def end_time(self) -> int:
@@ -189,9 +157,21 @@ class MetaData:
         Raises:
             ValueError: If the value is not a positive integer.
         """
-        self._end_time = self._validate_positive_integer(value, "end_time")
+        self._end_time = Utils.validate_timestamp(value, "end_time")
         if hasattr(self, "_start_time"):
             self._validate_date_order()
+
+    def calculate_nb_days(self) -> int:
+        """
+        Calculate the number of days covered by the data.
+
+        Returns:
+            int: Number of days.
+        """
+        start = dt.datetime.fromtimestamp(self._start_time, dt.timezone.utc)
+        end = dt.datetime.fromtimestamp(self._end_time, dt.timezone.utc)
+        delta = (end - start).total_seconds() / (3600 * 24)
+        return math.ceil(delta)
 
     def serialize(self) -> dict:
         """
@@ -201,10 +181,10 @@ class MetaData:
             dict: Serialized metadata.
         """
         return {
-            "interval": self.interval,
-            "start_time": self.start_time,
-            "npoints": self.npoints,
-            "end_time": self.end_time,
+            "interval": self._interval,
+            "start_time": self._start_time,
+            "npoints": self._npoints,
+            "end_time": self._end_time,
         }
 
     def __str__(self) -> str:
