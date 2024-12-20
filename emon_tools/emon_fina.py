@@ -220,6 +220,7 @@ class FinaReader:
         self._feed_id = feed_id
         self._data_dir = data_dir
         self._pos = 0
+        self._chunk_size = 0
 
     @property
     def feed_id(self) -> int:
@@ -296,20 +297,30 @@ class FinaReader:
             raise ValueError("pos must be a positive integer.")
         self._pos = value
 
-    def _get_base_path(self) -> str:
-        return path_join(self._data_dir, str(self._feed_id))
+    @property
+    def chunk_size(self) -> str:
+        """
+        Get the current read chunk_size in the data file.
 
-    def _get_meta_path(self) -> str:
-        file_path = f"{self._get_base_path()}.meta"
-        if not isfile(file_path):
-            raise FileNotFoundError(f"Meta file does not exist: {file_path}")
-        return file_path
+        Returns:
+            int: Current read chunk_size.
+        """
+        return self._chunk_size
 
-    def _get_data_path(self) -> str:
-        file_path = f"{self._get_base_path()}.dat"
-        if not isfile(file_path):
-            raise FileNotFoundError(f"Data file does not exist: {file_path}")
-        return file_path
+    @chunk_size.setter
+    def chunk_size(self, value: str):
+        """
+        Set the current read chunk_size in the data file.
+
+        Parameters:
+            value (int): Read chunk_size.
+
+        Raises:
+            ValueError: If the chunk_size is negative.
+        """
+        if value < 0:
+            raise ValueError("chunk_size must be a positive integer.")
+        self._chunk_size = value
 
     def read_meta(self) -> MetaData:
         """
