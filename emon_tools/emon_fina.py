@@ -652,116 +652,278 @@ class FinaStats:
         self.reader = FinaReader(feed_id, data_dir)
         self.meta = self.reader.read_meta()
 
-    def get_pos(self) -> int:
-        """Retrieve the current reader position."""
-        return self.reader.pos
-
-    def get_stats(self,
-                  min_value: Optional[Union[int, float]] = None,
-                  max_value: Optional[Union[int, float]] = None
-                  ) -> List[List[Union[float, int]]]:
+    def _validate_and_prepare_params(self, start_time, steps_window, max_size):
         """
-        Compute daily statistics from PhpFina file data.
+        Validate input parameters and prepare the start point and selected points.
 
         Parameters:
+            start_time (int): The start time in seconds from the beginning of the file.
+            steps_window (int): Number of steps to process. Use -1 for all data.
+            max_size (int): Maximum allowed number of steps to process.
+
+        Returns:
+            Tuple[int, int]: The start point (in steps) and the number of selected points.
+
+        Raises:
+            ValueError: 
+                If the start time exceeds the file's end time 
+                or if the selected points exceed max_size.
+        """
+        file_start_time = self.meta.start_time
+        interval = self.meta.interval
+        total_points = self.meta.npoints
+
+        start_point = max(0, (start_time - file_start_time) // interval)
+        if steps_window == -1:
+            steps_window = total_points - start_point
+
+        if start_point >= total_points:
+            raise ValueError(
+                f"Start time ({start_time}) exceeds file "
+                f"end time ({self.meta.end_time}).")
+
+        selected_points = min(steps_window, total_points - start_point)
+        if selected_points > max_size:
+            raise ValueError(
+                f"Requested steps ({selected_points}) exceed "
+                f"max_size ({max_size}).")
+
+        return start_point, selected_points
+
+    def _initialize_result(self, selected_points):
+        """
+        Initialize the result array and calculate points per day.
+
+        Parameters:
+            selected_points (int): Number of selected points to process.
+
+        Returns:
+            Tuple[np.ndarray, int]: 
+                - A numpy array initialized with NaN values to store results.
+                - Number of points per day.
+        """
+        interval = self.meta.interval
+        npts_day = math.ceil(86400 / interval)  # Points per day
+        npts_total = math.ceil(selected_points / npts_day) + 1
+
+        result = np.full((npts_total, 6), [np.nan, np.nan, np.nan, np.nan, np.nan, np.nan])
+        return result, npts_day
+
+    def _get_initial_day_boundaries(self, start_point):
+        """
+        Compute the initial start and end times of the first day boundary.
+
+        Parameters:
+            start_time (int): The start time in seconds from the beginning of the file.
+
+        Returns:
+            Tuple[int, int]: The current day start time and the next day start time.
+        """
+        file_start_time = self.meta.start_time
+        interval = self.meta.interval
+
+        current_day_start = Utils.get_start_day(file_start_time + start_point * interval)
+        next_day_start = current_day_start + 86400
+        return current_day_start, next_day_start
+
+    def _read_data_in_chunks(self, start_point, selected_points, npts_day):
+        """
+        Read data in chunks from the file.
+
+        Parameters:
+            start_point (int): The starting point in steps.
+            selected_points (int): Total number of selected points to process.
+            npts_day (int): Number of points per day.
+
+        Returns:
+            Generator: A generator yielding positions and values in chunks.
+        """
+        reader_props = {
+            "npoints": self.meta.npoints,
+            "start_pos": start_point,
+            "chunk_size": npts_day,
+            "window": selected_points,
+            "set_pos": True
+        }
+        return self.reader.read_file(**reader_props)
+
+    def _validate_chunk(self, positions, next_day_start):
+        """
+        Validate the chunk of data to ensure it fits within the current day boundary.
+
+        Parameters:
+            positions (np.ndarray): Array of positions for the current chunk.
+            next_day_start (int): Start time of the next day.
+
+        Raises:
+            ValueError: If the chunk contains data beyond the current day's boundary.
+        """
+        timestamps = self.meta.start_time + (positions * self.meta.interval)
+        if timestamps[-1] >= next_day_start:
+            raise ValueError(
+                f"Reader Error: Last timestamp {timestamps[-1]} "
+                f"exceeds day boundary {next_day_start}."
+            )
+
+    def _process_day(self, values, current_day_start, min_value, max_value):
+        """
+        Process data for a single day by filtering and computing statistics.
+
+        Parameters:
+            values (np.ndarray): Array of data values for the current day.
+            current_day_start (int): Start time of the current day.
             min_value (Optional[Union[int, float]]): Minimum valid value for filtering.
             max_value (Optional[Union[int, float]]): Maximum valid value for filtering.
 
         Returns:
-            List[List[Union[float, int]]]: Daily grouped statistics.
+            np.ndarray: Computed statistics for the current day.
         """
-        # Cache frequently accessed meta values
-        start_time = self.meta.start_time
-        interval = self.meta.interval
+        filtered_values = Utils.filter_values_by_range(values.copy(), min_value, max_value)
+        return self.get_grouped_stats(filtered_values, current_day_start)
 
-        if start_time is None or interval is None:
-            raise ValueError("Meta data is incomplete or invalid.")
+    def _update_day_boundaries(self, current_day_start):
+        """
+        Update the day boundaries for the next iteration.
 
-        result = []
-        raw_data = []
-        current_day_start = self.get_start_day(start_time)
+        Parameters:
+            current_day_start (int): Start time of the current day.
 
-        # Process the data in chunks
-        for i, value in self.reader.read_file():
-            timestamp = start_time + i * interval
-            value = self.validate_value(value, min_value, max_value)
-            day_start = self.get_start_day(timestamp)
+        Returns:
+            Tuple[int, int]: Updated current day start time and next day start time.
+        """
+        next_day_start = current_day_start + 86400
+        return next_day_start, next_day_start + 86400
 
-            if day_start == current_day_start:
-                raw_data.append([timestamp, value])
-            else:
-                # Process and append stats for the current day
-                if raw_data:
-                    result.append(self.get_grouped_stats(np.array(raw_data), current_day_start))
-                # Reset for the new day
-                raw_data = [[timestamp, value]]
-                current_day_start = day_start
+    def _trim_results(self, result):
+        """
+        Trim the result array to include only processed data.
 
-        # Process the last chunk of data
-        if raw_data:
-            result.append(self.get_grouped_stats(np.array(raw_data), current_day_start))
+        Parameters:
+            result (np.ndarray): Array of computed results with potential NaN entries.
 
-        return result
+        Returns:
+            List[List[Union[float, int]]]: Trimmed result array as a list of lists.
+        """
+        finite_mask = np.isfinite(result[:, 0])
+        if not finite_mask.any():
+            return result.tolist()
 
-    @staticmethod
-    def validate_value(
-        value: Union[int, float],
+        last_valid_index = len(result) - np.argmax(finite_mask[::-1]) - 1
+        return result[:last_valid_index + 1].tolist()
+
+    def get_stats(
+        self,
+        start_time: Optional[int] = 0,
+        steps_window: int = -1,
+        max_size: int = 10_000,
         min_value: Optional[Union[int, float]] = None,
         max_value: Optional[Union[int, float]] = None
-    ) -> float:
+    ) -> List[List[Union[float, int]]]:
         """
-        Validate a value based on thresholds.
+        Compute daily statistics from PhpFina file data.
 
         Parameters:
-            value (Union[int, float]): The value to validate.
-            min_value (Optional[Union[int, float]]): Minimum valid value.
-            max_value (Optional[Union[int, float]]): Maximum valid value.
+            start_time (Optional[int]):
+                Start time in seconds from the beginning of the file. Defaults to 0.
+            steps_window (int):
+                Number of steps to process. Use -1 to process all data. Defaults to -1.
+            max_size (int):
+                Maximum number of data points to process in one call. Defaults to 10,000.
+            min_value (Optional[Union[int, float]]): Minimum valid value for filtering.
+            max_value (Optional[Union[int, float]]): Maximum valid value for filtering.
 
         Returns:
-            float: The validated value, or NaN if invalid.
+            List[List[Union[float, int]]]: 
+                A list of daily statistics where each entry contains:
+                [day_start, min_value, mean_value, max_value, finite_count, total_count].
         """
-        if not Ut.is_numeric(value):
-            return float("nan")
-        if min_value is not None and value < min_value:
-            return float("nan")
-        if max_value is not None and value > max_value:
-            return float("nan")
-        return value
+        # Prepare metadata and validate parameters
+        start_point, selected_points = self._validate_and_prepare_params(
+            start_time=start_time,
+            steps_window=steps_window,
+            max_size=max_size
+        )
 
-    @staticmethod
-    def get_start_day(timestamp: float) -> float:
+        # Initialize result storage and day boundaries
+        result, npts_day = self._initialize_result(selected_points)
+        current_day_start, next_day_start = self._get_initial_day_boundaries(start_point)
+
+        # Process data in chunks
+        days = 0
+        for positions, values in self._read_data_in_chunks(start_point, selected_points, npts_day):
+            self._validate_chunk(positions, next_day_start)
+            result[days] = self._process_day(values, current_day_start, min_value, max_value)
+
+            # Update day boundaries for next iteration
+            days += 1
+            current_day_start, next_day_start = self._update_day_boundaries(current_day_start)
+
+        # Trim and return results
+        return self._trim_results(result)
+
+    def get_stats_by_date(
+            self,
+            start_date: str,
+            end_date: str,
+            date_format: str = "%Y-%m-%d %H:%M:%S",
+            max_size: int = 10_000,
+            min_value: Optional[Union[int, float]] = None,
+            max_value: Optional[Union[int, float]] = None
+        ) -> List[List[Union[float, int]]]:
         """
-        Get the start-of-day timestamp for a given timestamp in UTC.
+        Compute daily statistics from PhpFina file data for a specified date range.
 
         Parameters:
-            timestamp (float): The input timestamp.
+            start_date (str): Start date in the specified format.
+            end_date (str): End date in the specified format.
+            date_format (str): Format of the input dates. Defaults to "%Y-%m-%d %H:%M:%S".
+            max_size (int):
+                Maximum number of data points to process in one call. Defaults to 10,000.
+            min_value (Optional[Union[int, float]]): Minimum valid value for filtering. Optional.
+            max_value (Optional[Union[int, float]]): Maximum valid value for filtering. Optional.
 
         Returns:
-            float: The start-of-day timestamp in UTC.
+            List[List[Union[float, int]]]: 
+                A list of daily statistics where each entry contains:
+                [day_start, min_value, mean_value, max_value, finite_count, total_count].
+
+        Raises:
+            ValueError: If the start or end date cannot be converted to valid timestamps.
+            ValueError: If the computed steps for the date range exceed max_size.
         """
-        dt_point = dt.datetime.fromtimestamp(timestamp, tz=dt.timezone.utc)
-        return dt.datetime(dt_point.year, dt_point.month, dt_point.day, tzinfo=dt.timezone.utc).timestamp()
+        # Calculate the start time and number of steps based on the provided date range.
+        start, window = Utils.get_window_by_dates(
+            start_date=start_date,
+            end_date=end_date,
+            interval=self.meta.interval,
+            date_format=date_format,
+        )
+
+        # Use the get_stats method with the computed parameters.
+        return self.get_stats(
+            start_time=start,
+            steps_window=window,
+            max_size=max_size,
+            min_value=min_value,
+            max_value=max_value
+        )
 
     @staticmethod
-    def get_grouped_stats(raw_data: np.ndarray, day_start: float) -> List[Union[float, int]]:
+    def get_grouped_stats(values: np.ndarray, day_start: float) -> List[Union[float, int]]:
         """
         Compute statistics for a single day's data.
 
         Parameters:
-            raw_data (np.ndarray): Array of timestamps and values for the day.
+            values (np.ndarray): Array of values for the day.
             day_start (float): Start-of-day timestamp.
 
         Returns:
             List[Union[float, int]]: Computed statistics for the day.
         """
-        if raw_data.size == 0:
-            return [day_start, np.nan, np.nan, np.nan, 0, 0, 0, np.nan]
+        if values.shape[0] == 0:
+            return [day_start, np.nan, np.nan, np.nan, np.nan, np.nan]
 
-        values = raw_data[:, 1]
-        time_deltas = np.diff(raw_data[:, 0]) if len(raw_data) > 1 else [np.nan]
-
-        nb_nan = np.isnan(values).sum()
-        nb_total = len(values)
+        nb_total = values.shape[0]
         nb_finite = np.isfinite(values).sum()
 
         stats = [
@@ -769,8 +931,6 @@ class FinaStats:
             np.nanmean(values) if nb_finite > 0 else np.nan,
             np.nanmax(values) if nb_finite > 0 else np.nan,
             nb_finite,
-            nb_nan,
             nb_total,
-            np.nanmean(time_deltas),
         ]
         return [day_start] + stats
