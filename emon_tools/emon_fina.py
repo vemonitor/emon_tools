@@ -222,6 +222,58 @@ class FinaReader:
         self._pos = 0
         self._chunk_size = 0
 
+    def _get_base_path(self) -> str:
+        return path_join(self._data_dir, str(self._feed_id))
+
+    def _get_meta_path(self) -> str:
+        file_path = f"{self._get_base_path()}.meta"
+        if not isfile(file_path):
+            raise FileNotFoundError(f"Meta file does not exist: {file_path}")
+        return file_path
+
+    def _get_data_path(self) -> str:
+        file_path = f"{self._get_base_path()}.dat"
+        if not isfile(file_path):
+            raise FileNotFoundError(f"Data file does not exist: {file_path}")
+        return file_path
+
+    def _validate_read_params(
+        self,
+        npoints: int,
+        start_pos: int,
+        chunk_size: int,
+        window: Optional[int],
+    ) -> int:
+        """
+        Validate read parameters and calculate total points to process.
+
+        Parameters:
+            npoints (int): Total number of points in the file.
+            start_pos (int): Starting position (index) in the file.
+            chunk_size (int): Number of values to read per chunk.
+            window (Optional[int]): Maximum number of points to read.
+
+        Returns:
+            int: Total points to process based on input parameters.
+
+        Raises:
+            ValueError: If parameters are invalid.
+        """
+        npoints = Utils.validate_positive_integer(npoints, "npoints")
+        start_pos = Utils.validate_positive_integer(start_pos, "start_pos")
+        chunk_size = Utils.validate_positive_integer(chunk_size, "chunk_size")
+
+        if start_pos >= npoints:
+            raise ValueError(f"start_pos ({start_pos}) exceeds total npoints ({npoints}).")
+
+        if window is not None:
+            window = Utils.validate_positive_integer(window, "window")
+            total_points = min(npoints - start_pos, window)
+        else:
+            total_points = npoints - start_pos
+
+        return total_points
+
     @property
     def feed_id(self) -> int:
         """
@@ -350,109 +402,75 @@ class FinaReader:
                 f"Error reading meta file: {e}"
             ) from e
 
-    def is_ready(self) -> bool:
+    def read_file(
+        self,
+        npoints: int,
+        start_pos: int = 0,
+        chunk_size: int = 1024,
+        window: Optional[int] = None,
+        set_pos: bool = True,
+    ) -> Generator[Tuple[np.ndarray, np.ndarray], None, None]:
         """
-        Check if the reader is ready based on the metadata.
-
-        Returns:
-            bool: True if metadata is valid, False otherwise.
-        """
-        meta = self.read_meta()
-        return meta is not None and self.is_meta_valid(meta.serialize())
-
-    def read_file(self,
-                  set_pos: bool = True
-                  ) -> Generator[Tuple[int, float], None, None]:
-        """
-        Read data values from the .dat file.
+        Read data values from the .dat file in chunks.
 
         Parameters:
+            npoints (int): Total number of points in the file.
+            start_pos (int): Starting position (index) in the file. Defaults to 0.
+            chunk_size (int): Number of values to read in each chunk. Defaults to 1024.
+            window (Optional[int]): 
+                Maximum number of points to read.
+                If None, reads all available points.
             set_pos (bool): Whether to automatically increment the position after reading.
 
         Yields:
-            Tuple[int, float]: Position and data value.
+            Tuple[np.ndarray, np.ndarray]: 
+                - Array of positions (indices).
+                - Array of corresponding data values.
 
         Raises:
-            ValueError: If metadata is invalid or data reading fails.
+            ValueError: If parameters are invalid or data reading fails.
+            IOError: If file access fails.
         """
-        meta = self.read_meta()
-        if not self.is_ready():
-            raise ValueError("Metadata is invalid or incomplete.")
+        # Validate inputs and compute total points to read
+        total_points = self._validate_read_params(npoints, start_pos, chunk_size, window)
 
         data_path = self._get_data_path()
-        self._pos = 0
-        with open(data_path, "rb") as file:
-            with mmap.mmap(file.fileno(), 0, access=mmap.ACCESS_READ) as mm:
-                while 0 <= self._pos < meta.npoints:
-                    offset = self._pos * 4
-                    hexa = mm[offset:offset + 4]
-                    if len(hexa) == 4:
-                        value = unpack("<f", hexa)[0]
-                        yield self._pos, value
-                    else:
-                        raise ValueError(
-                            f"Error reading data at position {self._pos}."
-                        )
-                    if set_pos:
-                        self._pos += 1
+        self._pos = start_pos
 
-    @staticmethod
-    def is_meta_valid(meta: Dict[str, int]) -> bool:
-        required_keys = {"interval", "start_time", "npoints", "end_time"}
-        return (
-            isinstance(meta, dict)
-            and required_keys <= meta.keys()
-            and all(isinstance(meta[k], int) for k in required_keys)
-        )
+        try:
+            with open(data_path, "rb") as file:
+                with mmap.mmap(file.fileno(), 0, access=mmap.ACCESS_READ) as mm:
+                    while self._pos < start_pos + total_points:
+                        # Calculate current chunk size
+                        remaining_points = start_pos + total_points - self._pos
+                        current_chunk_size = min(chunk_size, remaining_points)
 
+                        # Compute offsets and read data
+                        offset = self._pos * 4
+                        end_offset = offset + current_chunk_size * 4
+                        chunk_data = mm[offset:end_offset]
 
-class FinaDataResult:
-    """
-    Wrapper for FinaData results providing methods to get results as a DataFrame or plot them.
-    """
-    def __init__(self, times: np.ndarray, values: np.ndarray):
-        self.times = times
-        self.values = values
+                        if len(chunk_data) != current_chunk_size * 4:
+                            raise ValueError(
+                                f"Failed to read expected chunk at position {self._pos}. "
+                                f"Expected {current_chunk_size * 4} bytes, got {len(chunk_data)}."
+                            )
 
-    def df(self) -> Optional[pd.DataFrame]:
-        """
-        Return the results as a pandas DataFrame with a time index.
+                        # Convert to values and yield
+                        values = np.frombuffer(chunk_data, dtype='<f4')
+                        positions = np.arange(self._pos, self._pos + current_chunk_size)
+                        yield positions, values
 
-        Returns:
-            Optional[pd.DataFrame]: A DataFrame with time as the index and values as a column if pandas is available.
-        """
-        if not PANDAS_AVAILABLE:
-            raise ImportError("Pandas is not available. Install it to use this feature.")
-        return pd.DataFrame({"values": self.values}, index=pd.to_datetime(self.times, unit="s", utc=True))
+                        # Increment position
+                        if set_pos:
+                            self._pos += current_chunk_size
 
-    def plot(self):
-        """
-        Plot the results using matplotlib or pandas (if available).
-
-        Raises:
-            ImportError: If matplotlib is not available.
-        """
-        if MATPLOTLIB_AVAILABLE and PANDAS_AVAILABLE:
-            df = self.df()
-            plt.figure(figsize=(18, 6))
-            plt.subplot(1, 1, 1)
-            plt.plot(df.index, df['values'], label="Fina Values")
-            plt.title("Fina Values")
-            plt.xlabel("Time")
-            plt.ylabel("Values")
-            plt.grid(True)
-            plt.show()
-        elif MATPLOTLIB_AVAILABLE:
-            plt.figure(figsize=(18, 6))
-            plt.subplot(1, 1, 1)
-            plt.plot(self.times, self.values)
-            plt.title("Fina Values")
-            plt.xlabel("Time (s)")
-            plt.ylabel("Values")
-            plt.grid(True)
-            plt.show()
-        else:
-            raise ImportError("Matplotlib is not available. Install it to use this feature.")
+        except IOError as e:
+            raise IOError(
+                f"Error accessing data file at path {data_path}: {e}"
+            ) from e
+        except ValueError as e:
+            raise ValueError(f"Data reading failed: {e}") from e
 
 
 class FinaData:
