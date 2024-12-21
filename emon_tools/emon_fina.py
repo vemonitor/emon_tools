@@ -652,7 +652,12 @@ class FinaStats:
         self.reader = FinaReader(feed_id, data_dir)
         self.meta = self.reader.read_meta()
 
-    def _validate_and_prepare_params(self, start_time, steps_window, max_size):
+    def _validate_and_prepare_params(
+            self,
+            start_time: int,
+            steps_window: int,
+            max_size: int
+        ):
         """
         Validate input parameters and prepare the start point and selected points.
 
@@ -698,16 +703,14 @@ class FinaStats:
             selected_points (int): Number of selected points to process.
 
         Returns:
-            Tuple[np.ndarray, int]: 
-                - A numpy array initialized with NaN values to store results.
-                - Number of points per day.
+            A numpy array initialized with NaN values to store results.
         """
         interval = self.meta.interval
         npts_day = math.ceil(86400 / interval)  # Points per day
         npts_total = math.ceil(selected_points / npts_day) + 1
 
         result = np.full((npts_total, 6), [np.nan, np.nan, np.nan, np.nan, np.nan, np.nan])
-        return result, npts_day
+        return result
 
     def _get_initial_day_boundaries(self, start_point):
         """
@@ -726,26 +729,27 @@ class FinaStats:
         next_day_start = current_day_start + 86400
         return current_day_start, next_day_start
 
-    def _read_data_in_chunks(self, start_point, selected_points, npts_day):
+    def _get_chunk_size(
+            self,
+            current_day_start,
+            next_day_start,
+            is_first=False
+        ):
         """
-        Read data in chunks from the file.
+        Compute the chunk_size of the current day.
 
         Parameters:
-            start_point (int): The starting point in steps.
-            selected_points (int): Total number of selected points to process.
-            npts_day (int): Number of points per day.
+            start_time (int): The start time in seconds from the beginning of the file.
 
         Returns:
-            Generator: A generator yielding positions and values in chunks.
+            Tuple[int, int]: The current day start time and the next day start time.
         """
-        reader_props = {
-            "npoints": self.meta.npoints,
-            "start_pos": start_point,
-            "chunk_size": npts_day,
-            "window": selected_points,
-            "set_pos": True
-        }
-        return self.reader.read_file(**reader_props)
+        if is_first:
+            init_start = max(self.meta.start_time, current_day_start)
+            init_chunk = int((next_day_start - init_start) / self.meta.interval)
+        else:
+            init_chunk = int((next_day_start - current_day_start) / self.meta.interval)
+        return init_chunk
 
     def _validate_chunk(self, positions, next_day_start):
         """
@@ -781,7 +785,7 @@ class FinaStats:
         filtered_values = Utils.filter_values_by_range(values.copy(), min_value, max_value)
         return self.get_grouped_stats(filtered_values, current_day_start)
 
-    def _update_day_boundaries(self, current_day_start):
+    def _update_day_boundaries(self, next_day_start):
         """
         Update the day boundaries for the next iteration.
 
@@ -791,7 +795,6 @@ class FinaStats:
         Returns:
             Tuple[int, int]: Updated current day start time and next day start time.
         """
-        next_day_start = current_day_start + 86400
         return next_day_start, next_day_start + 86400
 
     def _trim_results(self, result):
@@ -845,19 +848,28 @@ class FinaStats:
         )
 
         # Initialize result storage and day boundaries
-        result, npts_day = self._initialize_result(selected_points)
+        result = self._initialize_result(selected_points)
         current_day_start, next_day_start = self._get_initial_day_boundaries(start_point)
+        init_chunk = self._get_chunk_size(current_day_start, next_day_start, True)
+
+        reader_props = {
+            "npoints": self.meta.npoints,
+            "start_pos": start_point,
+            "chunk_size": init_chunk,
+            "window": selected_points,
+            "set_pos": True
+        }
 
         # Process data in chunks
         days = 0
-        for positions, values in self._read_data_in_chunks(start_point, selected_points, npts_day):
+        for positions, values in self.reader.read_file(**reader_props):
             self._validate_chunk(positions, next_day_start)
             result[days] = self._process_day(values, current_day_start, min_value, max_value)
 
             # Update day boundaries for next iteration
             days += 1
-            current_day_start, next_day_start = self._update_day_boundaries(current_day_start)
-
+            current_day_start, next_day_start = self._update_day_boundaries(next_day_start)
+            self.reader.chunk_size = self._get_chunk_size(current_day_start, next_day_start)
         # Trim and return results
         return self._trim_results(result)
 
