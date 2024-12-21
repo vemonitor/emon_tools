@@ -260,7 +260,7 @@ class FinaReader:
             ValueError: If parameters are invalid.
         """
         npoints = Utils.validate_positive_integer(npoints, "npoints")
-        chunk_size = Utils.validate_positive_integer(chunk_size, "chunk_size")
+        self.chunk_size = Utils.validate_positive_integer(chunk_size, "chunk_size")
 
         if not isinstance(start_pos, int) or start_pos < 0:
             raise ValueError(f"start_pos ({start_pos}) must be an integer upper or equal to zero.")
@@ -450,7 +450,7 @@ class FinaReader:
                     while self._pos < start_pos + total_points:
                         # Calculate current chunk size
                         remaining_points = start_pos + total_points - self._pos
-                        current_chunk_size = min(chunk_size, remaining_points)
+                        current_chunk_size = min(self.chunk_size, remaining_points)
 
                         # Compute offsets and read data
                         offset = self._pos * 4
