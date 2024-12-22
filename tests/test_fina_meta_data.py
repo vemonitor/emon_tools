@@ -6,7 +6,7 @@ serialization, and computation of derived attributes.
 """
 import datetime as dt
 import pytest
-from emon_tools.emon_fina import MetaData
+from emon_tools.fina_reader import MetaData
 
 class TestMetaData:
     """

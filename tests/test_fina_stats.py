@@ -5,8 +5,9 @@ from unittest.mock import MagicMock
 from datetime import datetime, timezone
 import numpy as np
 import pytest
-from emon_tools.emon_fina import FinaStats, MetaData, Utils  # Adjust the import path as necessary
-
+from emon_tools.emon_fina import FinaStats  # Adjust the import path as necessary
+from emon_tools.fina_reader import MetaData
+from emon_tools.fina_utils import Utils
 
 class TestFinaStats:
     """Test suite for the FinaStats class."""

@@ -1,483 +1,18 @@
 """
 Common utilities for Fina Files processing.
 """
-from os.path import isdir, isfile, getsize
-from os.path import join as path_join
-from struct import unpack
-from typing import List, Tuple
+from typing import List
 from typing import Optional
 from typing import Union
-from typing import Generator
 import logging
-import mmap
 import math
-import datetime as dt
 import numpy as np
 from emon_tools.fina_utils import Utils
+from emon_tools.fina_reader import FinaReader
+
 
 logging.basicConfig()
 et_logger = logging.getLogger(__name__)
-
-
-class MetaData:
-    """
-    Class to manage metadata with validation, serialization,
-    and string representation.
-
-    Attributes:
-        interval (int): Interval between data points in seconds.
-        start_time (int): Start time as a UNIX timestamp.
-        npoints (int): Total number of data points.
-        end_time (int): End time as a UNIX timestamp.
-    """
-
-    def __init__(self,
-                 interval: int,
-                 start_time: int,
-                 npoints: int,
-                 end_time: int
-                 ):
-        """
-        Initialize the MetaData instance.
-
-        Parameters:
-            interval (int): Interval between data points in seconds.
-            start_time (int): Start time as a UNIX timestamp.
-            npoints (int): Total number of data points.
-            end_time (int): End time as a UNIX timestamp.
-
-        Raises:
-            ValueError:
-                If any parameter is invalid or start_time is not less than end_time.
-        """
-        self.interval = interval
-        self.start_time = start_time
-        self.npoints = npoints
-        self.end_time = end_time
-
-    def _validate_date_order(self):
-        """
-        Ensure that start_time precedes end_time.
-
-        Raises:
-            ValueError: If start_time is not less than end_time.
-        """
-        if self._start_time >= self._end_time:
-            raise ValueError("start_time must be less than end_time.")
-
-    @property
-    def interval(self) -> int:
-        """
-        Get the interval between data points in seconds.
-
-        Returns:
-            int: Interval in seconds.
-        """
-        return self._interval
-
-    @interval.setter
-    def interval(self, value: int):
-        """
-        Set the interval between data points in seconds.
-
-        Parameters:
-            value (int): Interval in seconds.
-
-        Raises:
-            ValueError: If the value is not a positive integer.
-        """
-        self._interval = Utils.validate_positive_integer(value, "interval")
-
-    @property
-    def start_time(self) -> int:
-        """
-        Get the start time as a UNIX timestamp.
-
-        Returns:
-            int: Start time in seconds since the epoch.
-        """
-        return self._start_time
-
-    @start_time.setter
-    def start_time(self, value: int):
-        """
-        Set the start time as a UNIX timestamp.
-
-        Parameters:
-            value (int): Start time in seconds since the epoch.
-
-        Raises:
-            ValueError: If the value is not a positive integer.
-        """
-        self._start_time = Utils.validate_timestamp(value, "start_time")
-        if hasattr(self, "_end_time"):
-            self._validate_date_order()
-
-    @property
-    def npoints(self) -> int:
-        """
-        Get the total number of data points.
-
-        Returns:
-            int: Number of data points.
-        """
-        return self._npoints
-
-    @npoints.setter
-    def npoints(self, value: int):
-        """
-        Set the total number of data points.
-
-        Parameters:
-            value (int): Number of data points.
-
-        Raises:
-            ValueError: If the value is not a positive integer.
-        """
-        self._npoints = Utils.validate_positive_integer(value, "npoints")
-
-    @property
-    def end_time(self) -> int:
-        """
-        Get the end time as a UNIX timestamp.
-
-        Returns:
-            int: End time in seconds since the epoch.
-        """
-        return self._end_time
-
-    @end_time.setter
-    def end_time(self, value: int):
-        """
-        Set the end time as a UNIX timestamp.
-
-        Parameters:
-            value (int): End time in seconds since the epoch.
-
-        Raises:
-            ValueError: If the value is not a positive integer.
-        """
-        self._end_time = Utils.validate_timestamp(value, "end_time")
-        if hasattr(self, "_start_time"):
-            self._validate_date_order()
-
-    def calculate_nb_days(self) -> int:
-        """
-        Calculate the number of days covered by the data.
-
-        Returns:
-            int: Number of days.
-        """
-        start = dt.datetime.fromtimestamp(self._start_time, dt.timezone.utc)
-        end = dt.datetime.fromtimestamp(self._end_time, dt.timezone.utc)
-        delta = (end - start).total_seconds() / (3600 * 24)
-        return math.ceil(delta)
-
-    def serialize(self) -> dict:
-        """
-        Serialize the metadata into a dictionary.
-
-        Returns:
-            dict: Serialized metadata.
-        """
-        return {
-            "interval": self._interval,
-            "start_time": self._start_time,
-            "npoints": self._npoints,
-            "end_time": self._end_time,
-        }
-
-    def __str__(self) -> str:
-        return f"{self.serialize()}"
-
-
-class FinaReader:
-    """
-    Class to handle the reading of Fina data files and associated metadata.
-
-    Attributes:
-        feed_id (int): Identifier for the data feed.
-        data_dir (str): Directory containing the Fina data files.
-        pos (int): Current read position in the data file.
-    """
-
-    def __init__(self, feed_id: int, data_dir: str):
-        """
-        Initialize the FinaReader instance.
-
-        Parameters:
-            feed_id (int): Identifier for the data feed.
-            data_dir (str): Directory containing the Fina data files.
-
-        Raises:
-            ValueError: If feed_id is not positive or data_dir is invalid.
-        """
-        if feed_id <= 0:
-            raise ValueError("feed_id must be a positive integer.")
-        if not isdir(data_dir):
-            raise ValueError(f"{data_dir} is not a valid directory.")
-
-        self._feed_id = feed_id
-        self._data_dir = data_dir
-        self._pos = 0
-        self._chunk_size = 0
-
-    def _get_base_path(self) -> str:
-        return path_join(self._data_dir, str(self._feed_id))
-
-    def _get_meta_path(self) -> str:
-        file_path = f"{self._get_base_path()}.meta"
-        if not isfile(file_path):
-            raise FileNotFoundError(f"Meta file does not exist: {file_path}")
-        return file_path
-
-    def _get_data_path(self) -> str:
-        file_path = f"{self._get_base_path()}.dat"
-        if not isfile(file_path):
-            raise FileNotFoundError(f"Data file does not exist: {file_path}")
-        return file_path
-
-    def _validate_read_params(
-        self,
-        npoints: int,
-        start_pos: int,
-        chunk_size: int,
-        window: Optional[int],
-    ) -> int:
-        """
-        Validate read parameters and calculate total points to process.
-
-        Parameters:
-            npoints (int): Total number of points in the file.
-            start_pos (int): Starting position (index) in the file.
-            chunk_size (int): Number of values to read per chunk.
-            window (Optional[int]): Maximum number of points to read.
-
-        Returns:
-            int: Total points to process based on input parameters.
-
-        Raises:
-            ValueError: If parameters are invalid.
-        """
-        npoints = Utils.validate_positive_integer(npoints, "npoints")
-        self.chunk_size = Utils.validate_positive_integer(chunk_size, "chunk_size")
-
-        if not isinstance(start_pos, int) or start_pos < 0:
-            raise ValueError(f"start_pos ({start_pos}) must be an integer upper or equal to zero.")
-
-        if start_pos >= npoints:
-            raise ValueError(f"start_pos ({start_pos}) exceeds total npoints ({npoints}).")
-
-        if window is not None:
-            window = Utils.validate_positive_integer(window, "window")
-            total_points = min(npoints - start_pos, window)
-        else:
-            total_points = npoints - start_pos
-
-        return total_points
-
-    @property
-    def feed_id(self) -> int:
-        """
-        Get the identifier for the data feed.
-
-        Returns:
-            int: Data feed identifier.
-        """
-        return self._feed_id
-
-    @feed_id.setter
-    def feed_id(self, value: int):
-        """
-        Set the identifier for the data feed.
-
-        Parameters:
-            value (int): Data feed identifier.
-
-        Raises:
-            ValueError: If the value is not a positive integer.
-        """
-        if value <= 0:
-            raise ValueError("feed_id must be a positive integer.")
-        self._feed_id = value
-
-    @property
-    def data_dir(self) -> str:
-        """
-        Get the directory containing the Fina data files.
-
-        Returns:
-            str: Directory path.
-        """
-        return self._data_dir
-
-    @data_dir.setter
-    def data_dir(self, value: str):
-        """
-        Set the directory containing the Fina data files.
-
-        Parameters:
-            value (str): Directory path.
-
-        Raises:
-            ValueError: If the directory is invalid.
-        """
-        if not isdir(value):
-            raise ValueError("data_dir must be a valid directory.")
-        self._data_dir = value
-
-    @property
-    def pos(self) -> str:
-        """
-        Get the current read position in the data file.
-
-        Returns:
-            int: Current read position.
-        """
-        return self._pos
-
-    @pos.setter
-    def pos(self, value: str):
-        """
-        Set the current read position in the data file.
-
-        Parameters:
-            value (int): Read position.
-
-        Raises:
-            ValueError: If the position is negative.
-        """
-        if value < 0:
-            raise ValueError("pos must be a positive integer.")
-        self._pos = value
-
-    @property
-    def chunk_size(self) -> str:
-        """
-        Get the current read chunk_size in the data file.
-
-        Returns:
-            int: Current read chunk_size.
-        """
-        return self._chunk_size
-
-    @chunk_size.setter
-    def chunk_size(self, value: str):
-        """
-        Set the current read chunk_size in the data file.
-
-        Parameters:
-            value (int): Read chunk_size.
-
-        Raises:
-            ValueError: If the chunk_size is negative.
-        """
-        if value < 0:
-            raise ValueError("chunk_size must be a positive integer.")
-        self._chunk_size = value
-
-    def read_meta(self) -> MetaData:
-        """
-        Read metadata from the .meta file.
-
-        Returns:
-            MetaData: Metadata object.
-
-        Raises:
-            IOError: If there is an issue reading the meta file.
-        """
-        try:
-            with open(self._get_meta_path(), "rb") as file:
-                file.seek(8)
-                hexa = file.read(8)
-                if len(hexa) != 8:
-                    raise ValueError("Meta file is corrupted.")
-                interval, start_time = unpack("<2I", hexa)
-
-            data_size = getsize(self._get_data_path())
-            npoints = data_size // 4
-            end_time = start_time + npoints * interval - interval
-
-            return MetaData(interval, start_time, npoints, end_time)
-        except Exception as e:
-            raise IOError(
-                f"Error reading meta file: {e}"
-            ) from e
-
-    def read_file(
-        self,
-        npoints: int,
-        start_pos: int = 0,
-        chunk_size: int = 1024,
-        window: Optional[int] = None,
-        set_pos: bool = True,
-    ) -> Generator[Tuple[np.ndarray, np.ndarray], None, None]:
-        """
-        Read data values from the .dat file in chunks.
-
-        Parameters:
-            npoints (int): Total number of points in the file.
-            start_pos (int): Starting position (index) in the file. Defaults to 0.
-            chunk_size (int): Number of values to read in each chunk. Defaults to 1024.
-            window (Optional[int]): 
-                Maximum number of points to read.
-                If None, reads all available points.
-            set_pos (bool): Whether to automatically increment the position after reading.
-
-        Yields:
-            Tuple[np.ndarray, np.ndarray]: 
-                - Array of positions (indices).
-                - Array of corresponding data values.
-
-        Raises:
-            ValueError: If parameters are invalid or data reading fails.
-            IOError: If file access fails.
-        """
-        # Validate inputs and compute total points to read
-        total_points = self._validate_read_params(
-            npoints=npoints,
-            start_pos=start_pos,
-            chunk_size=chunk_size,
-            window=window
-        )
-
-        data_path = self._get_data_path()
-        self._pos = start_pos
-
-        try:
-            with open(data_path, "rb") as file:
-                with mmap.mmap(file.fileno(), 0, access=mmap.ACCESS_READ) as mm:
-                    while self._pos < start_pos + total_points:
-                        # Calculate current chunk size
-                        remaining_points = start_pos + total_points - self._pos
-                        current_chunk_size = min(self.chunk_size, remaining_points)
-
-                        # Compute offsets and read data
-                        offset = self._pos * 4
-                        end_offset = offset + current_chunk_size * 4
-                        chunk_data = mm[offset:end_offset]
-
-                        if len(chunk_data) != current_chunk_size * 4:
-                            raise ValueError(
-                                f"Failed to read expected chunk at position {self._pos}. "
-                                f"Expected {current_chunk_size * 4} bytes, got {len(chunk_data)}."
-                            )
-
-                        # Convert to values and yield
-                        values = np.frombuffer(chunk_data, dtype='<f4')
-                        positions = np.arange(self._pos, self._pos + current_chunk_size)
-                        yield positions, values
-
-                        # Increment position
-                        if set_pos:
-                            self._pos += current_chunk_size
-
-        except IOError as e:
-            raise IOError(
-                f"Error accessing data file at path {data_path}: {e}"
-            ) from e
-        except ValueError as e:
-            raise ValueError(f"Data reading failed: {e}") from e
 
 
 class FinaData:
@@ -576,7 +111,8 @@ class FinaData:
             np.ndarray: A NumPy array containing the averaged values, with NaNs for missing data.
 
         Notes:
-            - The averaging process ensures the result matches the expected number of points (`npts`).
+            - The averaging process ensures the result matches
+              the expected number of points (`npts`).
             - Chunk size is adjusted to be divisible by the step factor for precise reshaping.
             - Empty or partially filled chunks are handled gracefully to avoid runtime errors.
         """
@@ -704,9 +240,11 @@ class FinaData:
         set_pos: bool = True
     ) -> np.ndarray:
         """
-        Read values from the Fina data file, either directly or averaged, based on the step interval.
+        Read values from the Fina data file, either directly or averaged,
+        based on the step interval.
 
-        This method retrieves values from the Fina data file for a specified time range and step interval.
+        This method retrieves values from the Fina data file
+        for a specified time range and step interval.
         If the `step` is less than or equal to the metadata interval, values are read directly.
         Otherwise, values within each `step` interval are averaged.
 
@@ -717,15 +255,18 @@ class FinaData:
             set_pos (bool): If True, updates the reader's position after reading.
 
         Returns:
-            np.ndarray: A NumPy array containing either the raw values or averaged values. Missing data 
-                        is represented by NaNs.
+            np.ndarray: 
+                A NumPy array containing either the raw values or averaged values.
+                Missing data is represented by NaNs.
 
         Raises:
             ValueError: If the `start` time exceeds the feed's end time.
 
         Notes:
-            - This method adapts its approach based on the relation between `step` and the feed's metadata interval.
-            - For large `step` values, averaging within step intervals is performed for efficiency and clarity.
+            - This method adapts its approach based on the relation
+              between `step` and the feed's metadata interval.
+            - For large `step` values,
+              averaging within step intervals is performed for efficiency and clarity.
         """
         if start >= self.meta.end_time:
             raise ValueError(
@@ -825,7 +366,8 @@ class FinaData:
             date_format (str): Format of the input date strings. Defaults to "%Y-%m-%d %H:%M:%S".
 
         Returns:
-            np.ndarray: A 1D NumPy array containing the retrieved values, with NaNs for missing data.
+            np.ndarray: 
+                A 1D NumPy array containing the retrieved values, with NaNs for missing data.
 
         Notes:
             - The `Utils.get_window_by_dates` method is used to compute the time range.
@@ -895,16 +437,19 @@ class FinaData:
             min_chunk_size (int): Minimum allowable chunk size. Defaults to 256.
             max_chunk_size (int): Maximum allowable chunk size. Defaults to 4096.
             scale_factor (float): Factor used to compute the initial division. Defaults to 1.5.
-            divisor (Optional[int]): Optional divisor to ensure the chunk size is a multiple of this value.
+            divisor (Optional[int]):
+                Optional divisor to ensure the chunk size is a multiple of this value.
 
         Returns:
             int: The computed optimal chunk size.
 
         Raises:
-            ValueError: If any input parameter is invalid, such as negative values or invalid ranges.
+            ValueError:
+                If any input parameter is invalid, such as negative values or invalid ranges.
 
         Notes:
-            - If `divisor` is provided, the chunk size is adjusted to the nearest multiple of `divisor`.
+            - If `divisor` is provided,
+              the chunk size is adjusted to the nearest multiple of `divisor`.
             - The method ensures that the chunk size respects both minimum and maximum constraints.
         """
         if window <= 0:
@@ -922,10 +467,15 @@ class FinaData:
         remaining_points = window % chunk_size
         if remaining_points > 0 and remaining_points <= chunk_size // 2:
             chunk_size = max(min_chunk_size, remaining_points)
-        
+
         # Ensure chunk size is divisible by divisor and within limits
         if divisor is not None:
-            chunk_size = FinaData.calculate_nearest_divisible(chunk_size, divisor, min_chunk_size, max_chunk_size)
+            chunk_size = FinaData.calculate_nearest_divisible(
+                value=chunk_size,
+                divisor=divisor,
+                min_value=min_chunk_size,
+                max_value=max_chunk_size
+            )
         return chunk_size
 
     @staticmethod
@@ -962,7 +512,9 @@ class FinaData:
         if value > max_value:
             value = max_value - (max_value % divisor)
         elif value < min_value:
-            value = min_value + (divisor - (min_value % divisor)) if min_value % divisor != 0 else min_value
+            value = min_value + (
+                divisor - (min_value % divisor)
+            ) if min_value % divisor != 0 else min_value
 
         return value
 

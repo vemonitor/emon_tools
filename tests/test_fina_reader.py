@@ -6,7 +6,8 @@ from os.path import join as path_join
 from struct import pack
 import numpy as np
 import pytest
-from emon_tools.emon_fina import FinaReader, MetaData
+from emon_tools.fina_reader import FinaReader
+from emon_tools.fina_reader import MetaData
 
 
 class TestFinaReader:
@@ -82,7 +83,7 @@ class TestFinaReader:
         with pytest.raises(ValueError, match="pos must be a positive integer."):
             valid_fina_reader.pos = -1
 
-    @patch("emon_tools.emon_fina.isfile", return_value=False)
+    @patch("emon_tools.fina_reader.isfile", return_value=False)
     def test_get_meta_path_invalid(self, mock_isfile, valid_fina_reader):
         """
         Test that _get_meta_path raises FileNotFoundError when the meta file does not exist.
@@ -101,8 +102,8 @@ class TestFinaReader:
     @patch("builtins.open",
            new_callable=mock_open,
            read_data=pack("<2I", 10, 1000000))
-    @patch("emon_tools.emon_fina.isfile", return_value=True)
-    @patch("emon_tools.emon_fina.getsize", return_value=400)
+    @patch("emon_tools.fina_reader.isfile", return_value=True)
+    @patch("emon_tools.fina_reader.getsize", return_value=400)
     def test_read_meta(self,
                        mock_getsize,
                        mock_isfile,
@@ -120,8 +121,8 @@ class TestFinaReader:
 
     # Invalid interval
     @patch("builtins.open", new_callable=mock_open, read_data=pack("<2I", 0, 1000000))
-    @patch("emon_tools.emon_fina.isfile", return_value=True)
-    @patch("emon_tools.emon_fina.getsize", return_value=400)
+    @patch("emon_tools.fina_reader.isfile", return_value=True)
+    @patch("emon_tools.fina_reader.getsize", return_value=400)
     def test_read_meta_invalid(self,
                                mock_getsize,
                                mock_isfile,
@@ -137,7 +138,7 @@ class TestFinaReader:
 
     # Less than 8 bytes
     @patch("builtins.open", new_callable=mock_open, read_data=b"1234")
-    @patch("emon_tools.emon_fina.isfile", return_value=True)
+    @patch("emon_tools.fina_reader.isfile", return_value=True)
     def test_read_meta_corrupted_meta_file(self,
                                            mock_isfile,
                                            mock_open_file,
@@ -156,8 +157,8 @@ class TestFinaReader:
         )
 
     @patch("builtins.open", new_callable=mock_open, read_data=pack("<f", 42.0) * 10)
-    @patch("emon_tools.emon_fina.isfile", return_value=True)
-    @patch("emon_tools.emon_fina.mmap.mmap", autospec=True)
+    @patch("emon_tools.fina_reader.isfile", return_value=True)
+    @patch("emon_tools.fina_reader.mmap.mmap", autospec=True)
     def test_read_file(self, mock_mmap, mock_isfile, mock_open_file, valid_fina_reader):
         """
         Test reading data values from the .dat file.
@@ -192,7 +193,7 @@ class TestFinaReader:
                 assert isinstance(value, np.float32)
                 assert value == 42.0
 
-    @patch("emon_tools.emon_fina.isfile", return_value=False)
+    @patch("emon_tools.fina_reader.isfile", return_value=False)
     def test_read_file_missing_data(self, mock_isfile, valid_fina_reader):
         """
         Test error when the data file does not exist.
@@ -200,7 +201,7 @@ class TestFinaReader:
         with pytest.raises(FileNotFoundError, match="Data file does not exist"):
             list(valid_fina_reader.read_file(npoints=10))
 
-    @patch("emon_tools.emon_fina.isfile", return_value=True)
+    @patch("emon_tools.fina_reader.isfile", return_value=True)
     def test_read_file_invalid_npoints(self, mock_isfile, valid_fina_reader):
         """
         Test that ValueError is raised when npoints is invalid.
@@ -209,8 +210,8 @@ class TestFinaReader:
             list(valid_fina_reader.read_file(npoints=-1))
 
     @patch("builtins.open", new_callable=mock_open, read_data=b"\x00\x00\x00")  # Less than 4 bytes
-    @patch("emon_tools.emon_fina.isfile", return_value=True)
-    @patch("emon_tools.emon_fina.mmap.mmap", autospec=True)
+    @patch("emon_tools.fina_reader.isfile", return_value=True)
+    @patch("emon_tools.fina_reader.mmap.mmap", autospec=True)
     def test_read_file_corrupted_data(self, mock_mmap, mock_isfile, mock_open_file, valid_fina_reader):
         """
         Test that ValueError is raised when the data file is corrupted
@@ -229,8 +230,8 @@ class TestFinaReader:
 
 
     @patch("builtins.open", new_callable=mock_open, read_data=pack("<f", 42.0) * 10)
-    @patch("emon_tools.emon_fina.isfile", return_value=True)
-    @patch("emon_tools.emon_fina.mmap.mmap", autospec=True)
+    @patch("emon_tools.fina_reader.isfile", return_value=True)
+    @patch("emon_tools.fina_reader.mmap.mmap", autospec=True)
     def test_read_file_with_window(self, mock_mmap, mock_isfile, mock_open_file, valid_fina_reader):
         """
         Test reading data with a specified window size.
