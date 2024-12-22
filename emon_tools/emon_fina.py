@@ -500,149 +500,471 @@ class FinaData:
         self.end: Optional[int] = None
         self.step: Optional[int] = None
 
-    def timescale(self) -> np.ndarray:
+    def _read_direct_values(
+        self, start: int, step: int, npts: int, interval: int, window: int, set_pos: bool
+    ) -> np.ndarray:
         """
-        Generate the time scale of the feed as a NumPy array.
+        Read raw values when the step interval is less than or equal to the metadata interval.
+
+        This method retrieves data points directly from the file, filling the result array
+        sequentially up to the required number of points (`npts`).
+
+        Parameters:
+            start (int): Start time in seconds from the feed's start time.
+            step (int): Step interval in seconds for the data retrieval.
+            npts (int): Number of data points to read.
+            interval (int): Metadata interval in seconds.
+            window (int): Total time window in seconds.
+            set_pos (bool): If True, updates the reader's position after reading.
 
         Returns:
-            np.ndarray: Array of time values in seconds.
+            np.ndarray: A NumPy array containing the retrieved values, with NaNs for missing data.
+
+        Notes:
+            - This method assumes the `step` interval is small enough for direct reading.
+            - Values are read in chunks determined by `calculate_optimal_chunk_size`.
+        """
+        result = np.full(npts, np.nan)
+        self.end = start + (npts - 1) * step
+        start_pos = (start - self.meta.start_time) // interval
+
+        reader_props = {
+            "npoints": self.meta.npoints,
+            "start_pos": start_pos,
+            "chunk_size": self.calculate_optimal_chunk_size(window=window),
+            "window": window,
+            "set_pos": set_pos,
+        }
+
+        nb_filled = 0
+        for _, values in self.reader.read_file(**reader_props):
+            available = values.shape[0]
+            remaining = npts - nb_filled
+
+            if remaining <= 0:
+                break
+
+            to_copy = min(available, remaining)
+            result[nb_filled : nb_filled + to_copy] = values[:to_copy]
+            nb_filled += to_copy
+
+        self.start, self.step, self.lines = start, step, result.size
+        return result
+
+    def _read_averaged_values(
+        self,
+        start: int,
+        step: int,
+        npts: int,
+        interval: int,
+        window: int
+    ) -> np.ndarray:
+        """
+        Read and average values when the step interval is greater than the metadata interval.
+
+        This method aggregates values within each `step` interval, computing their mean to 
+        produce a reduced and meaningful representation of the data.
+
+        Parameters:
+            start (int): Start time in seconds from the feed's start time.
+            step (int): Step interval in seconds for the data aggregation.
+            npts (int): Number of data points to produce after averaging.
+            interval (int): Metadata interval in seconds.
+            window (int): Total time window in seconds.
+
+        Returns:
+            np.ndarray: A NumPy array containing the averaged values, with NaNs for missing data.
+
+        Notes:
+            - The averaging process ensures the result matches the expected number of points (`npts`).
+            - Chunk size is adjusted to be divisible by the step factor for precise reshaping.
+            - Empty or partially filled chunks are handled gracefully to avoid runtime errors.
+        """
+        step_factor = step // interval
+        self.end = start + (npts - 1) * step
+        start_pos = (start - self.meta.start_time) // interval
+        chunk_size = self.calculate_optimal_chunk_size(window=window, divisor=step_factor)
+        result = np.full(npts, np.nan)
+
+        reader_props = {
+            "npoints": self.meta.npoints,
+            "start_pos": start_pos,
+            "chunk_size": chunk_size,
+            "window": window,
+            "set_pos": True,
+        }
+
+        nb_filled = 0
+        for _, values in self.reader.read_file(**reader_props):
+            if values.size == 0:
+                continue  # Skip empty reads
+
+            available = values.shape[0]
+            remaining = npts - nb_filled
+
+            if remaining <= 0:
+                break
+
+            # Ensure the values array can be reshaped without remainder
+            usable_size = (available // step_factor) * step_factor
+            reshaped_values = values[:usable_size].reshape(-1, step_factor)
+
+            # Avoid computing mean on empty arrays
+            if reshaped_values.size > 0:
+                averaged_values = np.nanmean(reshaped_values, axis=1)
+            else:
+                averaged_values = np.full(reshaped_values.shape[0], np.nan)
+
+            to_copy = min(len(averaged_values), remaining)
+            result[nb_filled : nb_filled + to_copy] = averaged_values[:to_copy]
+            nb_filled += to_copy
+
+        self.start, self.step, self.lines = start, step, result.size
+        return result
+
+    def reset(self):
+        """
+        Reset the object's state to its default values.
+
+        This method reinitializes the core properties of the object, 
+        ensuring that it is in a clean and consistent state for reuse. 
+        Useful for scenarios where the object's attributes need to 
+        be cleared and set to their default states.
+
+        Attributes Reset:
+            - `lines` (int): Resets to 0, representing no data points processed.
+            - `start` (Optional[int]): Resets to None, indicating no defined start time.
+            - `end` (Optional[int]): Resets to None, indicating no defined end time.
+            - `step` (Optional[int]): Resets to None, indicating no defined step interval.
+
+        Usage:
+            Call this method whenever you need to clear the object's state, 
+            typically before reusing it for new operations.
+        """
+        self.lines: int = 0
+        self.start: Optional[int] = None
+        self.end: Optional[int] = None
+        self.step: Optional[int] = None
+
+    def timescale(self) -> np.ndarray:
+        """
+        Generate a time scale for the feed as a NumPy array.
+
+        This method creates an evenly spaced array of time values in seconds,
+        based on the configured step size and number of lines. It represents 
+        the time intervals associated with the data feed.
+
+        Returns:
+            np.ndarray: A 1D array of time values in seconds, starting at 0 and 
+                        incrementing by `self.step` for `self.lines` intervals.
+
+        Raises:
+            ValueError: If `step` is not set or `lines` is zero, indicating 
+                        that the necessary properties for generating a time 
+                        scale are not properly initialized.
+
+        Example:
+            If `step` is 10 and `lines` is 5, this method returns:
+            `[0, 10, 20, 30, 40]`
         """
         if self.step is None or self.lines == 0:
             raise ValueError("Step size and line count must be set before generating a timescale.")
         return np.arange(0, self.step * self.lines, self.step)
 
-    def read_fina_values(self, start: int, step: int, window: int, set_pos: bool = True) -> np.ndarray:
+    def timestamps(self) -> np.ndarray:
         """
-        Read values from the Fina data file. If the step value is greater than the meta interval,
-        calculate the average of the values within each step interval.
+        Generate an array of timestamps for the feed as a NumPy array.
 
-        Parameters:
-            start (int): Start time in seconds.
-            step (int): Step interval in seconds.
-            npts (int): Number of points to read.
-            set_pos (bool): If True, update the reader's position.
+        This method calculates the timestamps by adding the `start` time to the 
+        generated time scale, providing absolute time values in seconds for each 
+        interval of the feed.
 
         Returns:
-            np.ndarray: Array of read values or averages, with NaNs for missing data.
+            np.ndarray: A 1D array of absolute time values in seconds, starting 
+                        from `self.start` and incrementing by `self.step` for 
+                        `self.lines` intervals.
 
         Raises:
-            ValueError: If the start time is beyond the feed's end time.
+            ValueError: If `self.start` is invalid or not properly initialized. 
+                        Validation is performed by `Utils.validate_timestamp`.
+
+        Example:
+            If `self.start` is 1700000000 and the time scale is `[0, 10, 20, 30]`, 
+            this method returns:
+            `[1700000000, 1700000010, 1700000020, 1700000030]`
+        """
+        Utils.validate_timestamp(self.start, 'win_start')
+        return self.timescale() + self.start
+
+    def read_fina_values(
+        self,
+        start: int,
+        step: int,
+        window: int,
+        set_pos: bool = True
+    ) -> np.ndarray:
+        """
+        Read values from the Fina data file, either directly or averaged, based on the step interval.
+
+        This method retrieves values from the Fina data file for a specified time range and step interval.
+        If the `step` is less than or equal to the metadata interval, values are read directly.
+        Otherwise, values within each `step` interval are averaged.
+
+        Parameters:
+            start (int): Start time in seconds from the feed's start time.
+            step (int): Step interval in seconds for the data retrieval.
+            window (int): Total time window to read in seconds.
+            set_pos (bool): If True, updates the reader's position after reading.
+
+        Returns:
+            np.ndarray: A NumPy array containing either the raw values or averaged values. Missing data 
+                        is represented by NaNs.
+
+        Raises:
+            ValueError: If the `start` time exceeds the feed's end time.
+
+        Notes:
+            - This method adapts its approach based on the relation between `step` and the feed's metadata interval.
+            - For large `step` values, averaging within step intervals is performed for efficiency and clarity.
         """
         if start >= self.meta.end_time:
             raise ValueError(
-                "Invalid start value. Start must be less than the feed's end time "
+                "Invalid start value. "
+                "Start must be less than the feed's end time "
                 "defined by start_time + (npoints * interval) from metadata."
             )
-        npts = window // step
-        result = np.full(npts, np.nan)
+
         interval = self.meta.interval
+        window = min(window, self.length)
+        npts = window // step
 
         if step <= interval:
-            self.end = start + (npts - 1) * step
-            self.reader.pos = (start - self.meta.start_time) // interval
-
-            for i, value in self.reader.read_file(set_pos=set_pos):
-                if i < npts:
-                    result[i] = value
-                else:
-                    break
-
-                if not set_pos:
-                    time = start + step * (i + 1)
-                    self.reader.pos = (time - self.meta.start_time) // interval
-
+            return self._read_direct_values(start, step, npts, interval, window, set_pos)
         else:
-            npts = window // self.meta.interval
-            step_sec = step // self.meta.interval
-            self.end = start + (npts - 1) * step
-            self.reader.pos = (start - self.meta.start_time) // interval
-            tmp = np.full(npts, np.nan)
-            j, k = 0, 0
-            for i, value in self.reader.read_file(set_pos=set_pos):
-                if i < npts:
-                    if j < step_sec:
-                        tmp[i] = value
-                        j += 1
-                    else:
-                        result[k] = np.nanmean(tmp)
-                        tmp = np.full(npts, np.nan)
-                        j = 0
-                        k += 1
-                else:
-                    break
+            return self._read_averaged_values(start, step, npts, interval, window)
 
-        self.start, self.step, self.lines = start, step, result.size
-        return result
-
-    def get_fina_values(
-        self, start: int, step: int, window: int
-    ) -> FinaDataResult:
+    def get_fina_values(self,
+                        start: int,
+                        step: int,
+                        window: int
+                        ) -> np.ndarray:
         """
-        Retrieve values from the Fina data file within a specific window.
+        Retrieve data values from the Fina data file for a specified time window.
+
+        This method accesses the Fina data file to extract values within a given 
+        time window, starting from a specific time point and using a defined step 
+        interval. The method delegates the actual data reading to `read_fina_values`.
 
         Parameters:
-            start (int): Start time in seconds.
-            step (int): Step interval in seconds.
-            window (int): Window size in seconds.
+            start (int): Start time in seconds, relative to the feed's start time.
+            step (int): Step interval in seconds for sampling the data.
+            window (int): Total time window in seconds to retrieve data.
 
         Returns:
-            FinaDataResult: An object containing the results with methods for DataFrame and plotting.
-        """
-        window_min = min(window, self.length)
+            np.ndarray: A 1D NumPy array containing the retrieved values. Missing 
+                        data points are represented by NaNs.
 
-        values = self.read_fina_values(start=start, step=step, window=window_min)
-        times = self.timescale() + start
-        return FinaDataResult(times, values)
+        Notes:
+            - The method ensures that the requested time window and step size are 
+            handled appropriately, including averaging if the step size exceeds 
+            the feed's interval.
+            - It is essential to validate the `start`, `step`, and `window` parameters 
+            against the metadata to avoid errors.
+            - The data extraction aligns with the metadata's time configuration 
+            (e.g., interval and start time).
 
-    def get_fina_values_by_date(
-        self, start_date: str, end_date: str, step: int, date_format: str = "%Y-%m-%d %H:%M:%S"
-    ) -> FinaDataResult:
+        Raises:
+            ValueError: If the `start` time is invalid or exceeds the feed's end time.
         """
-        Retrieve values from the Fina data file based on date range.
+        return self.read_fina_values(start=start, step=step, window=window)
+
+    def get_fina_time_series(self,
+                             start: int,
+                             step: int,
+                             window: int
+                             ) -> np.ndarray:
+        """
+        Retrieve a 2D time series array of timestamps and values from the Fina data file.
+
+        This method combines the calculated timestamps and corresponding data values into a 
+        2D array where each row represents a [timestamp, value] pair.
 
         Parameters:
-            start_date (str): Start date as a string.
-            end_date (str): End date as a string.
-            step (int): Step interval in seconds.
-            date_format (str): Format of the date strings.
+            start (int): Start time in seconds from the feed's start time.
+            step (int): Step interval in seconds for data retrieval.
+            window (int): Total time window in seconds to retrieve data.
 
         Returns:
-            FinaDataResult: An object containing the results with methods for DataFrame and plotting.
-        """
-        start_dt = self.get_utc_datetime_from_string(start_date, date_format)
-        end_dt = self.get_utc_datetime_from_string(end_date, date_format)
+            np.ndarray: A 2D NumPy array with shape (n, 2), where the first column contains 
+                        timestamps and the second contains corresponding values.
 
-        start = int(start_dt.timestamp())
-        window = math.ceil(end_dt.timestamp() - start)
+        Notes:
+            - Missing values in the data are represented by NaNs.
+            - The timestamps are based on the `start` parameter and the step size.
+        """
+        values = self.get_fina_values(start=start, step=step, window=window)
+        times = self.timestamps()
+        return np.vstack((times, values)).T
+
+    def get_fina_values_by_date(self,
+                                start_date: str,
+                                end_date: str,
+                                step: int,
+                                date_format: str = "%Y-%m-%d %H:%M:%S"
+                                ) -> np.ndarray:
+        """
+        Retrieve values from the Fina data file based on a specified date range.
+
+        This method converts the given date range into a time window and retrieves the 
+        corresponding values from the data file.
+
+        Parameters:
+            start_date (str): Start date in string format.
+            end_date (str): End date in string format.
+            step (int): Step interval in seconds for data retrieval.
+            date_format (str): Format of the input date strings. Defaults to "%Y-%m-%d %H:%M:%S".
+
+        Returns:
+            np.ndarray: A 1D NumPy array containing the retrieved values, with NaNs for missing data.
+
+        Notes:
+            - The `Utils.get_window_by_dates` method is used to compute the time range.
+            - This method is useful for aligning data retrieval with specific time periods.
+        """
+        start, window = Utils.get_window_by_dates(
+            start_date=start_date,
+            end_date=end_date,
+            interval=self.meta.interval,
+            date_format=date_format,
+        )
 
         return self.get_fina_values(start=start, step=step, window=window)
 
-    @staticmethod
-    def get_utc_datetime_from_string(dt_value: str, date_format: str = "%Y-%m-%d %H:%M:%S") -> dt.datetime:
+    def get_fina_time_series_by_date(self,
+                                     start_date: str,
+                                     end_date: str,
+                                     step: int,
+                                     date_format: str = "%Y-%m-%d %H:%M:%S"
+                                    ) -> np.ndarray:
         """
-        Convert a date string to a UTC datetime object.
+        Retrieve a 2D time series array of timestamps and values for a specific date range.
+
+        This method combines timestamps and corresponding values within the specified date range 
+        into a 2D array where each row represents a [timestamp, value] pair.
 
         Parameters:
-            dt_value (str): The date-time string to parse.
-            date_format (str): Format of the date-time string (default: "%Y-%m-%d %H:%M:%S").
+            start_date (str): Start date in string format.
+            end_date (str): End date in string format.
+            step (int): Step interval in seconds for data retrieval.
+            date_format (str): Format of the input date strings. Defaults to "%Y-%m-%d %H:%M:%S".
 
         Returns:
-            dt.datetime: A timezone-aware datetime object in UTC.
+            np.ndarray: A 2D NumPy array with shape (n, 2), where the first column contains 
+                        timestamps and the second contains corresponding values.
+
+        Notes:
+            - Combines `get_fina_values_by_date` and `timestamps` to create the time series.
+            - Useful for generating aligned time series data for specific date ranges.
+        """
+        return np.vstack((
+            self.timestamps(),
+            self.get_fina_values_by_date(
+                start_date=start_date,
+                end_date=end_date,
+                step=step,
+                date_format=date_format
+            )
+        )).T
+
+    @staticmethod
+    def calculate_optimal_chunk_size(
+        window: int,
+        min_chunk_size: int = 256,
+        max_chunk_size: int = 4096,
+        scale_factor: float = 1.5,
+        divisor: Optional[int] = None
+    ) -> int:
+        """
+        Compute the optimal chunk size for processing data within the given constraints.
+
+        This method determines the best chunk size based on the total window size, scaling factors, 
+        and optional divisors while ensuring it remains within the provided limits.
+
+        Parameters:
+            window (int): The total size of the data window to process.
+            min_chunk_size (int): Minimum allowable chunk size. Defaults to 256.
+            max_chunk_size (int): Maximum allowable chunk size. Defaults to 4096.
+            scale_factor (float): Factor used to compute the initial division. Defaults to 1.5.
+            divisor (Optional[int]): Optional divisor to ensure the chunk size is a multiple of this value.
+
+        Returns:
+            int: The computed optimal chunk size.
 
         Raises:
-            ValueError: If parsing fails.
-            TypeError: If the input is not a string.
-        """
-        if not isinstance(dt_value, str):
-            raise TypeError("Input must be a string.")
+            ValueError: If any input parameter is invalid, such as negative values or invalid ranges.
 
-        try:
-            naive_datetime = dt.datetime.strptime(dt_value, date_format)
-            return naive_datetime.replace(tzinfo=dt.timezone.utc)
-        except ValueError as e:
-            raise ValueError(
-                f"Error parsing date '{dt_value}' with format '{date_format}': {e}"
-            ) from e
+        Notes:
+            - If `divisor` is provided, the chunk size is adjusted to the nearest multiple of `divisor`.
+            - The method ensures that the chunk size respects both minimum and maximum constraints.
+        """
+        if window <= 0:
+            raise ValueError("Window size must be a positive integer.")
+        if min_chunk_size <= 0 or max_chunk_size <= 0:
+            raise ValueError("Chunk size limits must be positive integers.")
+        if min_chunk_size > max_chunk_size:
+            raise ValueError("min_chunk_size must be less than or equal to max_chunk_size.")
+
+        # Calculate the base optimal chunk size
+        division_factor = int(scale_factor * (window ** 0.5))
+        chunk_size = max(min(window // division_factor, max_chunk_size), min_chunk_size)
+
+        # Adjust chunk size for small remainders
+        remaining_points = window % chunk_size
+        if remaining_points > 0 and remaining_points <= chunk_size // 2:
+            chunk_size = max(min_chunk_size, remaining_points)
+        
+        # Ensure chunk size is divisible by divisor and within limits
+        if divisor is not None:
+            chunk_size = FinaData.calculate_nearest_divisible(chunk_size, divisor, min_chunk_size, max_chunk_size)
+        return chunk_size
+
+    @staticmethod
+    def calculate_nearest_divisible(
+        value: int,
+        divisor: int,
+        min_value: int,
+        max_value: int
+    ) -> int:
+        """
+        Adjust a value to the nearest multiple of a divisor within given limits.
+
+        This method ensures that the adjusted value is divisible by the specified divisor while 
+        remaining within the provided minimum and maximum limits.
+
+        Parameters:
+            value (int): The initial value to adjust.
+            divisor (int): The divisor to make the value divisible by.
+            min_value (int): Minimum allowable value.
+            max_value (int): Maximum allowable value.
+
+        Returns:
+            int: The adjusted value, guaranteed to be divisible by `divisor` and within limits.
+
+        Notes:
+            - The method prioritizes adherence to limits over exact divisibility if conflicts arise.
+            - Useful for ensuring efficient chunking in data processing.
+        """
+        remainder = value % divisor
+        if remainder > 0:
+            value += divisor - remainder
+
+        # Ensure the adjusted value is within limits
+        if value > max_value:
+            value = max_value - (max_value % divisor)
+        elif value < min_value:
+            value = min_value + (divisor - (min_value % divisor)) if min_value % divisor != 0 else min_value
+
+        return value
 
 
 class FinaStats:
