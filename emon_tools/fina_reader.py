@@ -2,6 +2,7 @@
 Common utilities for Fina Files processing.
 """
 from os.path import isdir, isfile, getsize
+from os.path import abspath, splitext
 from os.path import join as path_join
 from struct import unpack
 from typing import Tuple
@@ -201,6 +202,11 @@ class FinaReader:
         pos (int): Current read position in the data file.
     """
 
+    MAX_DATA_SIZE = 100 * 1024 * 1024  # 100 MB limit for files
+    MAX_META_SIZE = 1024  # 1Kb limit for files
+    CHUNK_SIZE_LIMIT = 4096  # Max number of values to read in a chunk
+    VALID_FILE_EXTENSIONS = {".dat", ".meta"}
+
     def __init__(self, feed_id: int, data_dir: str):
         """
         Initialize the FinaReader instance.
@@ -222,19 +228,42 @@ class FinaReader:
         self._pos = 0
         self._chunk_size = 0
 
+    def _sanitize_path(self, filename: str) -> str:
+        """
+        Ensure that the file path is within the allowed directory and has a valid extension.
+        """
+        filepath = abspath(path_join(self._data_dir, filename))
+        if not filepath.startswith(self._data_dir):
+            raise ValueError("Attempt to access files outside the allowed directory.")
+        if splitext(filepath)[1] not in self.VALID_FILE_EXTENSIONS:
+            raise ValueError("Invalid file extension.")
+        return filepath
+
+    def _validate_file_size(self, filepath: str, expected_size: int = 1024):
+        """
+        Ensure that the file size is within the allowed limit.
+        """
+        file_size = getsize(filepath)
+        if file_size > expected_size:
+            raise ValueError(f"File size exceeds the limit: {file_size} / {expected_size} bytes.")
+
     def _get_base_path(self) -> str:
         return path_join(self._data_dir, str(self._feed_id))
 
     def _get_meta_path(self) -> str:
         file_path = f"{self._get_base_path()}.meta"
+        file_path = self._sanitize_path(file_path)
         if not isfile(file_path):
             raise FileNotFoundError(f"Meta file does not exist: {file_path}")
+        self._validate_file_size(file_path, self.MAX_META_SIZE)
         return file_path
 
     def _get_data_path(self) -> str:
         file_path = f"{self._get_base_path()}.dat"
+        file_path = self._sanitize_path(file_path)
         if not isfile(file_path):
             raise FileNotFoundError(f"Data file does not exist: {file_path}")
+        self._validate_file_size(file_path, self.MAX_DATA_SIZE)
         return file_path
 
     def _validate_read_params(
@@ -371,6 +400,8 @@ class FinaReader:
             ValueError: If the chunk_size is negative.
         """
         self._chunk_size = Utils.validate_integer(value, "chunk_size", positive=True)
+        if self._chunk_size > self.CHUNK_SIZE_LIMIT:
+            raise ValueError(f"Chunk size exceeds the allowed limit: {self.CHUNK_SIZE_LIMIT}")
 
     def read_meta(self) -> MetaData:
         """
