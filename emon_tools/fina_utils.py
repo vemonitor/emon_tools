@@ -18,41 +18,67 @@ class Utils:
     """Utilities class"""
 
     @staticmethod
-    def validate_positive_number(value: Union[int, float], field_name: str) -> int:
+    def validate_number(
+        value: Union[int, float],
+        field_name: str,
+        positive: bool = False,
+        non_neg: bool = False
+    ) -> int:
         """
-        Validate that a value is a positive number.
+        Validate that a value is a number, with optional constraints.
 
         Parameters:
-            value (int, float): The value to validate.
+            value (Union[int, float]): The value to validate.
             field_name (str): The name of the field for error messages.
+            positive (bool, optional):
+                If True, ensures the value is strictly positive. Defaults to False.
+            non_neg (bool, optional):
+                If True, ensures the value is non-negative. Defaults to False.
 
         Returns:
-            int: The validated positive number.
+            Union[int, float]: The validated value.
 
         Raises:
-            ValueError: If the value is not a positive number.
+            ValueError: If the value is not a number or does not meet the specified constraints.
         """
-        if not isinstance(value, (int, float)) or value <= 0:
+        if not isinstance(value, (int, float)):
+            raise ValueError(f"{field_name} must be a number.")
+        if positive and value <= 0:
             raise ValueError(f"{field_name} must be a positive number.")
+        if non_neg and value < 0:
+            raise ValueError(f"{field_name} must be a non-negative number.")
         return value
 
     @staticmethod
-    def validate_positive_integer(value: int, field_name: str) -> int:
+    def validate_integer(
+        value: int,
+        field_name: str,
+        positive: bool = False,
+        non_neg: bool = False
+    ) -> int:
         """
-        Validate that a value is a positive integer.
+        Validate that a value is an integer, with optional constraints.
 
         Parameters:
             value (int): The value to validate.
             field_name (str): The name of the field for error messages.
+            positive (bool, optional):
+                If True, ensures the value is strictly positive. Defaults to False.
+            non_neg (bool, optional):
+                If True, ensures the value is non-negative. Defaults to False.
 
         Returns:
-            int: The validated positive integer.
+            int: The validated integer.
 
         Raises:
-            ValueError: If the value is not a positive integer.
+            ValueError: If the value is not an integer or does not meet the specified constraints.
         """
-        if not isinstance(value, int) or value <= 0:
+        if not isinstance(value, int):
+            raise ValueError(f"{field_name} must be an integer.")
+        if positive and value <= 0:
             raise ValueError(f"{field_name} must be a positive integer.")
+        if non_neg and value < 0:
+            raise ValueError(f"{field_name} must be a non-negative integer.")
         return value
 
     @staticmethod
@@ -72,13 +98,10 @@ class Utils:
         Raises:
             ValueError: If the input is not a positive number or not a valid POSIX timestamp.
         """
-        if not isinstance(timestamp, (int, float)) or timestamp < 0:
-            raise ValueError(f"{field_name} timestamp must be a positive number.")
+        # Validate the timestamp is a number and non-negative
+        Utils.validate_number(timestamp, f"{field_name} timestamp", non_neg=True)
 
-        try:
-            # Validate the timestamp by attempting conversion to a datetime object
-            if timestamp > 2147480000:
-                raise ValueError(f"{field_name} must be a valid timestamp. (0 to 2147480000)")
+        # Validate the timestamp is within a reasonable range for UNIX timestamps
             dt.datetime.fromtimestamp(timestamp)
         except (ValueError, OSError) as e:
             raise ValueError(
@@ -208,7 +231,7 @@ class Utils:
             raise ValueError("The start date must be earlier than the end date.")
 
         # Validate interval
-        interval = Utils.validate_positive_integer(interval, 'interval')
+        interval = Utils.validate_integer(interval, 'interval', positive=True)
 
         # Calculate start timestamp and window size
         start_timestamp = int(start_dt.timestamp())

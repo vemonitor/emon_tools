@@ -6,41 +6,74 @@ from emon_tools.fina_utils import Utils
 class TestUtils:
     """Unit tests for the Utils class."""
 
-    def test_validate_positive_number_valid(self):
-        """Test validate_positive_number with valid input."""
-        assert Utils.validate_positive_number(10, "test_field") == 10
-        assert Utils.validate_positive_number(10.2, "test_field") == 10.2
+    def test_validate_number_valid(self):
+        """Test validate_number with valid input."""
+        assert Utils.validate_number(10, "test_field", positive=True) == 10
+        assert Utils.validate_number(10.2, "test_field", positive=True) == 10.2
+        assert Utils.validate_number(0, "test_field", non_neg=True) == 0
 
-    @pytest.mark.parametrize("value", [-1, 0, "string", None])
-    def test_validate_positive_number_invalid(self, value):
-        """Test validate_positive_number raises ValueError for invalid input."""
+    @pytest.mark.parametrize("value", ["string", None])
+    def test_validate_number_invalid(self, value):
+        """Test validate_number raises ValueError for invalid input."""
+        with pytest.raises(ValueError, match="test_field must be a number."):
+            Utils.validate_number(value, "test_field")
+
+    @pytest.mark.parametrize("value", [-1, 0, -1.1])
+    def test_validate_number_positive_invalid(self, value):
+        """Test validate_number raises ValueError for invalid input."""
         with pytest.raises(ValueError, match="test_field must be a positive number."):
-            Utils.validate_positive_number(value, "test_field")
+            Utils.validate_number(value, "test_field", positive=True)
 
-    def test_validate_positive_integer_valid(self):
-        """Test validate_positive_integer with valid input."""
-        assert Utils.validate_positive_integer(10, "test_field") == 10
+    @pytest.mark.parametrize("value", [-1, -1.1])
+    def test_validate_number_non_neg_invalid(self, value):
+        """Test validate_number raises ValueError for invalid input."""
+        with pytest.raises(ValueError, match="test_field must be a non-negative number."):
+            Utils.validate_number(value, "test_field", non_neg=True)
 
-    @pytest.mark.parametrize("value", [-1, 0, "string", 5.5, None])
-    def test_validate_positive_integer_invalid(self, value):
-        """Test validate_positive_integer raises ValueError for invalid input."""
+    def test_validate_integer_valid(self):
+        """Test validate_integer with valid input."""
+        assert Utils.validate_integer(10, "test_field", positive=True) == 10
+        assert Utils.validate_integer(1, "test_field", positive=True) == 1
+
+    @pytest.mark.parametrize("value", ["string", None])
+    def test_validate_integer_invalid(self, value):
+        """Test validate_integer raises ValueError for invalid input."""
+        with pytest.raises(ValueError, match="test_field must be an integer."):
+            Utils.validate_integer(value, "test_field")
+
+    @pytest.mark.parametrize("value", [-1, 0, -10])
+    def test_validate_integer_positive_invalid(self, value):
+        """Test validate_integer raises ValueError for invalid input."""
         with pytest.raises(ValueError, match="test_field must be a positive integer."):
-            Utils.validate_positive_integer(value, "test_field")
+            Utils.validate_integer(value, "test_field", positive=True)
+
+    @pytest.mark.parametrize("value", [-1, -10])
+    def test_validate_integer_non_neg_invalid(self, value):
+        """Test validate_integer raises ValueError for invalid input."""
+        with pytest.raises(ValueError, match="test_field must be a non-negative integer."):
+            Utils.validate_integer(value, "test_field", non_neg=True)
+
 
     def test_validate_timestamp_valid(self):
         """Test validate_timestamp with valid input."""
         assert Utils.validate_timestamp(0, "test_field") == 0
 
-    @pytest.mark.parametrize("value", [-1, "string", None])
+    @pytest.mark.parametrize("value", [-1])
     def test_validate_timestamp_invalid(self, value):
         """Test validate_timestamp raises ValueError for invalid input."""
-        with pytest.raises(ValueError, match="test_field timestamp must be a positive number."):
+        with pytest.raises(ValueError, match="test_field timestamp must be a non-negative number."):
+            Utils.validate_timestamp(value, "test_field")
+
+    @pytest.mark.parametrize("value", ["string", None])
+    def test_validate_timestamp_type_invalid(self, value):
+        """Test validate_timestamp raises ValueError for invalid input."""
+        with pytest.raises(ValueError, match="test_field timestamp must be a number."):
             Utils.validate_timestamp(value, "test_field")
 
     @pytest.mark.parametrize("value", [2147480001, 9999999999])
     def test_validate_timestamp_invalid_value(self, value):
         """Test validate_timestamp raises ValueError for invalid input."""
-        with pytest.raises(ValueError, match=" must be a valid timestamp."):
+        with pytest.raises(ValueError, match="test_field must be a valid UNIX timestamp between 0 and 2147480000."):
             Utils.validate_timestamp(value, "test_field")
 
     def test_get_start_day_valid(self):
