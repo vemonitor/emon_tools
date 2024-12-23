@@ -86,7 +86,7 @@ class MetaData:
         Raises:
             ValueError: If the value is not a positive integer.
         """
-        self._interval = Utils.validate_positive_integer(value, "interval")
+        self._interval = Utils.validate_integer(value, "interval", positive=True)
 
     @property
     def start_time(self) -> int:
@@ -134,7 +134,7 @@ class MetaData:
         Raises:
             ValueError: If the value is not a positive integer.
         """
-        self._npoints = Utils.validate_positive_integer(value, "npoints")
+        self._npoints = Utils.validate_integer(value, "npoints", positive=True)
 
     @property
     def end_time(self) -> int:
@@ -259,8 +259,8 @@ class FinaReader:
         Raises:
             ValueError: If parameters are invalid.
         """
-        npoints = Utils.validate_positive_integer(npoints, "npoints")
-        self.chunk_size = Utils.validate_positive_integer(chunk_size, "chunk_size")
+        npoints = Utils.validate_integer(npoints, "npoints", positive=True)
+        self.chunk_size = Utils.validate_integer(chunk_size, "chunk_size", positive=True)
 
         if not isinstance(start_pos, int) or start_pos < 0:
             raise ValueError(f"start_pos ({start_pos}) must be an integer upper or equal to zero.")
@@ -269,7 +269,7 @@ class FinaReader:
             raise ValueError(f"start_pos ({start_pos}) exceeds total npoints ({npoints}).")
 
         if window is not None:
-            window = Utils.validate_positive_integer(window, "window")
+            window = Utils.validate_integer(window, "window", positive=True)
             total_points = min(npoints - start_pos, window)
         else:
             total_points = npoints - start_pos
@@ -297,9 +297,7 @@ class FinaReader:
         Raises:
             ValueError: If the value is not a positive integer.
         """
-        if value <= 0:
-            raise ValueError("feed_id must be a positive integer.")
-        self._feed_id = value
+        self._feed_id = Utils.validate_integer(value, "feed_id", positive=True)
 
     @property
     def data_dir(self) -> str:
@@ -372,9 +370,7 @@ class FinaReader:
         Raises:
             ValueError: If the chunk_size is negative.
         """
-        if value < 0:
-            raise ValueError("chunk_size must be a positive integer.")
-        self._chunk_size = value
+        self._chunk_size = Utils.validate_integer(value, "chunk_size", positive=True)
 
     def read_meta(self) -> MetaData:
         """
