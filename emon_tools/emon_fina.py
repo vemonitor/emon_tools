@@ -419,11 +419,10 @@ class FinaData:
             )
         )).T
 
-    @staticmethod
     def calculate_optimal_chunk_size(
+        self,
         window: int,
         min_chunk_size: int = 256,
-        max_chunk_size: int = 4096,
         scale_factor: float = 1.5,
         divisor: Optional[int] = None
     ) -> int:
@@ -436,7 +435,6 @@ class FinaData:
         Parameters:
             window (int): The total size of the data window to process.
             min_chunk_size (int): Minimum allowable chunk size. Defaults to 256.
-            max_chunk_size (int): Maximum allowable chunk size. Defaults to 4096.
             scale_factor (float): Factor used to compute the initial division. Defaults to 1.5.
             divisor (Optional[int]):
                 Optional divisor to ensure the chunk size is a multiple of this value.
@@ -453,6 +451,7 @@ class FinaData:
               the chunk size is adjusted to the nearest multiple of `divisor`.
             - The method ensures that the chunk size respects both minimum and maximum constraints.
         """
+        max_chunk_size: int = self.reader.CHUNK_SIZE_LIMIT
         if window <= 0:
             raise ValueError("Window size must be a positive integer.")
         if min_chunk_size <= 0 or max_chunk_size <= 0:
@@ -621,10 +620,10 @@ class FinaStats:
         """
         if is_first:
             init_start = max(self.meta.start_time, current_day_start)
-            init_chunk = int((next_day_start - init_start) / self.meta.interval)
+            chunk_size = int((next_day_start - init_start) / self.meta.interval)
         else:
-            init_chunk = int((next_day_start - current_day_start) / self.meta.interval)
-        return init_chunk
+            chunk_size = int((next_day_start - current_day_start) / self.meta.interval)
+        return max(chunk_size, self.reader.CHUNK_SIZE_LIMIT)
 
     def _validate_chunk(self, positions, next_day_start):
         """
