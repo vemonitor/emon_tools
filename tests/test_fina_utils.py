@@ -105,7 +105,7 @@ class TestUtils:
 
     def test_get_utc_datetime_from_string_invalid_type(self):
         """Test get_utc_datetime_from_string with non-string input."""
-        with pytest.raises(TypeError, match="Input must be a string."):
+        with pytest.raises(TypeError, match="The input date-time value must be a string."):
             Utils.get_utc_datetime_from_string(12345)
 
     def test_get_dates_interval_from_timestamp_valid(self):
@@ -119,20 +119,20 @@ class TestUtils:
 
     def test_get_dates_interval_from_timestamp_invalid_start(self):
         """Test get_dates_interval_from_timestamp raises ValueError for invalid start."""
-        with pytest.raises(ValueError, match="Both 'timestamp' and 'window' must be integers."):
+        with pytest.raises(ValueError, match="'start' and 'window' must be integers."):
             Utils.get_dates_interval_from_timestamp("invalid", 3600)
 
     def test_get_dates_interval_from_timestamp_negative_start(self):
         """Test get_dates_interval_from_timestamp raises ValueError for negative start."""
-        with pytest.raises(ValueError, match="'timestamp' must be a non-negative integer."):
+        with pytest.raises(ValueError, match="'start' and 'window' must be non-negative."):
             Utils.get_dates_interval_from_timestamp(-1, 3600)
 
     def test_get_dates_interval_from_timestamp_negative_window(self):
         """Test get_dates_interval_from_timestamp raises ValueError for negative window."""
-        with pytest.raises(ValueError, match="'interval' must be a non-negative integer."):
+        with pytest.raises(ValueError, match="'start' and 'window' must be non-negative."):
             Utils.get_dates_interval_from_timestamp(1700000000, -3600)
 
     def test_get_dates_interval_from_timestamp_invalid_window(self):
         """Test get_dates_interval_from_timestamp raises ValueError for invalid window."""
-        with pytest.raises(ValueError, match="Both 'timestamp' and 'window' must be integers."):
+        with pytest.raises(ValueError, match="'start' and 'window' must be integers."):
             Utils.get_dates_interval_from_timestamp(1700000000, "invalid")

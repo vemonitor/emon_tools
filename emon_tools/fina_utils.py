@@ -15,7 +15,7 @@ class FillNanMethod(Enum):
 
 
 class Utils:
-    """Utilities class"""
+    """Utility class providing validation and other methods."""
 
     @staticmethod
     def validate_number(
@@ -82,9 +82,10 @@ class Utils:
         return value
 
     @staticmethod
-    def validate_timestamp(timestamp: Union[int, float],
-                           field_name: str
-                           ) -> Union[int, float]:
+    def validate_timestamp(
+        timestamp: Union[int, float],
+        field_name: str
+    ) -> Union[int, float]:
         """
         Validate whether a given value is a valid UNIX timestamp.
 
@@ -96,17 +97,27 @@ class Utils:
             Union[int, float]: The validated timestamp.
 
         Raises:
-            ValueError: If the input is not a positive number or not a valid POSIX timestamp.
+            ValueError:
+                If the input is not a positive number or exceeds the valid UNIX timestamp range.
         """
         # Validate the timestamp is a number and non-negative
         Utils.validate_number(timestamp, f"{field_name} timestamp", non_neg=True)
 
         # Validate the timestamp is within a reasonable range for UNIX timestamps
+        max_timestamp = 2147480000  # Near the year 2038 problem threshold
+        if not 0 <= timestamp <= max_timestamp:
+            raise ValueError(
+                f"{field_name} must be a valid UNIX timestamp between 0 and {max_timestamp}."
+            )
+
+        # Attempt conversion to datetime to ensure validity
+        try:
             dt.datetime.fromtimestamp(timestamp)
         except (ValueError, OSError) as e:
             raise ValueError(
-                f"{field_name} must be a valid timestamp."
+                f"{field_name} must be a valid UNIX timestamp."
             ) from e
+
         return timestamp
 
     @staticmethod
@@ -115,17 +126,16 @@ class Utils:
         Get the start-of-day timestamp for a given timestamp in UTC.
 
         Parameters:
-            timestamp (float): The input timestamp.
+            timestamp (Union[int, float]): The input UNIX timestamp.
 
         Returns:
             float: The start-of-day timestamp in UTC.
         """
         dt_point = dt.datetime.fromtimestamp(timestamp, tz=dt.timezone.utc)
-        return dt.datetime(
-            dt_point.year,
-            dt_point.month,
-            dt_point.day,
-            tzinfo=dt.timezone.utc).timestamp()
+        start_of_day = dt.datetime(
+            dt_point.year, dt_point.month, dt_point.day, tzinfo=dt.timezone.utc
+        )
+        return start_of_day.timestamp()
 
     @staticmethod
     def get_utc_datetime_from_string(dt_value: str,
@@ -136,25 +146,25 @@ class Utils:
 
         Parameters:
             dt_value (str): The date-time string to parse.
-            date_format (str):
-                Format of the date-time string (default: "%Y-%m-%d %H:%M:%S").
+            date_format (str): The format of the date-time string.
+                Defaults to "%Y-%m-%d %H:%M:%S".
 
         Returns:
             dt.datetime: A timezone-aware datetime object in UTC.
 
         Raises:
-            ValueError: If parsing fails.
             TypeError: If the input is not a string.
+            ValueError: If parsing fails due to an invalid format or value.
         """
         if not isinstance(dt_value, str):
-            raise TypeError("Input must be a string.")
+            raise TypeError("The input date-time value must be a string.")
 
         try:
             naive_datetime = dt.datetime.strptime(dt_value, date_format)
             return naive_datetime.replace(tzinfo=dt.timezone.utc)
         except ValueError as e:
             raise ValueError(
-                f"Error parsing date '{dt_value}' with format '{date_format}': {e}"
+                f"Error parsing date '{dt_value}' with the format '{date_format}': {e}"
             ) from e
 
     @staticmethod
@@ -164,37 +174,29 @@ class Utils:
         date_format: str = "%Y-%m-%d %H:%M:%S"
     ) -> Tuple[str, str]:
         """
-        Generate a formatted start and end date string based on start timestamp and window.
+        Generate formatted start and end date strings based on a start timestamp and window size.
 
-        Args:
+        Parameters:
             start (int): The starting UNIX timestamp in seconds.
-            window (int): The window duration in seconds.
+            window (int): The duration of the interval in seconds.
             date_format (str):
-                The format string for the datetime output.
-                Defaults to "%Y-%m-%d %H:%M:%S".
+                Format string for the output datetime. Defaults to "%Y-%m-%d %H:%M:%S".
 
         Returns:
-            Tuple[str, str]: A tuple containing the formatted start and end date strings.
+            Tuple[str, str]: A tuple containing the formatted start and end dates as strings.
+
+        Raises:
+            ValueError: If `start` or `window` are not integers or are negative.
         """
         if not isinstance(start, int) or not isinstance(window, int):
-            raise ValueError("Both 'timestamp' and 'window' must be integers.")
+            raise ValueError("'start' and 'window' must be integers.")
+        if start < 0 or window < 0:
+            raise ValueError("'start' and 'window' must be non-negative.")
 
-        if start < 0:
-            raise ValueError("'timestamp' must be a non-negative integer.")
-
-        if window < 0:
-            raise ValueError("'interval' must be a non-negative integer.")
-
-        # Calculate start and end datetimes in UTC
-          #).replace(tzinfo=dt.timezone.utc)
         start_dt = dt.datetime.fromtimestamp(start, tz=dt.timezone.utc)
         end_dt = start_dt + dt.timedelta(seconds=window)
 
-        # Format both timestamps
-        return (
-            start_dt.strftime(date_format),
-            end_dt.strftime(date_format)
-        )
+        return start_dt.strftime(date_format), end_dt.strftime(date_format)
 
     @staticmethod
     def get_window_by_dates(start_date: str,
@@ -203,15 +205,15 @@ class Utils:
                             date_format: str = "%Y-%m-%d %H:%M:%S"
                             ) -> Tuple[int, int]:
         """
-        Calculate the start timestamp and the number of intervals
-        (window size) based on a date range.
+        Calculate the start timestamp and the number
+        of intervals (window size) based on a date range.
 
         Parameters:
             start_date (str): The start date as a string.
             end_date (str): The end date as a string.
             interval (int): The time interval in seconds for each data point.
-            date_format (str): The format of the input date strings.
-                Defaults to "%Y-%m-%d %H:%M:%S".
+            date_format (str):
+                The format of the input date strings. Defaults to "%Y-%m-%d %H:%M:%S".
 
         Returns:
             Tuple[int, int]:
@@ -244,17 +246,23 @@ class Utils:
                             window: int
                             ) -> Tuple[dt.datetime, dt.datetime]:
         """
-        Calculate the start and end dates based on a start timestamp and window size.
+        Calculate start and end UTC datetimes based on a start timestamp and window size.
 
         Parameters:
-            start (int): Start timestamp (in seconds since epoch).
-            window (int): Window size (in seconds).
+            start (int): Start timestamp in seconds since epoch.
+            window (int): Duration of the window in seconds.
 
         Returns:
-            Tuple[dt.datetime, dt.datetime]:
-                - Start date as a UTC datetime object.
-                - End date as a UTC datetime object.
+            Tuple[dt.datetime, dt.datetime]: Start and end datetimes as UTC datetime objects.
+
+        Raises:
+            ValueError: If `start` or `window` is invalid.
         """
+        if not isinstance(start, int) or not isinstance(window, int):
+            raise ValueError("'start' and 'window' must be integers.")
+        if start < 0 or window < 0:
+            raise ValueError("'start' and 'window' must be non-negative.")
+
         # Convert start timestamp to a datetime object in UTC
         start_dt = dt.datetime.fromtimestamp(start, tz=dt.timezone.utc)
         # Calculate end datetime by adding the window size
