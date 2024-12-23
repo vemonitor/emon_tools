@@ -749,14 +749,14 @@ class FinaStats:
         return self._trim_results(result)
 
     def get_stats_by_date(
-            self,
-            start_date: str,
-            end_date: str,
-            date_format: str = "%Y-%m-%d %H:%M:%S",
-            max_size: int = 10_000,
-            min_value: Optional[Union[int, float]] = None,
-            max_value: Optional[Union[int, float]] = None
-        ) -> List[List[Union[float, int]]]:
+        self,
+        start_date: Optional[str] = None,
+        end_date: Optional[str] = None,
+        date_format: str = "%Y-%m-%d %H:%M:%S",
+        max_size: int = 10_000,
+        min_value: Optional[Union[int, float]] = None,
+        max_value: Optional[Union[int, float]] = None
+    ) -> List[List[Union[float, int]]]:
         """
         Compute daily statistics from PhpFina file data for a specified date range.
 
@@ -778,13 +778,15 @@ class FinaStats:
             ValueError: If the start or end date cannot be converted to valid timestamps.
             ValueError: If the computed steps for the date range exceed max_size.
         """
-        # Calculate the start time and number of steps based on the provided date range.
-        start, window = Utils.get_window_by_dates(
-            start_date=start_date,
-            end_date=end_date,
-            interval=self.meta.interval,
-            date_format=date_format,
-        )
+        start, window = 0, -1
+        if start_date is not None and end_date is not None:
+            # Calculate the start time and number of steps based on the provided date range.
+            start, window = Utils.get_window_by_dates(
+                start_date=start_date,
+                end_date=end_date,
+                interval=self.meta.interval,
+                date_format=date_format,
+            )
 
         # Use the get_stats method with the computed parameters.
         return self.get_stats(
