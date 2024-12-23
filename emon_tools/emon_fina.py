@@ -277,6 +277,7 @@ class FinaData:
 
         interval = self.meta.interval
         window = min(window, self.length)
+        step = max(step, interval)
         npts = window // step
 
         if step <= interval:
