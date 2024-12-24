@@ -1,6 +1,7 @@
 """
 Common utilities for Fina Files processing.
 """
+from enum import Enum
 from typing import List
 from typing import Optional
 from typing import Union
@@ -13,6 +14,12 @@ from emon_tools.fina_reader import FinaReader
 
 logging.basicConfig()
 et_logger = logging.getLogger(__name__)
+
+
+class StatsType(Enum):
+    """Remove Nan Method Enum"""
+    VALUES = "values"
+    INTEGRITY = "integrity"
 
 
 class FinaData:
@@ -36,7 +43,13 @@ class FinaData:
         self.step: Optional[int] = None
 
     def _read_direct_values(
-        self, start: int, step: int, npts: int, interval: int, window: int, set_pos: bool
+        self,
+        start: int,
+        step: int,
+        npts: int,
+        interval: int,
+        window: int,
+        set_pos: bool
     ) -> np.ndarray:
         """
         Read raw values when the step interval is less than or equal to the metadata interval.
@@ -569,7 +582,11 @@ class FinaStats:
 
         return start_point, selected_points
 
-    def _initialize_result(self, selected_points):
+    def _initialize_result(
+            self,
+            selected_points: int,
+            stats_type: StatsType = StatsType.VALUES
+        ):
         """
         Initialize the result array and calculate points per day.
 
@@ -582,11 +599,13 @@ class FinaStats:
         interval = self.meta.interval
         npts_day = math.ceil(86400 / interval)  # Points per day
         npts_total = math.ceil(selected_points / npts_day) + 1
-
-        result = np.full((npts_total, 6), [np.nan, np.nan, np.nan, np.nan, np.nan, np.nan])
+        array = FinaStats.init_stats(
+            stats_type=stats_type
+        )
+        result = np.full((npts_total, len(array)), array)
         return result
 
-    def _get_initial_day_boundaries(self, start_point):
+    def _get_initial_day_boundaries(self, start_point: int):
         """
         Compute the initial start and end times of the first day boundary.
 
@@ -648,6 +667,7 @@ class FinaStats:
         current_day_start: int,
         min_value: Optional[Union[int, float]],
         max_value: Optional[Union[int, float]],
+        stats_type: StatsType = StatsType.VALUES
     ) -> np.ndarray:
         """
         Process data for a single day by filtering and computing statistics.
@@ -657,12 +677,15 @@ class FinaStats:
             current_day_start (int): Start time of the current day.
             min_value (Optional[Union[int, float]]): Minimum valid value for filtering.
             max_value (Optional[Union[int, float]]): Maximum valid value for filtering.
+            stats_type (StatsType): Type of statistics to compute. Defaults to StatsType.VALUES.
 
         Returns:
             np.ndarray: Computed statistics for the current day.
         """
         filtered_values = Utils.filter_values_by_range(values.copy(), min_value, max_value)
-        return self.get_grouped_stats(filtered_values, current_day_start)
+        if stats_type == StatsType.INTEGRITY:
+            return self.get_integrity_stats(filtered_values, current_day_start)
+        return self.get_values_stats(filtered_values, current_day_start)
 
     def _update_day_boundaries(self, next_day_start):
         """
@@ -699,7 +722,8 @@ class FinaStats:
         steps_window: int = -1,
         max_size: int = 10_000,
         min_value: Optional[Union[int, float]] = None,
-        max_value: Optional[Union[int, float]] = None
+        max_value: Optional[Union[int, float]] = None,
+        stats_type: StatsType = StatsType.VALUES
     ) -> List[List[Union[float, int]]]:
         """
         Compute daily statistics from PhpFina file data.
@@ -713,6 +737,7 @@ class FinaStats:
                 Maximum number of data points to process in one call. Defaults to 10,000.
             min_value (Optional[Union[int, float]]): Minimum valid value for filtering.
             max_value (Optional[Union[int, float]]): Maximum valid value for filtering.
+            stats_type (StatsType): Type of statistics to compute. Defaults to StatsType.VALUES.
 
         Returns:
             List[List[Union[float, int]]]: 
@@ -727,7 +752,10 @@ class FinaStats:
         )
 
         # Initialize result storage and day boundaries
-        result = self._initialize_result(selected_points)
+        result = self._initialize_result(
+            selected_points=selected_points,
+            stats_type=stats_type
+        )
         current_day_start, next_day_start = self._get_initial_day_boundaries(start_point)
         init_chunk = self._get_chunk_size(current_day_start, next_day_start, True)
 
@@ -743,7 +771,13 @@ class FinaStats:
         days = 0
         for positions, values in self.reader.read_file(**reader_props):
             self._validate_chunk(positions, next_day_start)
-            result[days] = self._process_day(values, current_day_start, min_value, max_value)
+            result[days] = self._process_day(
+                values=values,
+                current_day_start=current_day_start,
+                min_value=min_value,
+                max_value=max_value,
+                stats_type=stats_type
+            )
 
             # Update day boundaries for next iteration
             days += 1
@@ -759,7 +793,8 @@ class FinaStats:
         date_format: str = "%Y-%m-%d %H:%M:%S",
         max_size: int = 10_000,
         min_value: Optional[Union[int, float]] = None,
-        max_value: Optional[Union[int, float]] = None
+        max_value: Optional[Union[int, float]] = None,
+        stats_type: StatsType = StatsType.VALUES
     ) -> List[List[Union[float, int]]]:
         """
         Compute daily statistics from PhpFina file data for a specified date range.
@@ -772,6 +807,7 @@ class FinaStats:
                 Maximum number of data points to process in one call. Defaults to 10,000.
             min_value (Optional[Union[int, float]]): Minimum valid value for filtering. Optional.
             max_value (Optional[Union[int, float]]): Maximum valid value for filtering. Optional.
+            stats_type (StatsType): Type of statistics to compute. Defaults to StatsType.VALUES.
 
         Returns:
             List[List[Union[float, int]]]: 
@@ -798,11 +834,22 @@ class FinaStats:
             steps_window=window,
             max_size=max_size,
             min_value=min_value,
-            max_value=max_value
+            max_value=max_value,
+            stats_type=stats_type
         )
 
     @staticmethod
-    def get_grouped_stats(values: np.ndarray, day_start: float) -> List[Union[float, int]]:
+    def init_stats(
+        day_start: Union[float, int] = np.nan,
+        stats_type: StatsType = StatsType.VALUES
+    ) -> List[Union[float, int]]:
+        """Initialyse stats array values."""
+        if stats_type == StatsType.INTEGRITY:
+            return [day_start, np.nan, np.nan]
+        return [day_start, np.nan, np.nan, np.nan]
+
+    @staticmethod
+    def get_integrity_stats(values: np.ndarray, day_start: float) -> List[Union[float, int]]:
         """
         Compute statistics for a single day's data.
 
@@ -814,16 +861,43 @@ class FinaStats:
             List[Union[float, int]]: Computed statistics for the day.
         """
         if values.shape[0] == 0:
-            return [day_start, np.nan, np.nan, np.nan, np.nan, np.nan]
+            return FinaStats.init_stats(
+                day_start=day_start,
+                stats_type=StatsType.INTEGRITY
+            )
 
         nb_total = values.shape[0]
         nb_finite = np.isfinite(values).sum()
 
         stats = [
-            np.nanmin(values) if nb_finite > 0 else np.nan,
-            np.nanmean(values) if nb_finite > 0 else np.nan,
-            np.nanmax(values) if nb_finite > 0 else np.nan,
             nb_finite,
             nb_total,
+        ]
+        return [day_start] + stats
+
+    @staticmethod
+    def get_values_stats(values: np.ndarray, day_start: float) -> List[Union[float, int]]:
+        """
+        Compute statistics for a single day's data.
+
+        Parameters:
+            values (np.ndarray): Array of values for the day.
+            day_start (float): Start-of-day timestamp.
+
+        Returns:
+            List[Union[float, int]]: Computed statistics for the day.
+        """
+        if values.shape[0] == 0:
+            return FinaStats.init_stats(
+                day_start=day_start,
+                stats_type=StatsType.VALUES
+            )
+
+        nb_finite = np.isfinite(values).sum()
+
+        stats = [
+            np.nanmin(values) if nb_finite > 0 else np.nan,
+            np.nanmean(values) if nb_finite > 0 else np.nan,
+            np.nanmax(values) if nb_finite > 0 else np.nan
         ]
         return [day_start] + stats
