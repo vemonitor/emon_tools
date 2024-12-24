@@ -282,8 +282,8 @@ class FinaData:
 
         if step <= interval:
             return self._read_direct_values(start, step, npts, interval, window, set_pos)
-        else:
-            return self._read_averaged_values(start, step, npts, interval, window)
+
+        return self._read_averaged_values(start, step, npts, interval, window)
 
     def get_fina_values(self,
                         start: int,
@@ -643,7 +643,12 @@ class FinaStats:
                 f"exceeds day boundary {next_day_start}."
             )
 
-    def _process_day(self, values, current_day_start, min_value, max_value):
+    def _process_day(self,
+        values: np.ndarray,
+        current_day_start: int,
+        min_value: Optional[Union[int, float]],
+        max_value: Optional[Union[int, float]],
+    ) -> np.ndarray:
         """
         Process data for a single day by filtering and computing statistics.
 
