@@ -399,9 +399,10 @@ class FinaReader:
         Raises:
             ValueError: If the chunk_size is negative.
         """
-        self._chunk_size = Utils.validate_integer(value, "chunk_size", positive=True)
-        if self._chunk_size > self.CHUNK_SIZE_LIMIT:
-            raise ValueError(f"Chunk size exceeds the allowed limit: {self.CHUNK_SIZE_LIMIT}")
+        self._chunk_size = max(
+            Utils.validate_integer(value, "chunk_size", positive=True),
+            self.CHUNK_SIZE_LIMIT
+        )
 
     def read_meta(self) -> MetaData:
         """
