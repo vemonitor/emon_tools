@@ -94,7 +94,7 @@ class PlotData(FinaPlot):
         plt.figure(figsize=(18, 6))
         plt.subplot(1, 1, 1)
         if isinstance(data, np.ndarray):
-            plt.plot(data[0], data[1], label="Fina Values")
+            plt.plot(data[:, 0], data[:, 1], label="Fina Values")
         else:
             plt.plot(data.index, data['values'], label="Fina Values")
         plt.title("Fina Values")
@@ -126,9 +126,9 @@ class PlotStats(FinaPlot):
         plt.figure(figsize=(18, 6))
         plt.subplot(1, 1, 1)
         if isinstance(data, np.ndarray):
-            plt.plot(data[0], data[1], label="Fina Stats Values")
-            plt.fill_between(data[0], data[1], data[3], alpha=0.2, label='Daily values min-max range')
-            plt.plot(data[0], data[2], label='Daily mean values', lw=2)
+            plt.plot(data[:, 0], data[:, 1], label="Fina Stats Values")
+            plt.fill_between(data[:, 0], data[:, 1], data[:, 3], alpha=0.2, label='Daily values min-max range')
+            plt.plot(data[:, 0], data[:, 2], label='Daily mean values', lw=2)
         else:
             plt.fill_between(
                 data.index,
@@ -169,18 +169,18 @@ class PlotStats(FinaPlot):
         ax.tick_params(axis="y", labelcolor=color_y1)
         ax.set_xlabel("time")
         if isinstance(data, np.ndarray):
-            ax.plot(data[0], data[1] * 100 / data[2],
+            ax.plot(data[:, 0], data[:, 1] * 100 / data[:, 2],
                     label='Daily nb_finite (%)',
                     lw=3,
                     color=color_y1)
             ax2 = ax.twinx()
             ax2.set_ylabel("Daily Points (%)", color=color_y2)
             ax2.tick_params(axis="y", labelcolor=color_y2)
-            ax2.plot(data[0], data[1],
+            ax2.plot(data[:, 0], data[:, 1],
                     label='Daily mean nb_finite values',
                     lw=3,
                     color=color_y2)
-            ax2.fill_between(data[0], 0, data[2], alpha=0.2, label='Daily min-max nb_points',
+            ax2.fill_between(data[:, 0], 0, data[:, 2], alpha=0.2, label='Daily min-max nb_points',
                     color=color_fill)
         else:
             ax.plot(data.index, data['nb_finite'] * 100 / data['nb_total'],
