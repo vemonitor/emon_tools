@@ -51,18 +51,32 @@ class FinaDataFrame(FinaData):
     as Pandas DataFrames.
 
     Methods:
-        - get_fina_time_series: Retrieve time-series data and convert it into a Pandas DataFrame.
-        - get_fina_time_series_by_date: Retrieve time-series data by date range and return as a DataFrame.
-        - set_data_frame: Static method to convert arrays of time and values into a Pandas DataFrame.
+        - get_fina_time_series:
+            Retrieve time-series data and convert it into a Pandas DataFrame.
+        - get_fina_time_series_by_date:
+            Retrieve time-series data by date range and return as a DataFrame.
+        - set_data_frame:
+            Static method to convert arrays of time and values into a Pandas DataFrame.
     """
-
-    def get_fina_time_series(self,
-                             start: int,
-                             step: int,
-                             window: int
-                             ) -> pd.DataFrame:
+    def __init__(self, feed_id: int, data_dir: str):
         """
-        Retrieve time series data within a specified time window and return it as a Pandas DataFrame.
+        Initialize the FinaDataFrame object with a FinaReader instance.
+
+        Parameters:
+            feed_id (int): Unique identifier for the feed.
+            data_dir (str): Directory path to the Fina data files.
+        """
+        FinaData.__init__(self, feed_id=feed_id, data_dir=data_dir)
+
+    def get_fina_df_time_series(
+        self,
+        start: int,
+        step: int,
+        window: int
+    ) -> pd.DataFrame:
+        """
+        Retrieve time series data within a specified time window
+        and return it as a Pandas DataFrame.
 
         Parameters:
             start (int): The start time in seconds (Unix timestamp).
@@ -79,15 +93,15 @@ class FinaDataFrame(FinaData):
             >>> fina_data.get_fina_time_series(start=0, step=60, window=3600)
         """
         values = self.read_fina_values(start=start, step=step, window=window)
-        times = self.timescale() + start
-        return self.set_data_frame(times, values)
+        return self.set_data_frame(self.timestamps(), values)
 
-    def get_fina_time_series_by_date(self,
-                                     start_date: str,
-                                     end_date: str,
-                                     step: int,
-                                     date_format: str = "%Y-%m-%d %H:%M:%S"
-                                     ) -> pd.DataFrame:
+    def get_fina_time_series_by_date(
+        self,
+        start_date: str,
+        end_date: str,
+        step: int,
+        date_format: str = "%Y-%m-%d %H:%M:%S"
+    ) -> pd.DataFrame:
         """
         Retrieve time series data by specifying a date range and convert it to a Pandas DataFrame.
 
@@ -95,7 +109,8 @@ class FinaDataFrame(FinaData):
             start_date (str): The start date as a string.
             end_date (str): The end date as a string.
             step (int): The interval between data points in seconds.
-            date_format (str, optional): The format of the input date strings. Defaults to "%Y-%m-%d %H:%M:%S".
+            date_format (str, optional):
+                The format of the input date strings. Defaults to "%Y-%m-%d %H:%M:%S".
 
         Returns:
             pd.DataFrame: A DataFrame with time as the index and data values as a column.
@@ -104,7 +119,10 @@ class FinaDataFrame(FinaData):
             ValueError: If the parsed start or end date is invalid.
         
         Example:
-            >>> fina_data.get_fina_time_series_by_date("2023-01-01 00:00:00", "2023-01-02 00:00:00", step=60)
+            >>> fina_data.get_fina_time_series_by_date(
+                "2023-01-01 00:00:00",
+                "2023-01-02 00:00:00",
+                step=60)
         """
         start_dt = Utils.get_utc_datetime_from_string(start_date, date_format)
         end_dt = Utils.get_utc_datetime_from_string(end_date, date_format)
@@ -113,8 +131,8 @@ class FinaDataFrame(FinaData):
         window = int(end_dt.timestamp() - start)
 
         values = self.get_fina_values(start=start, step=step, window=window)
-        times = self.timescale() + start
-        return self.set_data_frame(times, values)
+
+        return self.set_data_frame(self.timestamps(), values)
 
     @staticmethod
     def set_data_frame(times: np.ndarray,
@@ -131,7 +149,8 @@ class FinaDataFrame(FinaData):
             Optional[pd.DataFrame]: A DataFrame with time as the index and data values as a column.
 
         Raises:
-            ValueError: If the input arrays are not of the same shape or not instances of np.ndarray.
+            ValueError:
+                If the input arrays are not of the same shape or not instances of np.ndarray.
         
         Example:
             >>> times = np.array([1672531199, 1672531259, 1672531319])
@@ -159,7 +178,8 @@ class FinaDfStats(FinaStats):
 
     Methods:
         - get_df_stats: Compute daily statistics and return them as a Pandas DataFrame.
-        - get_df_stats_by_date: Compute statistics for a specific date range and return as a DataFrame.
+        - get_df_stats_by_date:
+            Compute statistics for a specific date range and return as a DataFrame.
         - get_stats_labels: Get column labels for the statistics DataFrame.
         - get_integrity_labels: Get column labels for integrity stats.
         - get_values_labels: Get column labels for value stats.
@@ -180,15 +200,20 @@ class FinaDfStats(FinaStats):
             start_time (Optional[int]): The start time in seconds (Unix timestamp). Defaults to 0.
             steps_window (int): The number of steps in the window. Defaults to -1 (all data).
             max_size (int): Maximum size of the dataset. Defaults to 10,000.
-            min_value (Optional[Union[int, float]]): Minimum valid value for filtering. Defaults to None.
-            max_value (Optional[Union[int, float]]): Maximum valid value for filtering. Defaults to None.
+            min_value (Optional[Union[int, float]]):
+                Minimum valid value for filtering. Defaults to None.
+            max_value (Optional[Union[int, float]]):
+                Maximum valid value for filtering. Defaults to None.
             stats_type (StatsType): Type of statistics to compute. Defaults to StatsType.VALUES.
 
         Returns:
             pd.DataFrame: A DataFrame containing computed statistics with time as the index.
         
         Example:
-            >>> stats_df = fina_stats.get_df_stats(start_time=0, steps_window=3600, stats_type=StatsType.VALUES)
+            >>> stats_df = fina_stats.get_df_stats(
+                start_time=0,
+                steps_window=3600,
+                stats_type=StatsType.VALUES)
         """
         df = pd.DataFrame(
             self.get_stats(
@@ -213,22 +238,28 @@ class FinaDfStats(FinaStats):
         stats_type: StatsType = StatsType.VALUES
     ) -> List[List[Union[float, int]]]:
         """
-        Compute statistics for data within a specified date range and return them as a Pandas DataFrame.
+        Compute statistics for data within a specified date range
+        and return them as a Pandas DataFrame.
 
         Parameters:
             start_date (str): The start date as a string.
             end_date (str): The end date as a string.
-            date_format (str, optional): The format of the input date strings. Defaults to "%Y-%m-%d %H:%M:%S".
+            date_format (str, optional):
+                The format of the input date strings. Defaults to "%Y-%m-%d %H:%M:%S".
             max_size (int): Maximum size of the dataset. Defaults to 10,000.
-            min_value (Optional[Union[int, float]]): Minimum valid value for filtering. Defaults to None.
-            max_value (Optional[Union[int, float]]): Maximum valid value for filtering. Defaults to None.
+            min_value (Optional[Union[int, float]]):
+                Minimum valid value for filtering. Defaults to None.
+            max_value (Optional[Union[int, float]]):
+                Maximum valid value for filtering. Defaults to None.
             stats_type (StatsType): Type of statistics to compute. Defaults to StatsType.VALUES.
 
         Returns:
             pd.DataFrame: A DataFrame containing computed statistics with time as the index.
         
         Example:
-            >>> stats_df = fina_stats.get_df_stats_by_date("2023-01-01 00:00:00", "2023-01-02 00:00:00")
+            >>> stats_df = fina_stats.get_df_stats_by_date(
+                "2023-01-01 00:00:00",
+                "2023-01-02 00:00:00")
         """
         df = pd.DataFrame(
             self.get_stats_by_date(
