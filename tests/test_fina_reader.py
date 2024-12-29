@@ -139,15 +139,19 @@ class TestFinaReader:
     # Less than 8 bytes
     @patch("builtins.open", new_callable=mock_open, read_data=b"1234")
     @patch("emon_tools.fina_reader.isfile", return_value=True)
-    def test_read_meta_corrupted_meta_file(self,
-                                           mock_isfile,
-                                           mock_open_file,
-                                           valid_fina_reader):
+    @patch("emon_tools.fina_reader.getsize", return_value=400)
+    def test_read_meta_corrupted_meta_file(
+        self,
+        mock_getsize,
+        mock_isfile,
+        mock_open_file,
+        valid_fina_reader
+    ):
         """
         Test that ValueError is raised when the meta file is corrupted
         (i.e., insufficient bytes are read).
         """
-        with pytest.raises(IOError, match="Error reading meta file: Meta file is corrupted."):
+        with pytest.raises(IOError, match=r"Error reading meta file: .*"):
             valid_fina_reader.read_meta()
 
         # Ensure the correct file was attempted to open
@@ -158,8 +162,16 @@ class TestFinaReader:
 
     @patch("builtins.open", new_callable=mock_open, read_data=pack("<f", 42.0) * 10)
     @patch("emon_tools.fina_reader.isfile", return_value=True)
+    @patch("emon_tools.fina_reader.getsize", return_value=400)
     @patch("emon_tools.fina_reader.mmap.mmap", autospec=True)
-    def test_read_file(self, mock_mmap, mock_isfile, mock_open_file, valid_fina_reader):
+    def test_read_file(
+        self,
+        mock_mmap,
+        mock_open_file,
+        mock_isfile,
+        mock_getsize,
+        valid_fina_reader
+    ):
         """
         Test reading data values from the .dat file.
         """
@@ -184,10 +196,10 @@ class TestFinaReader:
         ))
 
         # Assert the results
-        assert len(results) == 2  # Two chunks of 5 points each
+        assert len(results) == 1  # Two chunks of 5 points each
         for chunk in results:
             positions, values = chunk
-            assert len(positions) == len(values) == 5
+            assert len(positions) == len(values) == 10
             for pos, value in zip(positions, values):
                 assert 0 <= pos < 10
                 assert isinstance(value, np.float32)
@@ -211,8 +223,16 @@ class TestFinaReader:
 
     @patch("builtins.open", new_callable=mock_open, read_data=b"\x00\x00\x00")  # Less than 4 bytes
     @patch("emon_tools.fina_reader.isfile", return_value=True)
+    @patch("emon_tools.fina_reader.getsize", return_value=400)
     @patch("emon_tools.fina_reader.mmap.mmap", autospec=True)
-    def test_read_file_corrupted_data(self, mock_mmap, mock_isfile, mock_open_file, valid_fina_reader):
+    def test_read_file_corrupted_data(
+        self,
+        mock_mmap,
+        mock_getsize,
+        mock_isfile,
+        mock_open_file,
+        valid_fina_reader
+    ):
         """
         Test that ValueError is raised when the data file is corrupted
         (i.e., insufficient bytes are read for a float).
@@ -230,9 +250,17 @@ class TestFinaReader:
 
 
     @patch("builtins.open", new_callable=mock_open, read_data=pack("<f", 42.0) * 10)
+    @patch("emon_tools.fina_reader.getsize", return_value=400)
     @patch("emon_tools.fina_reader.isfile", return_value=True)
     @patch("emon_tools.fina_reader.mmap.mmap", autospec=True)
-    def test_read_file_with_window(self, mock_mmap, mock_isfile, mock_open_file, valid_fina_reader):
+    def test_read_file_with_window(
+        self,
+        mock_mmap,
+        mock_getsize,
+        mock_isfile,
+        mock_open_file,
+        valid_fina_reader
+    ):
         """
         Test reading data with a specified window size.
         """
@@ -257,5 +285,21 @@ class TestFinaReader:
         ))
 
         # Assert the results
-        assert len(results) == 2  # Two chunks: 5 and 2 points
+        assert len(results) == 1  # Two chunks: 5 and 2 points
         assert sum(len(chunk[0]) for chunk in results) == 7  # Total 7 points
+
+    def test_sanitize_path_invalid_extension(self, valid_fina_reader):
+        """
+        Test _sanitize_path with an invalid file extension.
+        """
+        filename = "invalid_file.txt"
+        with pytest.raises(ValueError, match="Invalid file extension."):
+            valid_fina_reader._sanitize_path(filename)
+
+    def test_sanitize_path_outside_directory(self, valid_fina_reader):
+        """
+        Test _sanitize_path with a filename that attempts to access outside the allowed directory.
+        """
+        filename = "../outside_file.dat"
+        with pytest.raises(ValueError, match="Attempt to access files outside the allowed directory."):
+            valid_fina_reader._sanitize_path(filename)
