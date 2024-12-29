@@ -45,7 +45,9 @@ class TestMetaData:
         """
         Test initialization raises ValueError for invalid start_time parameter.
         """
-        with pytest.raises(ValueError, match="start_time timestamp must be a positive number."):
+        with pytest.raises(
+                ValueError,
+                match="start_time timestamp must be a non-negative number."):
             MetaData(interval=10, start_time=-1000000, npoints=100, end_time=2000000)
 
     def test_calculate_nb_days(self):

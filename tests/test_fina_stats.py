@@ -16,8 +16,9 @@ class TestFinaStats:
     def mock_reader(self):
         """Fixture to mock the FinaReader."""
         mock_reader = MagicMock()
-        npoints = (3600 * 24 * 2) # Two days of data at 10-second intervals
-        start_time = Utils.get_start_day(1700000000)
+        # Two days of data at 10-second intervals
+        npoints = (3600 * 24 * 2)
+        start_time = Utils.get_start_day(1575981140)
         mock_reader.read_meta.return_value = MetaData(
             start_time=start_time,
             interval=10,
@@ -31,15 +32,16 @@ class TestFinaStats:
             )
         ]  # Mocked data
         mock_reader.chunk_size = 8640
+        mock_reader.CHUNK_SIZE_LIMIT = 4096  # Set CHUNK_SIZE_LIMIT to an integer value
         return mock_reader
 
 
     @pytest.fixture
     def fina_stats(self, mock_reader):
         """Fixture to create a FinaStats instance with a mocked FinaReader."""
-        with pytest.MonkeyPatch.context() as m:
-            m.setattr("emon_tools.emon_fina.FinaReader", lambda *args, **kwargs: mock_reader)
-            return FinaStats(feed_id=1, data_dir="mock_dir")
+        monkeypatch = pytest.MonkeyPatch()
+        monkeypatch.setattr("emon_tools.emon_fina.FinaReader", lambda *args, **kwargs: mock_reader)
+        return FinaStats(feed_id=1, data_dir="mock_dir")
 
 
     @pytest.mark.parametrize(
@@ -48,26 +50,26 @@ class TestFinaStats:
             (
                 None,
                 None,
-                [1699920000.0, 20.0, 4339.5, 8659.0, 8640.0, 8640.0],
+                [1575936000.0, 20.0, 4339.5, 8659.0],
             ),
             (
                 21,
                 None,
-                [1699920000.0, 21.0, 4340.0, 8659.0, 8639.0, 8640.0],
+                [1575936000.0, 21.0, 4340.0, 8659.0],
             ),
             (
                 None,
                 23,
-                [1699920000.0, 20.0, 21.5, 23.0, 4.0, 8640.0],
+                [1575936000.0, 20.0, 21.5, 23.0],
             ),
             (
                 21,
                 23,
-                [1699920000.0, 21.0, 22.0, 23.0, 3.0, 8640.0],
+                [1575936000.0, 21.0, 22.0, 23.0],
             ),
         ],
     )
-    def test_get_stats(self, fina_stats, min_value, max_value, expected_stats):
+    def test_get_stats(self, min_value, max_value, expected_stats, fina_stats):
         """
         Test get_stats computes correct statistics with and without filters.
 
@@ -85,7 +87,7 @@ class TestFinaStats:
         # Validate output
         assert len(stats) == 1  # Expecting stats for three days
         # Allow for floating-point precision errors
-        assert stats[0] == pytest.approx(expected_stats, rel=1e-6)
+        assert stats[0] == expected_stats
 
     @pytest.mark.parametrize(
         "value, min_value, max_value, expected",
@@ -122,22 +124,22 @@ class TestFinaStats:
             (
                 {"start_time": None, "interval": 60, "npoints": 10, "end_time": 1700099000},
                 ValueError,
-                "start_time timestamp must be a positive number.",
+                "start_time timestamp must be a number.",
             ),
             (
                 {"start_time": 1700000000, "interval": None, "npoints": 10, "end_time": 1700099000},
                 ValueError,
-                "interval must be a positive integer.",
+                "interval must be an integer.",
             ),
             (
                 {"start_time": 1700000000, "interval": 60, "npoints": None, "end_time": 1700099000},
                 ValueError,
-                "npoints must be a positive integer.",
+                "npoints must be an integer.",
             ),
             (
                 {"start_time": 1700000000, "interval": 60, "npoints": 10, "end_time": None},
                 ValueError,
-                "end_time timestamp must be a positive number.",
+                "end_time timestamp must be a number.",
             )
         ],
     )
@@ -178,7 +180,7 @@ class TestFinaStats:
         """
         Test FinaStats.get_grouped_stats for various input scenarios.
         """
-        result = FinaStats.get_grouped_stats(raw_data, day_start)
+        result = FinaStats.get_values_stats(raw_data, day_start)
 
         # Check if all values match within acceptable precision
         for r, e in zip(result, expected_output):

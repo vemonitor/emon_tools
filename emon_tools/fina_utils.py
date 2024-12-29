@@ -237,7 +237,8 @@ class Utils:
 
         # Calculate start timestamp and window size
         start_timestamp = int(start_dt.timestamp())
-        window_size = int((end_dt.timestamp() - start_timestamp) / interval)
+        # ( / interval)
+        window_size = int(end_dt.timestamp() - start_timestamp)
 
         return start_timestamp, window_size
 
