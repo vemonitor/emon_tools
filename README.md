@@ -40,20 +40,36 @@ The `emon_fina` module facilitates the analysis and processing of time-series da
 
 #### Features
 
-    - Data Reading: Efficiently read data from PhpFina file formats.
-    - Time-Series Analysis: Compute daily statistics such as min, max, mean, and more.
-    - Filtering: Validate and filter data based on custom thresholds.
-    - Utilities: Timestamp manipulation and interval computation tools.
+- Data Reading: Efficiently read data from PhpFina file formats.
+- Time-Series Analysis: Compute daily statistics such as min, max, mean, and more.
+- Filtering: Validate and filter data based on custom thresholds.
+- Utilities: Timestamp manipulation and interval computation tools.
 
-#### Usage Example:
+#### PhpFina File Structure
 
-The examples below demonstrate how to retrieve and analyze data from PhpFina timeseries .dat files. For additional examples, refer to the [`emon_fina` Jupiter NoteBook](https://github.com/vemonitor/emon_tools/blob/main/notebook/emon_fina.ipynb).
+PhpFina is a lightweight binary file format used by EmonCMS for storing time-series data. Each PhpFina feed consists of two files:
 
-Every PhpFina timeseries feed engine is acompagned with `.meta` file who contain meta values of actual status of `.dat` file. Meta data is readed on initialize objects
+1. `.dat` File: Contains the actual time-series data values, stored as binary floats. Each value corresponds to a specific timestamp based on the feed's start time and interval.
+
+2. `.meta` File: Contains metadata about the feed. Its structure includes:  
+  - **Offset 0-7**: Reserved for future use or ignored by the library.
+  - **Offset 8-15**: Contains two 4-byte little-endian integers:
+    - `interval`: The time interval (in seconds) between consecutive data points.
+    - `start_time`: The Unix timestamp of the first data point.
+  - Computed Values:
+    - `npoints`: The total number of data points, calculated as `data_size // 4` (where each data point is 4 bytes).
+    - `end_tim`e: Computed as `start_time + npoints * interval - interval`.
+
+#### Usage Examples:
+
+The examples below demonstrate how to retrieve and analyze data from PhpFina timeseries .dat files. For additional examples, refer to the [`emon_fina`](https://github.com/vemonitor/emon_tools/blob/main/notebook/emon_fina.ipynb) Jupiter NoteBook.
+
 
 ##### Retrieving data
 
-`FinaData` initialization:
+###### 1. Initialize `FinaData`:
+
+This initializes the `FinaData` class, allowing you to interact with the time-series data files:
 
 ```python
 from emon_tools.emon_fina import FinaData
@@ -64,12 +80,26 @@ fdf = FinaData(
 )
 ```
 
-Values output can be set as:
-> In above example we get 8 days (8 * 24 * 3600) from meta `time_start` value.
+Access metadata of the .meta file:
 
-1. 1D numpy array by timestamp
+```python
+print(fdf.meta)
+# Example Output:
+# {
+#     "interval": 10,
+#     "start_time": 1575981140,
+#     "npoints": 4551863,
+#     "end_time": 1621499760
+# }
+```
 
-Retrieve data values from the Fina data file for a specified time window.
+##### 2. Retrieve Values:
+
+Retrieve specific ranges of data values from the `.dat` file based on time intervals or date ranges.
+
+1. 1D NumPy Array by time window:
+
+Extract values starting from a specific timestamp and within a time window:
 
 ```python
 values = fdf.get_fina_values(
@@ -79,9 +109,9 @@ values = fdf.get_fina_values(
 )
 ```
 
-2. 1D numpy array by srting datetime
+2. 1D NumPy Array by datetime interval:
 
-Retrieve values from the Fina data file based on a specified date range.
+Extract values within a specific date range:
 
 ```python
 ts = fdf.get_fina_values_by_date(
@@ -91,9 +121,9 @@ ts = fdf.get_fina_values_by_date(
 )
 ```
 
-3. 2D TimeSeries numpy array by timestamp
+3. 2D Time-Series NumPy Array by time window:
 
-Retrieve a 2D time series array of timestamps and values from the Fina data file.
+Retrieve a 2D array containing timestamps and corresponding values:
 
 ```python
 ts = fdf.get_fina_time_series(
@@ -103,11 +133,9 @@ ts = fdf.get_fina_time_series(
 )
 ```
 
+4. 2D Time-Series NumPy Array by datetime interval:
 
-
-4. 2D TimeSeries numpy array by srting datetime
-
-Retrieve a 2D time series array of timestamps and values for a specific date range.
+Retrieve a 2D array of timestamps and values for a specific date range:
 
 ```python
 ts = fdf.get_fina_time_series_by_date(
@@ -117,7 +145,9 @@ ts = fdf.get_fina_time_series_by_date(
 )
 ```
 
-5. pandas DataFrame TimeSeries
+5. Pandas DataFrame Time-Series:
+
+Convert time-series data into a Pandas DataFrame for easier manipulation:
 
 `FinaDataFrame` initialization:
 
@@ -128,31 +158,38 @@ fdf = FinaDataFrame(
     feed_id=1,
     data_dir="/path/to/phpfina/files
 )
-```
 
-Retrieve time series data within a specified time window
-and return it as a Pandas DataFrame.
-
-```python
 ts = fdf.get_fina_df_time_series(
-    start=fr.meta.start_time,
+    start=fdf.meta.start_time,
     step=10,
     window=8 * 24 * 3600
 )
-```
 
-Retrieve time series data by specifying a date range and convert it to a Pandas DataFrame.
+# Or by date_range
 
-```python
 ts = fdf.get_fina_time_series_by_date(
     start_date='2019-12-12 00:00:00',
     end_date='2019-12-13 00:00:00',
     step=10
 )
 ```
-And optionaly ploted dirrectly.
 
-`FinaDataFrame` initialization:
+Access metadata of the `.meta` file:
+
+```python
+print(fdf.meta)
+# Example Output:
+# {
+#     "interval": 10,
+#     "start_time": 1575981140,
+#     "npoints": 4551863,
+#     "end_time": 1621499760
+# }
+```
+
+##### 3. Plotting Data:
+
+Visualize the retrieved time-series data:
 
 ```python
 from emon_tools.fina_plot import PlotData
@@ -162,7 +199,9 @@ PlotData.plot(data=ts)
 
 ##### Compute Daily Statistics
 
-`FinaDataFrame` initialization:
+###### 1. Initialize `FinaStats`:
+
+This initializes the  `FinaStats` class for statistical computations:
 
 ```python
 from emon_tools.emon_fina import FinaStats
@@ -174,20 +213,22 @@ stats = FinaStats(
 )
 ```
 
-Once initialized, you can access the metadata of the PhpFina `.meta` file. For example, a file with `feed_id=1` might return:
+Access metadata of the .meta file:
 
 ```python
-stats.meta
-    {
-        "interval": 10,
-        "start_time": 1575981140,
-        "npoints": 4551863,
-        "end_time": 1621499760
-    }
+print(stats.meta)
+# Example Output:
+# {
+#     "interval": 10,
+#     "start_time": 1575981140,
+#     "npoints": 4551863,
+#     "end_time": 1621499760
+# }
 ```
 
-On grabing phpfina timeseries feed engine, missed data points are set as Nan values,
-We can get file integrity daily statistics to compute real and total values of phpfina `.dat` file
+###### 2. Integrity Statistics:
+
+Analyze the integrity of the .dat file by computing the presence of valid and missing data:
 
 ```python
 # Compute daily statistics
@@ -196,7 +237,9 @@ daily_stats = stats.get_stats(stats_type=StatsType.INTEGRITY)
 
 <img src="https://github.com/vemonitor/emon_tools/blob/main/img/integrity_stats.png" with="100%">
 
-Or we can get daily values statistics from your phpfina timeseries feed engine file
+###### 3. Value Statistics:
+
+Compute daily statistics (e.g., min, max, mean) for data values:
 
 ```python
 # Compute daily statistics
@@ -205,8 +248,9 @@ daily_stats = stats.get_stats(stats_type=StatsType.VALUES)
 
 <img src="https://github.com/vemonitor/emon_tools/blob/main/img/values_stats.png" with="100%">
 
-Phpfina timeseries feed engine file can contain bad data, in this case we can limit values from statistics without bad values.
-Here statistics are calculated only with values between -50 and 50.
+###### 4. Filtered Value Statistics:
+
+Restrict statistical calculations to a specific value range:
 
 ```python
 # Compute daily statistics
@@ -219,8 +263,9 @@ daily_stats = stats.get_stats(
 
 <img src="https://github.com/vemonitor/emon_tools/blob/main/img/values_stats_limited.png" with="100%">
 
-You can limit daily statistics from desired window, by setting `start_time` and/or `steps_window` properties.
-In above example we get daily stats values for 8 days from timestamp value 1575981140
+###### 5. Windowed Statistics:
+Limit statistics to a specific time window:
+
 ```python
 # Compute daily statistics
 daily_stats = stats.get_stats(
@@ -249,5 +294,3 @@ Contributions are welcome! To contribute:
 
 ## License
 This project is licensed under the MIT License. See LICENSE for more details.
-
-....
