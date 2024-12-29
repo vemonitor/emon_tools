@@ -358,8 +358,7 @@ class FinaData:
             - The timestamps are based on the `start` parameter and the step size.
         """
         values = self.get_fina_values(start=start, step=step, window=window)
-        times = self.timestamps()
-        return np.vstack((times, values)).T
+        return np.vstack((self.timestamps(), values)).T
 
     def get_fina_values_by_date(self,
                                 start_date: str,
@@ -422,14 +421,15 @@ class FinaData:
             - Combines `get_fina_values_by_date` and `timestamps` to create the time series.
             - Useful for generating aligned time series data for specific date ranges.
         """
+        values = self.get_fina_values_by_date(
+            start_date=start_date,
+            end_date=end_date,
+            step=step,
+            date_format=date_format
+        )
         return np.vstack((
             self.timestamps(),
-            self.get_fina_values_by_date(
-                start_date=start_date,
-                end_date=end_date,
-                step=step,
-                date_format=date_format
-            )
+            values
         )).T
 
     def calculate_optimal_chunk_size(
