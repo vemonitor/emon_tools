@@ -5,7 +5,8 @@ This module extends the functionality of `emon_tools.emon_fina` by introducing
 classes to work with Pandas DataFrames for Fina data results.
 
 Classes:
-    - FinaDataFrame: Extends FinaData with methods to convert time-series data into Pandas DataFrames.
+    - FinaDataFrame:
+        Extends FinaData with methods to convert time-series data into Pandas DataFrames.
     - FinaDfStats: Extends FinaStats to compute and return statistics as Pandas DataFrames.
 
 Dependencies:

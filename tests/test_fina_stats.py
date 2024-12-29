@@ -17,7 +17,7 @@ class TestFinaStats:
         """Fixture to mock the FinaReader."""
         mock_reader = MagicMock()
         # Two days of data at 10-second intervals
-        npoints = (3600 * 24 * 2)
+        npoints = 3600 * 24 * 2
         start_time = Utils.get_start_day(1575981140)
         mock_reader.read_meta.return_value = MetaData(
             start_time=start_time,

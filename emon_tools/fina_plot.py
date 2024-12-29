@@ -127,7 +127,13 @@ class PlotStats(FinaPlot):
         plt.subplot(1, 1, 1)
         if isinstance(data, np.ndarray):
             plt.plot(data[:, 0], data[:, 1], label="Fina Stats Values")
-            plt.fill_between(data[:, 0], data[:, 1], data[:, 3], alpha=0.2, label='Daily values min-max range')
+            plt.fill_between(
+                data[:, 0],
+                data[:, 1],
+                data[:, 3],
+                alpha=0.2,
+                label='Daily values min-max range'
+            )
             plt.plot(data[:, 0], data[:, 2], label='Daily mean values', lw=2)
         else:
             plt.fill_between(
