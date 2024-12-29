@@ -301,5 +301,7 @@ class TestFinaReader:
         Test _sanitize_path with a filename that attempts to access outside the allowed directory.
         """
         filename = "../outside_file.dat"
-        with pytest.raises(ValueError, match="Attempt to access files outside the allowed directory."):
+        with pytest.raises(
+                ValueError,
+                match="Attempt to access files outside the allowed directory."):
             valid_fina_reader._sanitize_path(filename)
