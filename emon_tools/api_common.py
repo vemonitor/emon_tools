@@ -1,5 +1,5 @@
 """
-
+Api common utilities.
 """
 import re
 from typing import Any
@@ -77,7 +77,7 @@ class Utils:
             >>> Utils.is_valid_node(text="Node1")
             >>> True
 
-        :param text: str: Node value.  
+        :param text: str: Node value.
         :return: bool: True if text is valid node.
         """
         result = False

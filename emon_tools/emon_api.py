@@ -34,7 +34,7 @@ from typing import Any, Optional, TypeVar, List, Dict
 from urllib.parse import quote, urljoin
 
 from aiohttp import ClientError, ClientSession
-from emon_tools.api_common import Utils
+from emon_tools.api_common import Utils as Ut
 from emon_tools.api_common import HTTP_STATUS
 from emon_tools.api_common import MESSAGE_KEY
 from emon_tools.api_common import SUCCESS_KEY
@@ -181,7 +181,7 @@ class EmonRequest:
                 full_url, timeout=self.request_timeout, params=encoded_params
             ) as response:
                 if response.status == 200:
-                    success, message = Utils.compute_response(
+                    success, message = Ut.compute_response(
                         await response.json()
                     )
                     data[SUCCESS_KEY] = success
@@ -414,3 +414,55 @@ class EmonReader(EmonRequest):
         self.logger.warning(
             "Failed to get input fields: %s", response[MESSAGE_KEY])
         return None
+
+
+@dataclass
+class EmoncmsWrite(EmonRequest):
+    """Emoncms Write client Api."""
+
+    async def async_create_feed(self,
+                                name: str,
+                                tag: str,
+                                engine: Optional[int] = None,
+                                options: Optional[dict] = None
+                                ) -> Optional[dict[str, Any]]:
+        """
+        Create new feed.
+        On error return a dict as:
+        - {"success": false, "message": "Error Message"}
+
+        Error messages are:
+        - [Bad tag Name]: invalid characters in feed tag
+        - [Bad name]: invalid characters in feed name
+        - [invalid engine number]: ABORTED: Engine id x is not supported.
+
+        On Success ruturn a dict as:
+        - {"success": true, "feedid": 1, "result": true}
+
+        [see valid engines here](https://github.com/emoncms/emoncms/blob/master/Lib/enum.php#L40)
+
+        :Example :
+            - > await async_create_feed( name"tmp" ) => 1
+            - > UType.is_str(value="tmp", not_null=True) => True
+            - > UType.is_str( 0 ) => False
+        :param name: Name of the new Feed
+        :param tag: Feed related Tag or Node
+        :param engine: Engine used to store data
+        :param options: Dict of options
+        :return: True if the given value is a str instance, otherwise False.
+        """
+        result = None
+        if Ut.is_valid_node(name)\
+                and Ut.is_valid_node(tag):
+            params = {
+                "apikey": self.api_key,
+                "tag": tag,
+                "name": name,
+                "engine": engine,
+                "options": options
+            }
+            feed_data = await self.async_request(
+                "/feed/create.json", params=params)
+            if feed_data[SUCCESS_KEY]:
+                return feed_data[MESSAGE_KEY]
+        return result
