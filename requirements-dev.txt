@@ -5,3 +5,4 @@ numpy>=2.2.0
 pandas>=2.2.3
 matplotlib>=3.9.3
 aiohttp>=3.8.1
+pytest-aiohttp>=1.0.5
