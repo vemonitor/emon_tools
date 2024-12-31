@@ -187,10 +187,9 @@ class EmonRequest:
                     data[SUCCESS_KEY] = success
                     data[MESSAGE_KEY] = message
                 else:
-                    error_msg = f"HTTP {response.status}: {HTTP_STATUS.get(
-                        response.status,
-                        'Unknown error')
-                    }"
+                    error_msg = (
+                        f"HTTP {response.status}: "
+                        f"{HTTP_STATUS.get(response.status, 'Unknown error')}")
                     data[MESSAGE_KEY] = error_msg
                     self.logger.error(error_msg)
         except ClientError as err:
