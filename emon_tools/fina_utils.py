@@ -31,7 +31,8 @@ class Utils:
             value (Union[int, float]): The value to validate.
             field_name (str): The name of the field for error messages.
             positive (bool, optional):
-                If True, ensures the value is strictly positive. Defaults to False.
+                If True, ensures the value is strictly positive.
+                Defaults to False.
             non_neg (bool, optional):
                 If True, ensures the value is non-negative. Defaults to False.
 
@@ -39,7 +40,8 @@ class Utils:
             Union[int, float]: The validated value.
 
         Raises:
-            ValueError: If the value is not a number or does not meet the specified constraints.
+            ValueError: If the value is not a number
+            or does not meet the specified constraints.
         """
         if not isinstance(value, (int, float)):
             raise ValueError(f"{field_name} must be a number.")
@@ -63,7 +65,8 @@ class Utils:
             value (int): The value to validate.
             field_name (str): The name of the field for error messages.
             positive (bool, optional):
-                If True, ensures the value is strictly positive. Defaults to False.
+                If True, ensures the value is strictly positive.
+                Defaults to False.
             non_neg (bool, optional):
                 If True, ensures the value is non-negative. Defaults to False.
 
@@ -71,7 +74,8 @@ class Utils:
             int: The validated integer.
 
         Raises:
-            ValueError: If the value is not an integer or does not meet the specified constraints.
+            ValueError: If the value is not an integer
+            or does not meet the specified constraints.
         """
         if not isinstance(value, int):
             raise ValueError(f"{field_name} must be an integer.")
@@ -98,16 +102,20 @@ class Utils:
 
         Raises:
             ValueError:
-                If the input is not a positive number or exceeds the valid UNIX timestamp range.
+                If the input is not a positive number
+                or exceeds the valid UNIX timestamp range.
         """
         # Validate the timestamp is a number and non-negative
-        Utils.validate_number(timestamp, f"{field_name} timestamp", non_neg=True)
+        Utils.validate_number(
+            timestamp, f"{field_name} timestamp", non_neg=True)
 
-        # Validate the timestamp is within a reasonable range for UNIX timestamps
+        # Validate the timestamp is within
+        # a reasonable range for UNIX timestamps
         max_timestamp = 2147480000  # Near the year 2038 problem threshold
         if not 0 <= timestamp <= max_timestamp:
             raise ValueError(
-                f"{field_name} must be a valid UNIX timestamp between 0 and {max_timestamp}."
+                f"{field_name} must be a valid UNIX timestamp "
+                f"between 0 and {max_timestamp}."
             )
 
         # Attempt conversion to datetime to ensure validity
@@ -164,7 +172,8 @@ class Utils:
             return naive_datetime.replace(tzinfo=dt.timezone.utc)
         except ValueError as e:
             raise ValueError(
-                f"Error parsing date '{dt_value}' with the format '{date_format}': {e}"
+                f"Error parsing date '{dt_value}' "
+                f"with the format '{date_format}': {e}"
             ) from e
 
     @staticmethod
@@ -174,19 +183,24 @@ class Utils:
         date_format: str = "%Y-%m-%d %H:%M:%S"
     ) -> Tuple[str, str]:
         """
-        Generate formatted start and end date strings based on a start timestamp and window size.
+        Generate formatted start and end date strings
+        based on a start timestamp and window size.
 
         Parameters:
             start (int): The starting UNIX timestamp in seconds.
             window (int): The duration of the interval in seconds.
             date_format (str):
-                Format string for the output datetime. Defaults to "%Y-%m-%d %H:%M:%S".
+                Format string for the output datetime.
+                Defaults to "%Y-%m-%d %H:%M:%S".
 
         Returns:
-            Tuple[str, str]: A tuple containing the formatted start and end dates as strings.
+            Tuple[str, str]:
+                A tuple containing the formatted
+                start and end dates as strings.
 
         Raises:
-            ValueError: If `start` or `window` are not integers or are negative.
+            ValueError: If `start` or `window`
+            are not integers or are negative.
         """
         if not isinstance(start, int) or not isinstance(window, int):
             raise ValueError("'start' and 'window' must be integers.")
@@ -213,7 +227,8 @@ class Utils:
             end_date (str): The end date as a string.
             interval (int): The time interval in seconds for each data point.
             date_format (str):
-                The format of the input date strings. Defaults to "%Y-%m-%d %H:%M:%S".
+                The format of the input date strings.
+                Defaults to "%Y-%m-%d %H:%M:%S".
 
         Returns:
             Tuple[int, int]:
@@ -221,8 +236,10 @@ class Utils:
                 - Window size as the number of intervals.
 
         Raises:
-            ValueError: If the `start_date` is later than or equal to `end_date`.
-            ValueError: If the `interval` is not a positive integer.
+            ValueError:
+                If the `start_date` is later than or equal to `end_date`.
+            ValueError:
+                If the `interval` is not a positive integer.
         """
         # Convert date strings to UTC datetime objects
         start_dt = Utils.get_utc_datetime_from_string(start_date, date_format)
@@ -230,7 +247,8 @@ class Utils:
 
         # Validate date range
         if start_dt >= end_dt:
-            raise ValueError("The start date must be earlier than the end date.")
+            raise ValueError(
+                "The start date must be earlier than the end date.")
 
         # Validate interval
         interval = Utils.validate_integer(interval, 'interval', positive=True)
@@ -247,14 +265,16 @@ class Utils:
                             window: int
                             ) -> Tuple[dt.datetime, dt.datetime]:
         """
-        Calculate start and end UTC datetimes based on a start timestamp and window size.
+        Calculate start and end UTC datetimes
+        based on a start timestamp and window size.
 
         Parameters:
             start (int): Start timestamp in seconds since epoch.
             window (int): Duration of the window in seconds.
 
         Returns:
-            Tuple[dt.datetime, dt.datetime]: Start and end datetimes as UTC datetime objects.
+            Tuple[dt.datetime, dt.datetime]:
+                Start and end datetimes as UTC datetime objects.
 
         Raises:
             ValueError: If `start` or `window` is invalid.
@@ -278,7 +298,8 @@ class Utils:
         max_value: Optional[Union[int, float]] = None
     ) -> np.ndarray:
         """
-        Filter an array of values by replacing those outside a specified range with NaN.
+        Filter an array of values by replacing
+        those outside a specified range with NaN.
 
         Parameters:
             values (np.ndarray): The ndarray of values to filter.
@@ -288,7 +309,9 @@ class Utils:
                 Maximum valid value. Values above this will be set to NaN.
 
         Returns:
-            np.ndarray: The filtered array with values outside the specified range replaced by NaN.
+            np.ndarray:
+                The filtered array with values outside
+                the specified range replaced by NaN.
 
         Raises:
             ValueError: If `values` is not a numpy ndarray.

@@ -21,7 +21,8 @@ class TestFinaReader:
     @pytest.fixture
     def tmp_path_override(self, tmp_path):
         """
-        Provide a fixture for a valid temporary path to simulate data directory.
+        Provide a fixture for a valid temporary path
+        to simulate data directory.
         """
         data_dir = tmp_path / "test_data"
         data_dir.mkdir()
@@ -48,7 +49,8 @@ class TestFinaReader:
         """
         Test initializing FinaReader with invalid feed_id values.
         """
-        with pytest.raises(ValueError, match="feed_id must be a positive integer."):
+        match_error = "feed_id must be a positive integer."
+        with pytest.raises(ValueError, match=match_error):
             FinaReader(feed_id=feed_id, data_dir=tmp_path_override)
 
     def test_initialization_invalid_data_dir(self):
@@ -66,30 +68,35 @@ class TestFinaReader:
         valid_fina_reader.feed_id = 2
         assert valid_fina_reader.feed_id == 2
 
-        with pytest.raises(ValueError, match="feed_id must be a positive integer."):
+        match_error = "feed_id must be a positive integer."
+        with pytest.raises(ValueError, match=match_error):
             valid_fina_reader.feed_id = -1
 
         # data_dir setter
         valid_fina_reader.data_dir = tmp_path_override
         assert valid_fina_reader.data_dir == tmp_path_override
 
-        with pytest.raises(ValueError, match="data_dir must be a valid directory."):
+        match_error = "data_dir must be a valid directory."
+        with pytest.raises(ValueError, match=match_error):
             valid_fina_reader.data_dir = "invalid_dir"
 
         # pos setter
         valid_fina_reader.pos = 10
         assert valid_fina_reader.pos == 10
 
-        with pytest.raises(ValueError, match="pos must be a positive integer."):
+        match_error = "pos must be a positive integer."
+        with pytest.raises(ValueError, match=match_error):
             valid_fina_reader.pos = -1
 
     @patch("emon_tools.fina_reader.isfile", return_value=False)
     def test_get_meta_path_invalid(self, mock_isfile, valid_fina_reader):
         """
-        Test that _get_meta_path raises FileNotFoundError when the meta file does not exist.
+        Test that _get_meta_path raises FileNotFoundError
+        when the meta file does not exist.
         """
         # Simulate accessing the meta file path
-        with pytest.raises(FileNotFoundError, match="Meta file does not exist"):
+        match_error = "Meta file does not exist"
+        with pytest.raises(FileNotFoundError, match=match_error):
             valid_fina_reader._get_meta_path()
 
         # Assert that os.path.isfile was called with the expected file path
@@ -120,7 +127,9 @@ class TestFinaReader:
         assert meta.end_time == 1000990
 
     # Invalid interval
-    @patch("builtins.open", new_callable=mock_open, read_data=pack("<2I", 0, 1000000))
+    @patch("builtins.open",
+           new_callable=mock_open,
+           read_data=pack("<2I", 0, 1000000))
     @patch("emon_tools.fina_reader.isfile", return_value=True)
     @patch("emon_tools.fina_reader.getsize", return_value=400)
     def test_read_meta_invalid(self,
@@ -131,9 +140,11 @@ class TestFinaReader:
         """
         Test reading invalid metadata from the meta file.
         """
+        match_error = ("Error reading meta file: "
+                       "interval must be a positive integer.")
         with pytest.raises(
-            OSError,
-            match="Error reading meta file: interval must be a positive integer."):
+                OSError,
+                match=match_error):
             valid_fina_reader.read_meta()
 
     # Less than 8 bytes
@@ -160,7 +171,9 @@ class TestFinaReader:
             "rb"
         )
 
-    @patch("builtins.open", new_callable=mock_open, read_data=pack("<f", 42.0) * 10)
+    @patch("builtins.open",
+           new_callable=mock_open,
+           read_data=pack("<f", 42.0) * 10)
     @patch("emon_tools.fina_reader.isfile", return_value=True)
     @patch("emon_tools.fina_reader.getsize", return_value=400)
     @patch("emon_tools.fina_reader.mmap.mmap", autospec=True)
@@ -182,7 +195,8 @@ class TestFinaReader:
         def mock_getitem(slice_obj):
             if isinstance(slice_obj, slice):
                 # Calculate the position based on the slice start
-                size = (slice_obj.stop - slice_obj.start) // 4  # Number of floats
+                # Number of floats
+                size = (slice_obj.stop - slice_obj.start) // 4
                 return pack("<f", 42.0) * size
             raise ValueError("Invalid slice input")
 
@@ -210,7 +224,8 @@ class TestFinaReader:
         """
         Test error when the data file does not exist.
         """
-        with pytest.raises(FileNotFoundError, match="Data file does not exist"):
+        match_error = "Data file does not exist"
+        with pytest.raises(FileNotFoundError, match=match_error):
             list(valid_fina_reader.read_file(npoints=10))
 
     @patch("emon_tools.fina_reader.isfile", return_value=True)
@@ -218,10 +233,12 @@ class TestFinaReader:
         """
         Test that ValueError is raised when npoints is invalid.
         """
-        with pytest.raises(ValueError, match="npoints must be a positive integer."):
+        match_error = "npoints must be a positive integer."
+        with pytest.raises(ValueError, match=match_error):
             list(valid_fina_reader.read_file(npoints=-1))
 
-    @patch("builtins.open", new_callable=mock_open, read_data=b"\x00\x00\x00")  # Less than 4 bytes
+    # Less than 4 bytes
+    @patch("builtins.open", new_callable=mock_open, read_data=b"\x00\x00\x00")
     @patch("emon_tools.fina_reader.isfile", return_value=True)
     @patch("emon_tools.fina_reader.getsize", return_value=400)
     @patch("emon_tools.fina_reader.mmap.mmap", autospec=True)
@@ -242,14 +259,19 @@ class TestFinaReader:
         # Return less than 4 bytes
         mock_mmap_instance.__getitem__.side_effect = lambda s: b"\x00\x00\x00"
 
-        with pytest.raises(ValueError, match="Failed to read expected chunk at position 0."):
+        match_error = "Failed to read expected chunk at position 0."
+        with pytest.raises(ValueError, match=match_error):
             list(valid_fina_reader.read_file(npoints=1))
 
         # Ensure the file was opened
-        mock_open_file.assert_called_once_with(valid_fina_reader._get_data_path(), "rb")
+        mock_open_file.assert_called_once_with(
+            valid_fina_reader._get_data_path(),
+            "rb")
 
-
-    @patch("builtins.open", new_callable=mock_open, read_data=pack("<f", 42.0) * 10)
+    @patch(
+            "builtins.open",
+            new_callable=mock_open,
+            read_data=pack("<f", 42.0) * 10)
     @patch("emon_tools.fina_reader.getsize", return_value=400)
     @patch("emon_tools.fina_reader.isfile", return_value=True)
     @patch("emon_tools.fina_reader.mmap.mmap", autospec=True)
@@ -270,7 +292,8 @@ class TestFinaReader:
         # Handle slice inputs
         def mock_getitem(slice_obj):
             if isinstance(slice_obj, slice):
-                size = (slice_obj.stop - slice_obj.start) // 4  # Number of floats
+                # Number of floats
+                size = (slice_obj.stop - slice_obj.start) // 4
                 return pack("<f", 42.0) * size
             raise ValueError("Invalid slice input")
 
@@ -298,10 +321,12 @@ class TestFinaReader:
 
     def test_sanitize_path_outside_directory(self, valid_fina_reader):
         """
-        Test _sanitize_path with a filename that attempts to access outside the allowed directory.
+        Test _sanitize_path with a filename that attempts
+        to access outside the allowed directory.
         """
         filename = "../outside_file.dat"
+        match_error = "Attempt to access files outside the allowed directory."
         with pytest.raises(
                 ValueError,
-                match="Attempt to access files outside the allowed directory."):
+                match=match_error):
             valid_fina_reader._sanitize_path(filename)

@@ -6,8 +6,11 @@ classes to work with Pandas DataFrames for Fina data results.
 
 Classes:
     - FinaDataFrame:
-        Extends FinaData with methods to convert time-series data into Pandas DataFrames.
-    - FinaDfStats: Extends FinaStats to compute and return statistics as Pandas DataFrames.
+        Extends FinaData with methods to convert time-series data
+        into Pandas DataFrames.
+    - FinaDfStats:
+        Extends FinaStats to compute and return statistics
+        as Pandas DataFrames.
 
 Dependencies:
     - Requires Pandas (`pip install pandas`).
@@ -15,7 +18,8 @@ Dependencies:
 Usage Example:
     >>> from fina_time_series import FinaDataFrame
     >>> fina_data = FinaDataFrame("path_to_data_file")
-    >>> fina_result = fina_data.get_fina_time_series(start=0, step=60, window=3600)
+    >>> fina_result = fina_data.get_fina_time_series(
+        start=0, step=60, window=3600)
     >>> df = fina_result.df()
     >>> print(df)
 
@@ -41,15 +45,15 @@ try:
     import pandas as pd
 except ImportError as e:
     raise ImportError(
-        "Pandas is required for this module. Install it with `pip install pandas`."
+        "Pandas is required for this module. "
+        "Install it with `pip install pandas`."
     ) from e
-
 
 
 class FinaDataFrame(FinaData):
     """
-    Extension of FinaData with additional methods to retrieve and handle time-series data
-    as Pandas DataFrames.
+    Extension of FinaData with additional methods to retrieve
+    and handle time-series data as Pandas DataFrames.
 
     Methods:
         - get_fina_time_series:
@@ -57,7 +61,8 @@ class FinaDataFrame(FinaData):
         - get_fina_time_series_by_date:
             Retrieve time-series data by date range and return as a DataFrame.
         - set_data_frame:
-            Static method to convert arrays of time and values into a Pandas DataFrame.
+            Static method to convert arrays of time and values
+            into a Pandas DataFrame.
     """
     def __init__(self, feed_id: int, data_dir: str):
         """
@@ -85,11 +90,13 @@ class FinaDataFrame(FinaData):
             window (int): The total duration of the time window in seconds.
 
         Returns:
-            pd.DataFrame: A DataFrame with time as the index and data values as a column.
+            pd.DataFrame:
+                A DataFrame with time as the index and data values as a column.
 
         Raises:
-            ValueError: If the shape of the times and values arrays do not match.
-        
+            ValueError:
+                If the shape of the times and values arrays do not match.
+
         Example:
             >>> fina_data.get_fina_time_series(start=0, step=60, window=3600)
         """
@@ -104,21 +111,24 @@ class FinaDataFrame(FinaData):
         date_format: str = "%Y-%m-%d %H:%M:%S"
     ) -> pd.DataFrame:
         """
-        Retrieve time series data by specifying a date range and convert it to a Pandas DataFrame.
+        Retrieve time series data by specifying a date range
+        and convert it to a Pandas DataFrame.
 
         Parameters:
             start_date (str): The start date as a string.
             end_date (str): The end date as a string.
             step (int): The interval between data points in seconds.
             date_format (str, optional):
-                The format of the input date strings. Defaults to "%Y-%m-%d %H:%M:%S".
+                The format of the input date strings.
+                Defaults to "%Y-%m-%d %H:%M:%S".
 
         Returns:
-            pd.DataFrame: A DataFrame with time as the index and data values as a column.
+            pd.DataFrame:
+                A DataFrame with time as the index and data values as a column.
 
         Raises:
             ValueError: If the parsed start or end date is invalid.
-        
+
         Example:
             >>> fina_data.get_fina_time_series_by_date(
                 "2023-01-01 00:00:00",
@@ -144,15 +154,18 @@ class FinaDataFrame(FinaData):
 
         Parameters:
             times (np.ndarray): Array of time values (Unix timestamps).
-            values (np.ndarray): Array of data values corresponding to the times.
+            values (np.ndarray):
+                Array of data values corresponding to the times.
 
         Returns:
-            Optional[pd.DataFrame]: A DataFrame with time as the index and data values as a column.
+            Optional[pd.DataFrame]:
+                A DataFrame with time as the index and data values as a column.
 
         Raises:
             ValueError:
-                If the input arrays are not of the same shape or not instances of np.ndarray.
-        
+                If the input arrays are not of the same shape
+                or not instances of np.ndarray.
+
         Example:
             >>> times = np.array([1672531199, 1672531259, 1672531319])
             >>> values = np.array([1.0, 2.0, 3.0])
@@ -175,12 +188,15 @@ class FinaDataFrame(FinaData):
 
 class FinaDfStats(FinaStats):
     """
-    Extension of FinaStats with methods to compute and return statistics as Pandas DataFrames.
+    Extension of FinaStats with methods to compute
+    and return statistics as Pandas DataFrames.
 
     Methods:
-        - get_df_stats: Compute daily statistics and return them as a Pandas DataFrame.
+        - get_df_stats:
+            Compute daily statistics and return them as a Pandas DataFrame.
         - get_df_stats_by_date:
-            Compute statistics for a specific date range and return as a DataFrame.
+            Compute statistics for a specific date range
+            and return as a DataFrame.
         - get_stats_labels: Get column labels for the statistics DataFrame.
         - get_integrity_labels: Get column labels for integrity stats.
         - get_values_labels: Get column labels for value stats.
@@ -195,21 +211,27 @@ class FinaDfStats(FinaStats):
         stats_type: StatsType = StatsType.VALUES
     ) -> List[List[Union[float, int]]]:
         """
-        Compute statistics for data within a specified range and return them as a Pandas DataFrame.
+        Compute statistics for data within a specified range
+        and return them as a Pandas DataFrame.
 
         Parameters:
-            start_time (Optional[int]): The start time in seconds (Unix timestamp). Defaults to 0.
-            steps_window (int): The number of steps in the window. Defaults to -1 (all data).
+            start_time (Optional[int]):
+                The start time in seconds (Unix timestamp). Defaults to 0.
+            steps_window (int):
+                The number of steps in the window. Defaults to -1 (all data).
             max_size (int): Maximum size of the dataset. Defaults to 10,000.
             min_value (Optional[Union[int, float]]):
                 Minimum valid value for filtering. Defaults to None.
             max_value (Optional[Union[int, float]]):
                 Maximum valid value for filtering. Defaults to None.
-            stats_type (StatsType): Type of statistics to compute. Defaults to StatsType.VALUES.
+            stats_type (StatsType):
+                Type of statistics to compute. Defaults to StatsType.VALUES.
 
         Returns:
-            pd.DataFrame: A DataFrame containing computed statistics with time as the index.
-        
+            pd.DataFrame:
+                A DataFrame containing computed statistics
+                with time as the index.
+
         Example:
             >>> stats_df = fina_stats.get_df_stats(
                 start_time=0,
@@ -229,7 +251,8 @@ class FinaDfStats(FinaStats):
         )
         return df.set_index(pd.to_datetime(df['time'], unit='s', utc=True))
 
-    def get_df_stats_by_date(self,
+    def get_df_stats_by_date(
+        self,
         start_date: str,
         end_date: str,
         date_format: str = "%Y-%m-%d %H:%M:%S",
@@ -246,17 +269,21 @@ class FinaDfStats(FinaStats):
             start_date (str): The start date as a string.
             end_date (str): The end date as a string.
             date_format (str, optional):
-                The format of the input date strings. Defaults to "%Y-%m-%d %H:%M:%S".
+                The format of the input date strings.
+                Defaults to "%Y-%m-%d %H:%M:%S".
             max_size (int): Maximum size of the dataset. Defaults to 10,000.
             min_value (Optional[Union[int, float]]):
                 Minimum valid value for filtering. Defaults to None.
             max_value (Optional[Union[int, float]]):
                 Maximum valid value for filtering. Defaults to None.
-            stats_type (StatsType): Type of statistics to compute. Defaults to StatsType.VALUES.
+            stats_type (StatsType):
+                Type of statistics to compute. Defaults to StatsType.VALUES.
 
         Returns:
-            pd.DataFrame: A DataFrame containing computed statistics with time as the index.
-        
+            pd.DataFrame:
+                A DataFrame containing computed statistics
+                with time as the index.
+
         Example:
             >>> stats_df = fina_stats.get_df_stats_by_date(
                 "2023-01-01 00:00:00",
@@ -276,16 +303,20 @@ class FinaDfStats(FinaStats):
         return df.set_index(pd.to_datetime(df['time'], unit='s', utc=True))
 
     @staticmethod
-    def get_stats_labels(stats_type: StatsType = StatsType.VALUES) -> List[str]:
+    def get_stats_labels(
+        stats_type: StatsType = StatsType.VALUES
+    ) -> List[str]:
         """
-        Get the column labels for the statistics DataFrame based on the type of statistics.
+        Get the column labels for the statistics DataFrame
+        based on the type of statistics.
 
         Parameters:
-            stats_type (StatsType): The type of statistics (VALUES or INTEGRITY).
+            stats_type (StatsType):
+                The type of statistics (VALUES or INTEGRITY).
 
         Returns:
             List[str]: A list of column labels for the DataFrame.
-        
+
         Example:
             >>> FinaDfStats.get_stats_labels(stats_type=StatsType.VALUES)
         """
@@ -300,7 +331,7 @@ class FinaDfStats(FinaStats):
 
         Returns:
             List[str]: A list of column labels for integrity stats.
-        
+
         Example:
             >>> FinaDfStats.get_integrity_labels()
         """
@@ -315,7 +346,7 @@ class FinaDfStats(FinaStats):
 
         Returns:
             List[str]: A list of column labels for value stats.
-        
+
         Example:
             >>> FinaDfStats.get_values_labels()
         """
