@@ -6,14 +6,12 @@ provides methods to represent results as a pandas DataFrame or plot them using
 matplotlib.
 """
 # pylint: disable=unused-argument,protected-access,unused-import
-from unittest.mock import patch, mock_open, MagicMock
-from struct import pack
+# flake8: disable=F401
+from unittest.mock import patch
 import numpy as np
 import pandas as pd
 import pytest
 from emon_tools.fina_time_series import FinaDataFrame
-from emon_tools.fina_time_series import FinaDfStats
-from emon_tools.fina_plot import FinaPlot
 from emon_tools.fina_plot import PlotData
 from emon_tools.fina_plot import PlotStats
 
@@ -28,7 +26,8 @@ class TestPlotData:
         """
         Provide a fixture for sample time and value data.
         """
-        times = np.array([1640995200, 1640995300, 1640995400])  # Example timestamps
+        # Example timestamps
+        times = np.array([1640995200, 1640995300, 1640995400])
         values = np.array([1.5, 2.3, 3.7])  # Example values
         return np.vstack((times, values)).T
 
@@ -37,7 +36,8 @@ class TestPlotData:
         """
         Provide a fixture for sample time and value data.
         """
-        times = np.array([1640995200, 1640995300, 1640995400])  # Example timestamps
+        # Example timestamps
+        times = np.array([1640995200, 1640995300, 1640995400])
         values = np.array([1.5, 2.3, 3.7])  # Example values
         return FinaDataFrame.set_data_frame(times, values)
 
@@ -105,7 +105,8 @@ class TestPlotStats:
         """
         Provide a fixture for sample time and value data.
         """
-        times = np.array([1640995200, 1640995300, 1640995400])  # Example timestamps
+        # Example timestamps
+        times = np.array([1640995200, 1640995300, 1640995400])
         mins = np.array([1.5, 2.3, 3.7])
         means = np.array([2, 3.3, 4.7])
         maxs = np.array([3, 4.3, 5.7])
@@ -134,7 +135,11 @@ class TestPlotStats:
         mock_show.assert_called_once()
 
     @patch("emon_tools.fina_plot.plt.show")
-    def test_plot_integrity_with_pandas(self, mock_show, sample_data_integrity):
+    def test_plot_integrity_with_pandas(
+        self,
+        mock_show,
+        sample_data_integrity
+    ):
         """
         Test the plot method when pandas and matplotlib are available.
         """
@@ -142,7 +147,11 @@ class TestPlotStats:
         mock_show.assert_called_once()
 
     @patch("emon_tools.fina_plot.plt.show")
-    def test_plot_integrity_without_pandas(self, mock_show, sample_df_integrity):
+    def test_plot_integrity_without_pandas(
+        self,
+        mock_show,
+        sample_df_integrity
+    ):
         """
         Test the plot method when only matplotlib is available.
         """

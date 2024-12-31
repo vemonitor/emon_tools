@@ -49,7 +49,8 @@ class MetaData:
 
         Raises:
             ValueError:
-                If any parameter is invalid or start_time is not less than end_time.
+                If any parameter is invalid
+                or start_time is not less than end_time.
         """
         self.interval = interval
         self.start_time = start_time
@@ -87,7 +88,10 @@ class MetaData:
         Raises:
             ValueError: If the value is not a positive integer.
         """
-        self._interval = Utils.validate_integer(value, "interval", positive=True)
+        self._interval = Utils.validate_integer(
+            value,
+            "interval",
+            positive=True)
 
     @property
     def start_time(self) -> int:
@@ -230,11 +234,13 @@ class FinaReader:
 
     def _sanitize_path(self, filename: str) -> str:
         """
-        Ensure that the file path is within the allowed directory and has a valid extension.
+        Ensure that the file path is within the allowed directory
+        and has a valid extension.
         """
         filepath = abspath(path_join(self._data_dir, filename))
         if not filepath.startswith(self._data_dir):
-            raise ValueError("Attempt to access files outside the allowed directory.")
+            raise ValueError(
+                "Attempt to access files outside the allowed directory.")
         if splitext(filepath)[1] not in self.VALID_FILE_EXTENSIONS:
             raise ValueError("Invalid file extension.")
         return filepath
@@ -245,7 +251,9 @@ class FinaReader:
         """
         file_size = getsize(filepath)
         if file_size > expected_size:
-            raise ValueError(f"File size exceeds the limit: {file_size} / {expected_size} bytes.")
+            raise ValueError(
+                "File size exceeds the limit: "
+                f"{file_size} / {expected_size} bytes.")
 
     def _get_base_path(self) -> str:
         return path_join(self._data_dir, str(self._feed_id))
@@ -289,13 +297,20 @@ class FinaReader:
             ValueError: If parameters are invalid.
         """
         npoints = Utils.validate_integer(npoints, "npoints", positive=True)
-        self.chunk_size = Utils.validate_integer(chunk_size, "chunk_size", positive=True)
+        self.chunk_size = Utils.validate_integer(
+            chunk_size,
+            "chunk_size",
+            positive=True)
 
         if not isinstance(start_pos, int) or start_pos < 0:
-            raise ValueError(f"start_pos ({start_pos}) must be an integer upper or equal to zero.")
+            raise ValueError(
+                f"start_pos ({start_pos}) "
+                "must be an integer upper or equal to zero.")
 
         if start_pos >= npoints:
-            raise ValueError(f"start_pos ({start_pos}) exceeds total npoints ({npoints}).")
+            raise ValueError(
+                f"start_pos ({start_pos}) "
+                f"exceeds total npoints ({npoints}).")
 
         if window is not None:
             window = Utils.validate_integer(window, "window", positive=True)
@@ -445,15 +460,18 @@ class FinaReader:
 
         Parameters:
             npoints (int): Total number of points in the file.
-            start_pos (int): Starting position (index) in the file. Defaults to 0.
-            chunk_size (int): Number of values to read in each chunk. Defaults to 1024.
-            window (Optional[int]): 
+            start_pos (int):
+                Starting position (index) in the file. Defaults to 0.
+            chunk_size (int):
+                Number of values to read in each chunk. Defaults to 1024.
+            window (Optional[int]):
                 Maximum number of points to read.
                 If None, reads all available points.
-            set_pos (bool): Whether to automatically increment the position after reading.
+            set_pos (bool):
+                Whether to automatically increment the position after reading.
 
         Yields:
-            Tuple[np.ndarray, np.ndarray]: 
+            Tuple[np.ndarray, np.ndarray]:
                 - Array of positions (indices).
                 - Array of corresponding data values.
 
@@ -474,11 +492,14 @@ class FinaReader:
 
         try:
             with open(data_path, "rb") as file:
-                with mmap.mmap(file.fileno(), 0, access=mmap.ACCESS_READ) as mm:
+                with mmap.mmap(
+                        file.fileno(), 0, access=mmap.ACCESS_READ) as mm:
                     while self._pos < start_pos + total_points:
                         # Calculate current chunk size
                         remaining_points = start_pos + total_points - self._pos
-                        current_chunk_size = min(self.chunk_size, remaining_points)
+                        current_chunk_size = min(
+                            self.chunk_size,
+                            remaining_points)
 
                         # Compute offsets and read data
                         offset = self._pos * 4
@@ -487,13 +508,17 @@ class FinaReader:
 
                         if len(chunk_data) != current_chunk_size * 4:
                             raise ValueError(
-                                f"Failed to read expected chunk at position {self._pos}. "
-                                f"Expected {current_chunk_size * 4} bytes, got {len(chunk_data)}."
+                                "Failed to read expected chunk "
+                                f"at position {self._pos}. "
+                                f"Expected {current_chunk_size * 4} bytes, "
+                                f"got {len(chunk_data)}."
                             )
 
                         # Convert to values and yield
                         values = np.frombuffer(chunk_data, dtype='<f4')
-                        positions = np.arange(self._pos, self._pos + current_chunk_size)
+                        positions = np.arange(
+                            self._pos,
+                            self._pos + current_chunk_size)
                         yield positions, values
 
                         # Increment position

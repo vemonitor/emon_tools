@@ -277,6 +277,19 @@ daily_stats = stats.get_stats(
 )
 ```
 
+### 2. emon_api
+
+The `emon_api` module is Emoncms python api module, used to interract with Emoncms server instance.
+
+#### Features
+
+- Data Reading: Efficiently read data from Emoncms.
+- Data Writing: Set Inputs, feeds or values
+
+### Usage Examples:
+
+...
+
 ## Running Tests
 
 To ensure everything is functioning correctly, run the test suite:
