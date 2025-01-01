@@ -1,6 +1,6 @@
 """FinaReader Unit Tests"""
 # pylint: disable=unused-argument,protected-access
-
+import re
 from unittest.mock import patch, mock_open
 from os.path import join as path_join
 from struct import pack
@@ -311,6 +311,29 @@ class TestFinaReader:
         assert len(results) == 1  # Two chunks: 5 and 2 points
         assert sum(len(chunk[0]) for chunk in results) == 7  # Total 7 points
 
+    @patch("emon_tools.fina_reader.getsize", return_value=400)
+    @patch("emon_tools.fina_reader.isfile", return_value=True)
+    @patch("builtins.open", side_effect=IOError("Mocked file access error"))
+    def test_read_file_io_error(
+        self,
+        mock_open_file,
+        mock_getsize,
+        mock_isfile,
+        valid_fina_reader
+    ):
+        """
+        Test IOError handling when file access fails in read_file.
+        """
+        match_error = "Error accessing data file"
+        with pytest.raises(IOError, match=match_error):
+            list(valid_fina_reader.read_file(npoints=10))
+
+        # Ensure the file open was attempted
+        mock_open_file.assert_called_once_with(
+            valid_fina_reader._get_data_path(),
+            "rb"
+        )
+
     def test_sanitize_path_invalid_extension(self, valid_fina_reader):
         """
         Test _sanitize_path with an invalid file extension.
@@ -330,3 +353,133 @@ class TestFinaReader:
                 ValueError,
                 match=match_error):
             valid_fina_reader._sanitize_path(filename)
+
+    def test_validate_read_params_valid(self, valid_fina_reader):
+        """
+        Test _validate_read_params with valid parameters.
+        """
+        npoints = 100
+        start_pos = 10
+        chunk_size = 20
+        window = 50
+
+        total_points = valid_fina_reader._validate_read_params(
+            npoints=npoints,
+            start_pos=start_pos,
+            chunk_size=chunk_size,
+            window=window
+        )
+
+        assert total_points == 50
+
+    def test_validate_read_params_no_window(self, valid_fina_reader):
+        """
+        Test _validate_read_params with no window specified.
+        """
+        npoints = 100
+        start_pos = 10
+        chunk_size = 20
+
+        total_points = valid_fina_reader._validate_read_params(
+            npoints=npoints,
+            start_pos=start_pos,
+            chunk_size=chunk_size,
+            window=None
+        )
+
+        assert total_points == 90
+
+    def test_validate_read_params_invalid_npoints(self, valid_fina_reader):
+        """
+        Test _validate_read_params with invalid npoints.
+        """
+        npoints = -1
+        start_pos = 10
+        chunk_size = 20
+        window = 50
+
+        match_error = "npoints must be a positive integer."
+        with pytest.raises(ValueError, match=match_error):
+            valid_fina_reader._validate_read_params(
+                npoints=npoints,
+                start_pos=start_pos,
+                chunk_size=chunk_size,
+                window=window
+            )
+
+    def test_validate_read_params_invalid_start_pos(self, valid_fina_reader):
+        """
+        Test _validate_read_params with invalid start_pos.
+        """
+        npoints = 100
+        start_pos = -1
+        chunk_size = 20
+        window = 50
+
+        match_error = re.escape(
+            "start_pos (-1) must be an integer "
+            "upper or equal to zero.")
+        with pytest.raises(ValueError, match=match_error):
+            valid_fina_reader._validate_read_params(
+                npoints=npoints,
+                start_pos=start_pos,
+                chunk_size=chunk_size,
+                window=window
+            )
+
+    def test_validate_read_params_start_pos_exceeds_npoints(
+        self,
+        valid_fina_reader
+    ):
+        """
+        Test _validate_read_params with start_pos exceeding npoints.
+        """
+        npoints = 100
+        start_pos = 150
+        chunk_size = 20
+        window = 50
+
+        match_error = re.escape("start_pos (150) exceeds total npoints (100).")
+        with pytest.raises(ValueError, match=match_error):
+            valid_fina_reader._validate_read_params(
+                npoints=npoints,
+                start_pos=start_pos,
+                chunk_size=chunk_size,
+                window=window
+            )
+
+    def test_validate_read_params_invalid_chunk_size(self, valid_fina_reader):
+        """
+        Test _validate_read_params with invalid chunk_size.
+        """
+        npoints = 100
+        start_pos = 10
+        chunk_size = -1
+        window = 50
+
+        match_error = "chunk_size must be a positive integer."
+        with pytest.raises(ValueError, match=match_error):
+            valid_fina_reader._validate_read_params(
+                npoints=npoints,
+                start_pos=start_pos,
+                chunk_size=chunk_size,
+                window=window
+            )
+
+    def test_validate_read_params_invalid_window(self, valid_fina_reader):
+        """
+        Test _validate_read_params with invalid window.
+        """
+        npoints = 100
+        start_pos = 10
+        chunk_size = 20
+        window = -1
+
+        match_error = "window must be a positive integer."
+        with pytest.raises(ValueError, match=match_error):
+            valid_fina_reader._validate_read_params(
+                npoints=npoints,
+                start_pos=start_pos,
+                chunk_size=chunk_size,
+                window=window
+            )
