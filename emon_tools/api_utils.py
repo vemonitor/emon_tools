@@ -2,8 +2,7 @@
 Api common utilities.
 """
 import re
-from typing import Any
-from emon_tools.fina_utils import Utils as Ut
+from emon_tools.utils import Utils as Ut
 
 HTTP_STATUS = {
     400: "invalid request",
@@ -18,54 +17,6 @@ SUCCESS_KEY = "success"
 
 class Utils(Ut):
     """Emoncms data Helper"""
-
-    @staticmethod
-    def is_str(text: str, not_empty=False) -> bool:
-        """
-        Test if text is a string.
-
-        :Example :
-            >>> Utils.is_str(text='hello')
-            >>> True
-        :param text: str: Value to test.
-        :return: bool: True if value is valid string object.
-        """
-        result = isinstance(text, str)
-        if not_empty:
-            result = result is True and len(text) > 0
-        return result
-
-    @staticmethod
-    def is_list(data: Any, not_empty: bool = False) -> bool:
-        """
-        Test if data is a list.
-
-        :Example :
-            >>> Utils.is_list(data=['hello'])
-            >>> True
-        :param data: Any: Value to test.
-        :return: bool: True if value is valid list object.
-        """
-        result = isinstance(data, list)
-        if not_empty:
-            result = result is True and len(data) > 0
-        return result
-
-    @staticmethod
-    def is_dict(data: Any, not_empty: bool = False) -> bool:
-        """
-        Test if data is a dict.
-
-        :Example :
-            >>> Utils.is_dict(data=['hello'])
-            >>> True
-        :param data: Any: Value to test.
-        :return: bool: True if value is valid dict object.
-        """
-        result = isinstance(data, dict)
-        if not_empty:
-            result = result is True and len(data) > 0
-        return result
 
     @staticmethod
     def is_valid_node(text) -> bool:

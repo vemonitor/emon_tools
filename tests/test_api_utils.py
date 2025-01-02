@@ -5,27 +5,6 @@ from emon_tools.api_utils import Utils
 class TestApiUtils:
     """Tests for Utils class."""
 
-    def test_is_str(self):
-        """Test is_str method."""
-        assert Utils.is_str("hello") is True
-        assert Utils.is_str("") is True
-        assert Utils.is_str("", not_empty=True) is False
-        assert Utils.is_str(123) is False
-
-    def test_is_list(self):
-        """Test is_list method."""
-        assert Utils.is_list(["hello"]) is True
-        assert Utils.is_list([]) is True
-        assert Utils.is_list([], not_empty=True) is False
-        assert Utils.is_list("not a list") is False
-
-    def test_is_dict(self):
-        """Test is_dict method."""
-        assert Utils.is_dict({"key": "value"}) is True
-        assert Utils.is_dict({}) is True
-        assert Utils.is_dict({}, not_empty=True) is False
-        assert Utils.is_dict("not a dict") is False
-
     def test_is_valid_node(self):
         """Test is_valid_node method."""
         assert Utils.is_valid_node("Node1") is True
