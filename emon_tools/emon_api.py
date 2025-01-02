@@ -254,8 +254,7 @@ class EmonReader(EmonRequest):
             Optional[Dict[str, Any]]:
                 A dictionary of feed fields or None if the feed does not exist.
         """
-        if feed_id < 0:
-            raise ValueError("Feed ID must be a non-negative integer.")
+        feed_id = Ut.validate_integer(feed_id, "Feed ID", positive=True)
         params = {"id": feed_id}
         response = await self.async_request("/feed/aget.json", params=params)
         if response.get(SUCCESS_KEY):
@@ -278,8 +277,7 @@ class EmonReader(EmonRequest):
             Optional[Dict[str, Any]]: A dictionary of metadata
                 or None if the feed does not exist.
         """
-        if feed_id < 0:
-            raise ValueError("Feed ID must be a non-negative integer.")
+        feed_id = Ut.validate_integer(feed_id, "Feed ID", positive=True)
         params = {"id": feed_id}
         feed_data = await self.async_request(
             "/feed/getmeta.json",
@@ -305,8 +303,7 @@ class EmonReader(EmonRequest):
                 A dictionary containing the last time and value
                 or None if the feed does not exist.
         """
-        if feed_id < 0:
-            raise ValueError("Feed ID must be a non-negative integer.")
+        feed_id = Ut.validate_integer(feed_id, "Feed ID", positive=True)
         params = {"id": feed_id}
         feed_data = await self.async_request(
             "/feed/timevalue.json",
