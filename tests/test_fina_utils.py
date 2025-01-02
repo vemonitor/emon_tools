@@ -134,7 +134,7 @@ class TestUtils:
         Test get_dates_interval_from_timestamp
         raises ValueError for invalid start.
         """
-        match_error = ("'start' and 'window' must be integers.")
+        match_error = "'start' and 'window' must be integers."
         with pytest.raises(ValueError, match=match_error):
             Utils.get_dates_interval_from_timestamp("invalid", 3600)
 

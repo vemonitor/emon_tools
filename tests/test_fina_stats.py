@@ -5,9 +5,10 @@ from unittest.mock import MagicMock
 from datetime import datetime, timezone
 import numpy as np
 import pytest
-from emon_tools.emon_fina import FinaStats  # Adjust the import path as necessary
+from emon_tools.emon_fina import FinaStats
 from emon_tools.fina_reader import MetaData
 from emon_tools.fina_utils import Utils
+
 
 class TestFinaStats:
     """Test suite for the FinaStats class."""
@@ -32,17 +33,19 @@ class TestFinaStats:
             )
         ]  # Mocked data
         mock_reader.chunk_size = 8640
-        mock_reader.CHUNK_SIZE_LIMIT = 4096  # Set CHUNK_SIZE_LIMIT to an integer value
+        mock_reader.CHUNK_SIZE_LIMIT = 4096
         return mock_reader
-
 
     @pytest.fixture
     def fina_stats(self, mock_reader):
         """Fixture to create a FinaStats instance with a mocked FinaReader."""
         monkeypatch = pytest.MonkeyPatch()
-        monkeypatch.setattr("emon_tools.emon_fina.FinaReader", lambda *args, **kwargs: mock_reader)
+        monkeypatch.setattr(
+            "emon_tools.emon_fina.FinaReader",
+            lambda *args,
+            **kwargs: mock_reader
+        )
         return FinaStats(feed_id=1, data_dir="mock_dir")
-
 
     @pytest.mark.parametrize(
         "min_value, max_value, expected_stats",
@@ -93,8 +96,18 @@ class TestFinaStats:
         "value, min_value, max_value, expected",
         [
             (np.array([25, 26, 27, 22]), 20, 30, np.array([25, 26, 27, 22])),
-            (np.array([15, 20, 30, 2]), 20, 30, np.array([float("nan"), 20, 30, float("nan")])),
-            (np.array([22, 2, 40, 27]), 20, 30, np.array([22, float("nan"), float("nan"), 27])),
+            (
+                np.array([15, 20, 30, 2]),
+                20,
+                30,
+                np.array([float("nan"), 20, 30, float("nan")])
+            ),
+            (
+                np.array([22, 2, 40, 27]),
+                20,
+                30,
+                np.array([22, float("nan"), float("nan"), 27])
+            ),
             (
                 np.array([22, float("nan"), 40, 27]),
                 20,
@@ -103,9 +116,16 @@ class TestFinaStats:
             ),
         ],
     )
-    def test_filter_values_by_range(self, value, min_value, max_value, expected):
+    def test_filter_values_by_range(
+        self,
+        value,
+        min_value,
+        max_value,
+        expected
+    ):
         """Test filter_values_by_range correctly filters invalid values."""
-        result = Utils.filter_values_by_range(value, min_value=min_value, max_value=max_value)
+        result = Utils.filter_values_by_range(
+            value, min_value=min_value, max_value=max_value)
         nb_expected = np.isnan(expected).sum()
         if nb_expected > 0:
             assert np.isnan(result).sum() == nb_expected
@@ -122,28 +142,54 @@ class TestFinaStats:
         "meta, expected_exception, error_msg",
         [
             (
-                {"start_time": None, "interval": 60, "npoints": 10, "end_time": 1700099000},
+                {
+                    "start_time": None,
+                    "interval": 60,
+                    "npoints": 10,
+                    "end_time": 1700099000
+                },
                 ValueError,
                 "start_time timestamp must be a number.",
             ),
             (
-                {"start_time": 1700000000, "interval": None, "npoints": 10, "end_time": 1700099000},
+                {
+                    "start_time": 1700000000,
+                    "interval": None,
+                    "npoints": 10,
+                    "end_time": 1700099000
+                },
                 ValueError,
                 "interval must be an integer.",
             ),
             (
-                {"start_time": 1700000000, "interval": 60, "npoints": None, "end_time": 1700099000},
+                {
+                    "start_time": 1700000000,
+                    "interval": 60,
+                    "npoints": None,
+                    "end_time": 1700099000
+                },
                 ValueError,
                 "npoints must be an integer.",
             ),
             (
-                {"start_time": 1700000000, "interval": 60, "npoints": 10, "end_time": None},
+                {
+                    "start_time": 1700000000,
+                    "interval": 60,
+                    "npoints": 10,
+                    "end_time": None
+                },
                 ValueError,
                 "end_time timestamp must be a number.",
             )
         ],
     )
-    def test_get_stats_invalid_meta(self, fina_stats, meta, expected_exception, error_msg):
+    def test_get_stats_invalid_meta(
+        self,
+        fina_stats,
+        meta,
+        expected_exception,
+        error_msg
+    ):
         """Test get_stats raises an exception for invalid meta data."""
         with pytest.raises(expected_exception, match=error_msg):
             fina_stats.meta = MetaData(**meta)
@@ -152,8 +198,11 @@ class TestFinaStats:
         "raw_data, day_start, expected_output",
         [
             # Test Case 1: Empty raw_data
-            (np.array([]), 1609459200.0, [1609459200.0, np.nan, np.nan, np.nan, np.nan, np.nan]),
-
+            (
+                np.array([]),
+                1609459200.0,
+                [1609459200.0, np.nan, np.nan, np.nan, np.nan, np.nan]
+            ),
             # Test Case 2: Valid raw_data
             (
                 np.array([1.0, 2.0, 3.0]),
@@ -187,4 +236,5 @@ class TestFinaStats:
             if np.isnan(e):
                 assert np.isnan(r), f"Expected NaN but got {r}"
             else:
-                assert pytest.approx(r, rel=1e-6) == e, f"Expected {e} but got {r}"
+                assert pytest.approx(
+                    r, rel=1e-6) == e, f"Expected {e} but got {r}"

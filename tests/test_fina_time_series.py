@@ -6,7 +6,7 @@ provides methods to represent results as a pandas DataFrame or plot them using
 matplotlib.
 """
 # pylint: disable=unused-argument,protected-access,unused-import
-from unittest.mock import patch, mock_open, MagicMock
+from unittest.mock import patch, mock_open
 from struct import pack
 import numpy as np
 import pandas as pd
@@ -22,7 +22,8 @@ class TestFinaDataFrame:
     @pytest.fixture
     def tmp_path_override(self, tmp_path):
         """
-        Provide a fixture for a valid temporary path to simulate data directory.
+        Provide a fixture for a valid temporary path
+        to simulate data directory.
         """
         data_dir = tmp_path / "test_data"
         data_dir.mkdir()
@@ -61,7 +62,7 @@ class TestFinaDataFrame:
         mock_getsize,
         mock_open_file,
         fdt
-        ):
+    ):
         """
         Test get_fina_time_series method.
         """
@@ -69,7 +70,7 @@ class TestFinaDataFrame:
             fdt.get_fina_df_time_series(
                 start=1605983130,
                 step=10,
-                window = 400
+                window=400
             )
         # Mock the mmap object
         mock_mmap_instance = mock_mmap.return_value.__enter__.return_value
@@ -78,7 +79,8 @@ class TestFinaDataFrame:
         def mock_getitem(slice_obj):
             if isinstance(slice_obj, slice):
                 # Calculate the position based on the slice start
-                size = (slice_obj.stop - slice_obj.start) // 4  # Number of floats
+                # Number of floats
+                size = (slice_obj.stop - slice_obj.start) // 4
                 return pack("<f", 42.0) * size
             raise ValueError("Invalid slice input")
 
@@ -88,7 +90,7 @@ class TestFinaDataFrame:
         data = fdt.get_fina_df_time_series(
             start=1575981140,
             step=10,
-            window = 100
+            window=100
         )
         assert isinstance(data, pd.DataFrame)
         assert data['values'].shape[0] == 10
@@ -97,7 +99,7 @@ class TestFinaDataFrame:
         data = fdt.get_fina_df_time_series(
             start=1575981140,
             step=20,
-            window = 100
+            window=100
         )
 
         assert isinstance(data, pd.DataFrame)
@@ -137,7 +139,8 @@ class TestFinaDataFrame:
         def mock_getitem(slice_obj):
             if isinstance(slice_obj, slice):
                 # Calculate the position based on the slice start
-                size = (slice_obj.stop - slice_obj.start) // 4  # Number of floats
+                # Number of floats
+                size = (slice_obj.stop - slice_obj.start) // 4
                 return pack("<f", 42.0) * size
             raise ValueError("Invalid slice input")
 
