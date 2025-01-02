@@ -94,7 +94,7 @@ class EmonRequest:
             ValueError: If the URL is empty or improperly formatted.
         """
         if not isinstance(url, str) or not url.strip():
-            raise ValueError("URL must be a non-empty string.")
+            raise TypeError("URL must be a non-empty string.")
         if not (url.startswith("http://") or url.startswith("https://")):
             raise ValueError("URL must start with 'http://' or 'https://'.")
         return url.rstrip("/")  # Remove trailing slash for consistency.
@@ -234,10 +234,10 @@ class EmonReader(EmonRequest):
             or None if retrieval fails.
         """
         feed_data = await self.async_request("/feed/list.json")
-        if feed_data[SUCCESS_KEY]:
-            return feed_data[MESSAGE_KEY]
+        if feed_data.get(SUCCESS_KEY):
+            return feed_data.get(MESSAGE_KEY)
         self.logger.warning(
-            "Failed to list feeds: %s", feed_data[MESSAGE_KEY])
+            "Failed to list feeds: %s", feed_data.get(MESSAGE_KEY))
         return None
 
     async def async_get_feed_fields(
@@ -258,10 +258,10 @@ class EmonReader(EmonRequest):
             raise ValueError("Feed ID must be a non-negative integer.")
         params = {"id": feed_id}
         response = await self.async_request("/feed/aget.json", params=params)
-        if response[SUCCESS_KEY]:
-            return response[MESSAGE_KEY]
+        if response.get(SUCCESS_KEY):
+            return response.get(MESSAGE_KEY)
         self.logger.warning(
-            "Failed to get feed fields: %s", response[MESSAGE_KEY])
+            "Failed to get feed fields: %s", response.get(MESSAGE_KEY))
         return None
 
     async def async_get_feed_meta(
@@ -284,10 +284,10 @@ class EmonReader(EmonRequest):
         feed_data = await self.async_request(
             "/feed/getmeta.json",
             params=params)
-        if feed_data[SUCCESS_KEY]:
-            return feed_data[MESSAGE_KEY]
+        if feed_data.get(SUCCESS_KEY):
+            return feed_data.get(MESSAGE_KEY)
         self.logger.warning(
-            "Failed to get feed meta: %s", feed_data[MESSAGE_KEY])
+            "Failed to get feed meta: %s", feed_data.get(MESSAGE_KEY))
         return None
 
     async def async_get_last_value_feed(
@@ -311,10 +311,10 @@ class EmonReader(EmonRequest):
         feed_data = await self.async_request(
             "/feed/timevalue.json",
             params=params)
-        if feed_data[SUCCESS_KEY]:
-            return feed_data[MESSAGE_KEY]
+        if feed_data.get(SUCCESS_KEY):
+            return feed_data.get(MESSAGE_KEY)
         self.logger.warning(
-            "Failed to get last feed value: %s", feed_data[MESSAGE_KEY])
+            "Failed to get last feed value: %s", feed_data.get(MESSAGE_KEY))
         return None
 
     async def async_list_inputs(
@@ -335,10 +335,10 @@ class EmonReader(EmonRequest):
         """
         path = f"/input/get/{quote(node)}" if node else "/input/get"
         feed_data = await self.async_request(path)
-        if feed_data[SUCCESS_KEY]:
-            return feed_data[MESSAGE_KEY]
+        if feed_data.get(SUCCESS_KEY):
+            return feed_data.get(MESSAGE_KEY)
         self.logger.warning(
-            "Failed to list inputs: %s", feed_data[MESSAGE_KEY])
+            "Failed to list inputs: %s", feed_data.get(MESSAGE_KEY))
         return None
 
     async def async_list_inputs_fields(
@@ -366,10 +366,10 @@ class EmonReader(EmonRequest):
             path = "/input/list"
 
         feed_data = await self.async_request(path)
-        if feed_data[SUCCESS_KEY]:
-            return feed_data[MESSAGE_KEY]
+        if feed_data.get(SUCCESS_KEY):
+            return feed_data.get(MESSAGE_KEY)
         self.logger.warning(
-            "Failed to list inputs fields: %s", feed_data[MESSAGE_KEY])
+            "Failed to list inputs fields: %s", feed_data.get(MESSAGE_KEY))
         return None
 
     async def async_get_input_fields(
@@ -393,10 +393,10 @@ class EmonReader(EmonRequest):
             raise ValueError("Node and name must be non-empty strings.")
         path = f"/input/get/{quote(node)}/{quote(name)}"
         response = await self.async_request(path)
-        if response[SUCCESS_KEY]:
-            return response[MESSAGE_KEY]
+        if response.get(SUCCESS_KEY):
+            return response.get(MESSAGE_KEY)
         self.logger.warning(
-            "Failed to get input fields: %s", response[MESSAGE_KEY])
+            "Failed to get input fields: %s", response.get(MESSAGE_KEY))
         return None
 
 
@@ -447,6 +447,6 @@ class EmoncmsWrite(EmonRequest):
             }
             feed_data = await self.async_request(
                 "/feed/create.json", params=params)
-            if feed_data[SUCCESS_KEY]:
-                return feed_data[MESSAGE_KEY]
+            if feed_data.get(SUCCESS_KEY):
+                return feed_data.get(MESSAGE_KEY)
         return result
