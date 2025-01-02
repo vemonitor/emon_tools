@@ -825,7 +825,7 @@ class FinaStats:
         self,
         start_time: Optional[int] = 0,
         steps_window: int = -1,
-        max_size: int = 10_000,
+        max_size: int = 5_000_000,
         min_value: Optional[Union[int, float]] = None,
         max_value: Optional[Union[int, float]] = None,
         stats_type: StatsType = StatsType.VALUES
@@ -842,7 +842,7 @@ class FinaStats:
                 Defaults to -1.
             max_size (int):
                 Maximum number of data points to process in one call.
-                Defaults to 10,000.
+                Defaults to 5,000,000.
             min_value (Optional[Union[int, float]]):
                 Minimum valid value for filtering.
             max_value (Optional[Union[int, float]]):
@@ -913,7 +913,7 @@ class FinaStats:
         start_date: Optional[str] = None,
         end_date: Optional[str] = None,
         date_format: str = "%Y-%m-%d %H:%M:%S",
-        max_size: int = 10_000,
+        max_size: int = 5_000_000,
         min_value: Optional[Union[int, float]] = None,
         max_value: Optional[Union[int, float]] = None,
         stats_type: StatsType = StatsType.VALUES
@@ -957,9 +957,17 @@ class FinaStats:
                 If the computed steps for the date range exceed max_size.
         """
         start, window = 0, -1
-        if start_date is not None and end_date is not None:
+        if start_date is not None or end_date is not None:
             # Calculate the start time and number of steps
             # based on the provided date range.
+            if start_date is None:
+                start_date = Utils.get_string_datetime_from_timestamp(
+                    self.meta.start_time)
+
+            if end_date is None:
+                end_date = Utils.get_string_datetime_from_timestamp(
+                    self.meta.end_time)
+
             start, window = Utils.get_window_by_dates(
                 start_date=start_date,
                 end_date=end_date,
