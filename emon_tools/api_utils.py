@@ -31,7 +31,7 @@ class Utils:
         """
         result = isinstance(text, str)
         if not_empty:
-            result = result and len(text) > 0
+            result = result is True and len(text) > 0
         return result
 
     @staticmethod
@@ -47,7 +47,7 @@ class Utils:
         """
         result = isinstance(data, list)
         if not_empty:
-            result = result and len(data) > 0
+            result = result is True and len(data) > 0
         return result
 
     @staticmethod
@@ -63,7 +63,7 @@ class Utils:
         """
         result = isinstance(data, dict)
         if not_empty:
-            result = result and len(data) > 0
+            result = result is True and len(data) > 0
         return result
 
     @staticmethod
