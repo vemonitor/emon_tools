@@ -640,6 +640,12 @@ class FinaStats:
                 If the start time exceeds the file's end time
                 or if the selected points exceed max_size.
         """
+        start_time = Utils.validate_integer(
+            start_time, "Start time", non_neg=True)
+
+        max_size = Utils.validate_integer(
+            max_size, "Max size", positive=True)
+
         file_start_time = self.meta.start_time
         interval = self.meta.interval
         total_points = self.meta.npoints
@@ -647,6 +653,9 @@ class FinaStats:
         start_point = max(0, (start_time - file_start_time) // interval)
         if steps_window == -1:
             steps_window = total_points - start_point
+        else:
+            steps_window = Utils.validate_integer(
+                steps_window, "Window steps", positive=True)
 
         if start_point >= total_points:
             raise ValueError(
