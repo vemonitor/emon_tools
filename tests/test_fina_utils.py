@@ -1,7 +1,9 @@
 """Fina Utils unit tests module"""
+from unittest.mock import patch
 import datetime as dt
 import pytest
 from emon_tools.fina_utils import Utils
+import numpy as np
 
 
 class TestUtils:
@@ -84,6 +86,20 @@ class TestUtils:
         with pytest.raises(ValueError, match=match_error):
             Utils.validate_timestamp(value, "test_field")
 
+    @patch("emon_tools.fina_utils.dt.datetime")
+    def test_validate_timestamp_conversion_error(self, mock_datetime):
+        """
+        Test validate_timestamp raises ValueError
+        when conversion to datetime fails.
+        """
+        # Configure the mock to raise a ValueError when fromtimestamp is called
+        mock_datetime.fromtimestamp.side_effect = ValueError(
+            "Invalid timestamp")
+
+        match_error = "test_field must be a valid UNIX timestamp."
+        with pytest.raises(ValueError, match=match_error):
+            Utils.validate_timestamp(1000000000, "test_field")
+
     def test_get_start_day_valid(self):
         """Test get_start_day with a valid timestamp."""
         timestamp = 1700000000  # Corresponds to a known date
@@ -164,3 +180,154 @@ class TestUtils:
         match_error = "'start' and 'window' must be integers."
         with pytest.raises(ValueError, match=match_error):
             Utils.get_dates_interval_from_timestamp(1700000000, "invalid")
+
+    def test_get_window_by_dates_valid(self):
+        """Test get_window_by_dates with valid inputs."""
+        start_date = "2023-11-14 10:00:00"
+        end_date = "2023-11-14 12:00:00"
+        interval = 3600  # 1 hour
+        result = Utils.get_window_by_dates(start_date, end_date, interval)
+        expected_start_timestamp = int(
+            dt.datetime(
+                2023, 11, 14, 10, 0, 0, tzinfo=dt.timezone.utc).timestamp())
+        expected_window_size = 7200  # 2 hours in seconds
+        assert result == (expected_start_timestamp, expected_window_size)
+
+    def test_get_window_by_dates_invalid_date_range(self):
+        """
+        Test get_window_by_dates raises ValueError for invalid date range.
+        """
+        start_date = "2023-11-14 12:00:00"
+        end_date = "2023-11-14 10:00:00"
+        interval = 3600  # 1 hour
+        match_error = "The start date must be earlier than the end date."
+        with pytest.raises(ValueError, match=match_error):
+            Utils.get_window_by_dates(start_date, end_date, interval)
+
+    def test_get_window_by_dates_invalid_interval(self):
+        """Test get_window_by_dates raises ValueError for invalid interval."""
+        start_date = "2023-11-14 10:00:00"
+        end_date = "2023-11-14 12:00:00"
+        interval = -3600  # Negative interval
+        match_error = "interval must be a positive integer."
+        with pytest.raises(ValueError, match=match_error):
+            Utils.get_window_by_dates(start_date, end_date, interval)
+
+    def test_get_window_by_dates_invalid_start_date_format(self):
+        """
+        Test get_window_by_dates raises ValueError
+        for invalid start date format.
+        """
+        start_date = "14/11/2023 10:00:00"
+        end_date = "2023-11-14 12:00:00"
+        interval = 3600  # 1 hour
+        match_error = "Error parsing date '14/11/2023 10:00:00'"
+        with pytest.raises(ValueError, match=match_error):
+            Utils.get_window_by_dates(start_date, end_date, interval)
+
+    def test_get_window_by_dates_invalid_end_date_format(self):
+        """
+        Test get_window_by_dates raises ValueError
+        for invalid end date format.
+        """
+        start_date = "2023-11-14 10:00:00"
+        end_date = "14/11/2023 12:00:00"
+        interval = 3600  # 1 hour
+        match_error = "Error parsing date '14/11/2023 12:00:00'"
+        with pytest.raises(ValueError, match=match_error):
+            Utils.get_window_by_dates(start_date, end_date, interval)
+
+    def test_get_window_by_dates_invalid_interval_type(self):
+        """
+        Test get_window_by_dates raises ValueError for non-integer interval.
+        """
+        start_date = "2023-11-14 10:00:00"
+        end_date = "2023-11-14 12:00:00"
+        interval = "3600"  # Interval as string
+        match_error = "interval must be an integer."
+        with pytest.raises(ValueError, match=match_error):
+            Utils.get_window_by_dates(start_date, end_date, interval)
+
+    def test_get_dates_by_window_valid(self):
+        """Test get_dates_by_window with valid inputs."""
+        start = 1700000000  # Corresponds to "2023-11-14 22:13:20"
+        window = 3600  # 1 hour
+        result = Utils.get_dates_by_window(start, window)
+        expected_start = dt.datetime(
+            2023, 11, 14, 22, 13, 20, tzinfo=dt.timezone.utc)
+        expected_end = dt.datetime(
+            2023, 11, 14, 23, 13, 20, tzinfo=dt.timezone.utc)
+        assert result == (expected_start, expected_end)
+
+    def test_get_dates_by_window_invalid_start(self):
+        """Test get_dates_by_window raises ValueError for invalid start."""
+        match_error = "'start' and 'window' must be integers."
+        with pytest.raises(ValueError, match=match_error):
+            Utils.get_dates_by_window("invalid", 3600)
+
+    def test_get_dates_by_window_negative_start(self):
+        """Test get_dates_by_window raises ValueError for negative start."""
+        match_error = "'start' and 'window' must be non-negative."
+        with pytest.raises(ValueError, match=match_error):
+            Utils.get_dates_by_window(-1, 3600)
+
+    def test_get_dates_by_window_negative_window(self):
+        """Test get_dates_by_window raises ValueError for negative window."""
+        match_error = "'start' and 'window' must be non-negative."
+        with pytest.raises(ValueError, match=match_error):
+            Utils.get_dates_by_window(1700000000, -3600)
+
+    def test_get_dates_by_window_invalid_window(self):
+        """Test get_dates_by_window raises ValueError for invalid window."""
+        match_error = "'start' and 'window' must be integers."
+        with pytest.raises(ValueError, match=match_error):
+            Utils.get_dates_by_window(1700000000, "invalid")
+
+    def test_filter_values_by_range_valid(self):
+        """Test filter_values_by_range with valid inputs."""
+        values = np.array([1, 2, 3, 4, 5])
+        result = Utils.filter_values_by_range(values, min_value=2, max_value=4)
+        expected = np.array([np.nan, 2, 3, 4, np.nan])
+        np.testing.assert_array_equal(result, expected)
+
+    def test_filter_values_by_range_no_min_value(self):
+        """Test filter_values_by_range with no min_value."""
+        values = np.array([1, 2, 3, 4, 5])
+        result = Utils.filter_values_by_range(values, max_value=4)
+        expected = np.array([1, 2, 3, 4, np.nan])
+        np.testing.assert_array_equal(result, expected)
+
+    def test_filter_values_by_range_no_max_value(self):
+        """Test filter_values_by_range with no max_value."""
+        values = np.array([1, 2, 3, 4, 5])
+        result = Utils.filter_values_by_range(values, min_value=2)
+        expected = np.array([np.nan, 2, 3, 4, 5])
+        np.testing.assert_array_equal(result, expected)
+
+    def test_filter_values_by_range_no_min_max_value(self):
+        """Test filter_values_by_range with no min_value and max_value."""
+        values = np.array([1, 2, 3, 4, 5])
+        result = Utils.filter_values_by_range(values)
+        expected = np.array([1, 2, 3, 4, 5])
+        np.testing.assert_array_equal(result, expected)
+
+    def test_filter_values_by_range_invalid_values_type(self):
+        """
+        Test filter_values_by_range raises ValueError
+        for invalid values type.
+        """
+        with pytest.raises(
+                ValueError, match="Values must be a numpy ndarray."):
+            Utils.filter_values_by_range(
+                [1, 2, 3, 4, 5], min_value=2, max_value=4)
+
+    def test_filter_values_by_range_invalid_min_max_value(self):
+        """
+        Test filter_values_by_range raises ValueError
+        for invalid min_value and max_value.
+        """
+        values = np.array([1, 2, 3, 4, 5])
+        with pytest.raises(
+                ValueError,
+                match="`min_value` must be less than `max_value`."):
+            Utils.filter_values_by_range(values, min_value=4, max_value=2)
