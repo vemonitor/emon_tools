@@ -1,8 +1,9 @@
+"""Tests for the EmonRequest class using async"""
+from unittest.mock import AsyncMock, patch
 from aiohttp import web, ClientSession
 from aiohttp.client_exceptions import ClientError
-from unittest.mock import AsyncMock, patch
-from emon_tools.emon_api import EmonRequest
 import pytest
+from emon_tools.emon_api import EmonRequest
 
 API_KEY = "12345"
 VALID_URL = "http://localhost:8080"
