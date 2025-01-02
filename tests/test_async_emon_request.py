@@ -130,8 +130,26 @@ async def test_validate_url_valid(mock_emon_request):
     assert validated_url == VALID_URL
 
 
+@pytest.mark.parametrize(
+    "url, expected_exception, error_msg",
+    [
+        (
+            123, TypeError,
+            "URL must be a non-empty string."
+        ),
+        (
+            "ftp://", ValueError,
+            "URL must start with 'http://' or 'https://'."
+        ),
+    ],
+)
 @pytest.mark.asyncio
-async def test_validate_url_invalid(mock_emon_request):
+async def test_validate_url_invalid(
+    url,
+    expected_exception,
+    error_msg,
+    mock_emon_request
+):
     """Test URL validation with an invalid URL."""
-    with pytest.raises(ValueError, match="URL must be a non-empty string."):
-        mock_emon_request._sanitize_url("")
+    with pytest.raises(expected_exception, match=error_msg):
+        mock_emon_request._sanitize_url(url)
