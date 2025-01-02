@@ -286,6 +286,7 @@ class Utils:
 
         # Convert start timestamp to a datetime object in UTC
         start_dt = dt.datetime.fromtimestamp(start, tz=dt.timezone.utc)
+        start_dt.replace(tzinfo=dt.timezone.utc)
         # Calculate end datetime by adding the window size
         end_dt = start_dt + dt.timedelta(seconds=window)
 
