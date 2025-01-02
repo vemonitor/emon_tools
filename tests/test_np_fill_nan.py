@@ -1,6 +1,6 @@
 """NpFillNan Unit Tests"""
 import numpy as np
-from emon_tools.fina_utils  import FillNanMethod
+from emon_tools.fina_utils import FillNanMethod
 from emon_tools.fina_utils import NpFillNan
 
 
@@ -37,7 +37,8 @@ class TestNpFillNan:
         """
         raw_array = np.array([np.nan, 1.0, np.nan, np.nan, 5.0, np.nan])
         expected = np.array([1.0, 1.0, 2.333333, 3.666667, 5.0, 5.0])
-        result = NpFillNan.fill_nan_values(raw_array, FillNanMethod.INTERPOLATE)
+        result = NpFillNan.fill_nan_values(
+            raw_array, FillNanMethod.INTERPOLATE)
         np.testing.assert_array_almost_equal(result, expected)
 
     def test_fill_nan_values_forward(self):
@@ -55,7 +56,8 @@ class TestNpFillNan:
         """
         raw_array = np.array([np.nan, np.nan, np.nan])
         expected = raw_array.copy()
-        result = NpFillNan.fill_nan_values(raw_array, FillNanMethod.INTERPOLATE)
+        result = NpFillNan.fill_nan_values(
+            raw_array, FillNanMethod.INTERPOLATE)
         np.testing.assert_array_equal(result, expected)
 
     def test_fill_nan_empty_array(self):
@@ -64,14 +66,16 @@ class TestNpFillNan:
         """
         raw_array = np.array([])
         expected = raw_array.copy()
-        result = NpFillNan.fill_nan_values(raw_array, FillNanMethod.INTERPOLATE)
+        result = NpFillNan.fill_nan_values(
+            raw_array, FillNanMethod.INTERPOLATE)
         np.testing.assert_array_equal(result, expected)
 
     def test_fill_nan_partial_regions(self):
         """
         Test handling NaN values in partially valid regions.
         """
-        raw_array = np.array([np.nan, 2.0, np.nan, np.nan, 5.0, np.nan, np.nan])
+        raw_array = np.array(
+            [np.nan, 2.0, np.nan, np.nan, 5.0, np.nan, np.nan])
         expected = np.array([2.0, 2.0, 3.0, 4.0, 5.0, 5.0, 5.0])
         result = NpFillNan.fill_nan_values(
             raw_array,

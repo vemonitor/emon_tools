@@ -3,6 +3,7 @@ Api common utilities.
 """
 import re
 from typing import Any
+from emon_tools.fina_utils import Utils as Ut
 
 HTTP_STATUS = {
     400: "invalid request",
@@ -15,7 +16,7 @@ MESSAGE_KEY = "message"
 SUCCESS_KEY = "success"
 
 
-class Utils:
+class Utils(Ut):
     """Emoncms data Helper"""
 
     @staticmethod
@@ -31,7 +32,7 @@ class Utils:
         """
         result = isinstance(text, str)
         if not_empty:
-            result = result and len(text) > 0
+            result = result is True and len(text) > 0
         return result
 
     @staticmethod
@@ -47,7 +48,7 @@ class Utils:
         """
         result = isinstance(data, list)
         if not_empty:
-            result = result and len(data) > 0
+            result = result is True and len(data) > 0
         return result
 
     @staticmethod
@@ -63,7 +64,7 @@ class Utils:
         """
         result = isinstance(data, dict)
         if not_empty:
-            result = result and len(data) > 0
+            result = result is True and len(data) > 0
         return result
 
     @staticmethod

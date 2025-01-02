@@ -146,6 +146,23 @@ class Utils:
         return start_of_day.timestamp()
 
     @staticmethod
+    def get_string_datetime_from_timestamp(
+        timestamp: str,
+        timezone: dt.timezone = dt.timezone.utc,
+        date_format: str = "%Y-%m-%d %H:%M:%S"
+    ) -> dt.datetime:
+        """Get string representation of UTC timestamp."""
+        timestamp = Utils.validate_timestamp(timestamp, "timestamp")
+
+        if not isinstance(timezone, dt.timezone):
+            raise ValueError(
+                "The timezone must be a datetime.timezone object.")
+
+        result = dt.datetime.fromtimestamp(timestamp, tz=timezone)
+        result = result.replace(tzinfo=timezone)
+        return result.strftime(date_format)
+
+    @staticmethod
     def get_utc_datetime_from_string(dt_value: str,
                                      date_format: str = "%Y-%m-%d %H:%M:%S"
                                      ) -> dt.datetime:
@@ -286,6 +303,7 @@ class Utils:
 
         # Convert start timestamp to a datetime object in UTC
         start_dt = dt.datetime.fromtimestamp(start, tz=dt.timezone.utc)
+        start_dt.replace(tzinfo=dt.timezone.utc)
         # Calculate end datetime by adding the window size
         end_dt = start_dt + dt.timedelta(seconds=window)
 

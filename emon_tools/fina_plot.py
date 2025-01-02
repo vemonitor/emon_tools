@@ -12,23 +12,9 @@ Dependencies:
 """
 from typing import Union
 import numpy as np
-
-try:
-    import pandas as pd
-except ImportError as e:
-    raise ImportError(
-        "Pandas is required for this module."
-        "Install it with `pip install pandas`."
-    ) from e
-
-try:
-    import matplotlib.pyplot as plt
-    from matplotlib import ticker
-except ImportError as e:
-    raise ImportError(
-        "Matplotlib is required for this module. "
-        "Install it with `pip install matplotlib`."
-    ) from e
+import pandas as pd
+import matplotlib.pyplot as plt
+from matplotlib import ticker
 
 
 class FinaPlot:

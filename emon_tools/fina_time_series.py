@@ -36,18 +36,11 @@ from typing import Optional
 from typing import List
 from typing import Union
 import numpy as np
+import pandas as pd
 from emon_tools.emon_fina import Utils
 from emon_tools.emon_fina import FinaData
 from emon_tools.emon_fina import FinaStats
 from emon_tools.emon_fina import StatsType
-
-try:
-    import pandas as pd
-except ImportError as e:
-    raise ImportError(
-        "Pandas is required for this module. "
-        "Install it with `pip install pandas`."
-    ) from e
 
 
 class FinaDataFrame(FinaData):
