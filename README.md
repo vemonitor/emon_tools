@@ -111,7 +111,7 @@ from emon_tools.fina_plot import PlotData
 
 fdf = FinaDataFrame(
     feed_id=1,
-    data_dir="/path/to/phpfina/files
+    data_dir="/path/to/phpfina/files"
 )
 # Access metadata of the .meta file:
 print("Meta: ", fdf.meta)
