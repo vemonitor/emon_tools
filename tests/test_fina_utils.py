@@ -115,6 +115,28 @@ class TestUtils:
         expected = dt.datetime(1970, 1, 1, tzinfo=dt.timezone.utc).timestamp()
         assert result == expected
 
+    def test_get_string_datetime_from_timestamp_valid(self):
+        """Test get_string_datetime_from_timestamp with valid input."""
+        # Corresponds to "2023-11-14 02:13:20"
+        result = Utils.get_string_datetime_from_timestamp(1700000000)
+        assert result == '2023-11-14 22:13:20'
+
+        # Corresponds to "2023-11-14 02:13:20"
+        result = Utils.get_string_datetime_from_timestamp(1700000000 + 3600)
+        assert result == '2023-11-14 23:13:20'
+    
+    def test_get_string_datetime_from_timestamp_invalid_timestamp(self):
+        """Test get_string_datetime_from_timestamp with invalid  timestamp."""
+        match_error = "timestamp timestamp must be a non-negative number."
+        with pytest.raises(ValueError, match=match_error):
+            Utils.get_string_datetime_from_timestamp(-1)
+
+    def test_get_string_datetime_from_timestamp_invalid_timezone(self):
+        """Test get_string_datetime_from_timestamp with invalid timezone."""
+        match_error = "The timezone must be a datetime.timezone object."
+        with pytest.raises(ValueError, match=match_error):
+            Utils.get_string_datetime_from_timestamp(12345, timezone=None)
+
     def test_get_utc_datetime_from_string_valid(self):
         """Test get_utc_datetime_from_string with valid input."""
         date_str = "2023-11-14 10:00:00"
