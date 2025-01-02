@@ -3,6 +3,7 @@ Api common utilities.
 """
 import re
 from typing import Any
+from emon_tools.fina_utils import Utils as Ut
 
 HTTP_STATUS = {
     400: "invalid request",
@@ -15,7 +16,7 @@ MESSAGE_KEY = "message"
 SUCCESS_KEY = "success"
 
 
-class Utils:
+class Utils(Ut):
     """Emoncms data Helper"""
 
     @staticmethod
