@@ -81,6 +81,174 @@ class TestFinaData:
                 ValueError, match="/invalid_dir is not a valid directory."):
             FinaData(feed_id=1, data_dir="/invalid_dir")
 
+    @patch("builtins.open",
+           new_callable=mock_open,
+           read_data=pack("<f", 42.0) * 10)
+    @patch("emon_tools.fina_reader.isfile", return_value=True)
+    @patch("emon_tools.fina_reader.getsize", return_value=400)
+    @patch("emon_tools.fina_reader.mmap.mmap", autospec=True)
+    def test_read_direct_values_no_remaining(
+        self,
+        mock_mmap,
+        mock_isfile,
+        mock_getsize,
+        mock_open_file,
+        fdt
+    ):
+        """
+        Test _read_direct_values when remaining points become zero.
+        """
+        start, step, npts, interval, window = 0, 10, 5, 10, 50
+        fdt.meta = type("Meta", (), {"start_time": 0, "npoints": 10})
+        fdt.reader = type("Reader", (), {
+            "read_file": lambda **kwargs: iter([
+                (0, np.array([1, 2, 3, 4, 5])),
+                (5, np.array([6, 7, 8, 9, 10]))
+            ])
+        })
+
+        # Mock the mmap object
+        mock_mmap_instance = mock_mmap.return_value.__enter__.return_value
+
+        def mock_getitem(slice_obj):
+            size = (slice_obj.stop - slice_obj.start) // 4
+            return pack("<f", 42.0) * size
+
+        mock_mmap_instance.__getitem__.side_effect = mock_getitem
+        fdt.reader.CHUNK_SIZE_LIMIT = 4096
+        result = fdt._read_direct_values(
+            start, step, npts, interval, window, set_pos=True)
+        assert result.tolist() == [1, 2, 3, 4, 5]
+
+    @patch("builtins.open",
+           new_callable=mock_open,
+           read_data=pack("<f", 42.0) * 10)
+    @patch("emon_tools.fina_reader.isfile", return_value=True)
+    @patch("emon_tools.fina_reader.getsize", return_value=400)
+    @patch("emon_tools.fina_reader.mmap.mmap", autospec=True)
+    def test_read_averaged_values_empty_values(
+        self,
+        mock_mmap,
+        mock_isfile,
+        mock_getsize,
+        mock_open_file,
+        fdt
+    ):
+        """
+        Test _read_averaged_values when a chunk of values is empty.
+        """
+        start, step, npts, interval, window = 0, 20, 3, 10, 60
+        fdt.meta = type("Meta", (), {"start_time": 0, "npoints": 10})
+        fdt.reader = type("Reader", (), {
+            "read_file": lambda **kwargs: iter([
+                (0, np.array([])),  # Empty chunk
+                (10, np.array([1, 2, 3, 4, 5, 6]))
+            ])
+        })
+
+        # Mock the mmap object
+        mock_mmap_instance = mock_mmap.return_value.__enter__.return_value
+
+        def mock_getitem(slice_obj):
+            size = (slice_obj.stop - slice_obj.start) // 4
+            return pack("<f", 42.0) * size
+
+        mock_mmap_instance.__getitem__.side_effect = mock_getitem
+        fdt.reader.CHUNK_SIZE_LIMIT = 4096
+        result = fdt._read_averaged_values(start, step, npts, interval, window)
+        assert result.tolist() == [1.5, 3.5, 5.5]
+
+    @patch("builtins.open",
+           new_callable=mock_open,
+           read_data=pack("<f", 42.0) * 10)
+    @patch("emon_tools.fina_reader.isfile", return_value=True)
+    @patch("emon_tools.fina_reader.getsize", return_value=400)
+    @patch("emon_tools.fina_reader.mmap.mmap", autospec=True)
+    def test_read_averaged_values_no_remaining(
+        self,
+        mock_mmap,
+        mock_isfile,
+        mock_getsize,
+        mock_open_file,
+        fdt
+    ):
+        """
+        Test _read_averaged_values when remaining points become zero.
+        """
+        start, step, npts, interval, window = 0, 20, 2, 10, 40
+        fdt.meta = type("Meta", (), {"start_time": 0, "npoints": 10})
+        fdt.reader = type("Reader", (), {
+            "read_file": lambda **kwargs: iter([
+                (0, np.array([1, 2, 3, 4, 5, 6])),
+                (10, np.array([7, 8, 9, 10, 11, 12]))
+            ])
+        })
+
+        # Mock the mmap object
+        mock_mmap_instance = mock_mmap.return_value.__enter__.return_value
+
+        def mock_getitem(slice_obj):
+            size = (slice_obj.stop - slice_obj.start) // 4
+            return pack("<f", 42.0) * size
+
+        mock_mmap_instance.__getitem__.side_effect = mock_getitem
+        fdt.reader.CHUNK_SIZE_LIMIT = 4096
+        result = fdt._read_averaged_values(start, step, npts, interval, window)
+        assert result.tolist() == [1.5, 3.5]
+
+    @patch("builtins.open",
+           new_callable=mock_open,
+           read_data=pack("<f", 42.0) * 10)
+    @patch("emon_tools.fina_reader.isfile", return_value=True)
+    @patch("emon_tools.fina_reader.getsize", return_value=400)
+    @patch("emon_tools.fina_reader.mmap.mmap", autospec=True)
+    def test_read_averaged_values_nan_fallback(
+        self,
+        mock_mmap,
+        mock_isfile,
+        mock_getsize,
+        mock_open_file,
+        fdt
+    ):
+        """
+        Test _read_averaged_values when reshaped_values is empty.
+        """
+        start, step, npts, interval, window = 0, 20, 3, 10, 60
+        fdt.meta = type("Meta", (), {"start_time": 0, "npoints": 10})
+        fdt.reader = type("Reader", (), {
+            "read_file": lambda **kwargs: iter([
+                (0, np.array([np.nan] * 6))  # All NaN values
+            ])
+        })
+
+        # Mock the mmap object
+        mock_mmap_instance = mock_mmap.return_value.__enter__.return_value
+
+        def mock_getitem(slice_obj):
+            size = (slice_obj.stop - slice_obj.start) // 4
+            return pack("<f", 42.0) * size
+
+        mock_mmap_instance.__getitem__.side_effect = mock_getitem
+        fdt.reader.CHUNK_SIZE_LIMIT = 4096
+        result = fdt._read_averaged_values(start, step, npts, interval, window)
+        assert np.isnan(result).all()
+
+    def test_reset(self, fdt):
+        """Test the reset method for FinaData."""
+        fdt.lines = 100
+        fdt.start = 1000
+        fdt.end = 2000
+        fdt.step = 10
+
+        # Call the reset method
+        fdt.reset()
+
+        # Check if all attributes are reset to their default values
+        assert fdt.lines == 0
+        assert fdt.start is None
+        assert fdt.end is None
+        assert fdt.step is None
+
     def test_timescale(self, fdt):
         """
         Test the timescale method for generating time values.
@@ -416,6 +584,55 @@ class TestFinaData:
 
         assert isinstance(data, np.ndarray)
         assert data.shape[0] == 5
+
+    def test_calculate_optimal_chunk_size(self, fdt):
+        """Test the calculate_optimal_chunk_size method."""
+        fdt.CHUNK_SIZE_LIMIT = 1024
+
+        # Test with valid parameters
+        assert fdt.calculate_optimal_chunk_size(
+            window=10000) == 256
+        assert fdt.calculate_optimal_chunk_size(
+            window=10000, min_chunk_size=512) == 512
+        assert fdt.calculate_optimal_chunk_size(
+            window=10000, scale_factor=2.0) == 256
+        assert fdt.calculate_optimal_chunk_size(
+            window=10000, divisor=128) == 256
+
+        # Test with invalid parameters
+        with pytest.raises(
+                ValueError, match="window size must be a positive integer."):
+            fdt.calculate_optimal_chunk_size(window=-1)
+        with pytest.raises(
+                ValueError,
+                match="Minimum chunk size must be a positive integer."):
+            fdt.calculate_optimal_chunk_size(window=10000, min_chunk_size=-1)
+        with pytest.raises(
+                ValueError, match="Scale factor must be a positive number."):
+            fdt.calculate_optimal_chunk_size(window=10000, scale_factor=-1.0)
+        with pytest.raises(
+                ValueError, match="divisor must be a positive integer."):
+            fdt.calculate_optimal_chunk_size(window=10000, divisor=-1)
+
+    def test_calculate_nearest_divisible(self):
+        """Test the calculate_nearest_divisible method."""
+        # Test with valid parameters
+        assert FinaData.calculate_nearest_divisible(
+            250, 128, 256, 1024) == 256
+        assert FinaData.calculate_nearest_divisible(
+            500, 128, 256, 1024) == 512
+        assert FinaData.calculate_nearest_divisible(
+            1000, 128, 256, 1024) == 1024
+        assert FinaData.calculate_nearest_divisible(
+            100, 128, 256, 1024) == 256
+
+        # Test with edge cases
+        assert FinaData.calculate_nearest_divisible(
+            1025, 128, 256, 1024) == 1024
+        assert FinaData.calculate_nearest_divisible(
+            255, 128, 256, 1024) == 256
+        assert FinaData.calculate_nearest_divisible(
+            0, 128, 256, 1024) == 256
 
     @pytest.mark.parametrize(
         "dt_value, date_format, expected",
