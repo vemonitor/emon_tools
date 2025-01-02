@@ -225,21 +225,6 @@ class EmonReader(EmonRequest):
     Provides additional methods for fetching feed, input, and user data.
     """
 
-    async def async_get_uuid(self) -> Optional[str]:
-        """
-        Retrieve the unique UUID for the authenticated user.
-
-        Returns:
-            Optional[str]: The UUID string if available, otherwise None.
-        """
-        result = await self.async_request("/user/getuuid.json")
-        if result[SUCCESS_KEY] and isinstance(result[MESSAGE_KEY], str):
-            return result[MESSAGE_KEY]
-        self.logger.warning(
-            "UUID retrieval failed: %s", result[MESSAGE_KEY]
-        )
-        return None
-
     async def async_list_feeds(self) -> Optional[List[Dict[str, Any]]]:
         """
         Retrieve the list of feeds.

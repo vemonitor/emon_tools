@@ -50,17 +50,6 @@ def emon_reader():
 
 
 @pytest.mark.asyncio
-async def test_async_get_uuid(emon_reader):
-    """Test retrieving UUID."""
-    with patch.object(
-            emon_reader, "async_request", new=AsyncMock()) as mock_request:
-        mock_request.return_value = {"success": True, "message": MOCK_UUID}
-        uuid = await emon_reader.async_get_uuid()
-        assert uuid == MOCK_UUID
-        mock_request.assert_called_once_with("/user/getuuid.json")
-
-
-@pytest.mark.asyncio
 async def test_async_list_feeds(emon_reader):
     """Test listing feeds."""
     with patch.object(
