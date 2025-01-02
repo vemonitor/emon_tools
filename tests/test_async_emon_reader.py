@@ -50,6 +50,17 @@ def emon_reader():
 
 
 @pytest.mark.asyncio
+async def test_async_list_feeds_empty(emon_reader):
+    """Test retrieving UUID."""
+    with patch.object(
+            emon_reader, "async_request", new=AsyncMock()) as mock_request:
+        mock_request.return_value = {"success": False}
+        feeds = await emon_reader.async_list_feeds()
+        assert feeds is None
+        mock_request.assert_called_once_with("/feed/list.json")
+
+
+@pytest.mark.asyncio
 async def test_async_list_feeds(emon_reader):
     """Test listing feeds."""
     with patch.object(
@@ -70,6 +81,35 @@ async def test_async_get_feed_fields(emon_reader):
         assert fields == MOCK_FEEDS[0]
         mock_request.assert_called_once_with(
             "/feed/aget.json", params={"id": 1})
+
+
+@pytest.mark.asyncio
+async def test_async_get_feed_fields_empty(emon_reader):
+    """Test retrieving UUID."""
+    with patch.object(
+            emon_reader, "async_request", new=AsyncMock()) as mock_request:
+        mock_request.return_value = {"success": False}
+        feeds = await emon_reader.async_get_feed_fields(1)
+        assert feeds is None
+        mock_request.assert_called_once_with(
+            "/feed/aget.json", params={"id": 1}
+        )
+
+
+@pytest.mark.asyncio
+async def test_async_get_feed_fields_invalid(emon_reader):
+    """Test retrieving UUID."""
+    with patch.object(
+            emon_reader, "async_request", new=AsyncMock()) as mock_request:
+        mock_request.return_value = {"success": False}
+        with pytest.raises(
+                ValueError, match="Feed ID must be a positive integer."):
+            feeds = await emon_reader.async_get_feed_fields(-1)
+            assert feeds is None
+
+            mock_request.assert_called_once_with(
+                "/feed/aget.json", params={"id": 1}
+            )
 
 
 @pytest.mark.asyncio
