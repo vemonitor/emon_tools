@@ -34,10 +34,10 @@ from typing import Any, Optional, TypeVar, List, Dict
 from urllib.parse import quote, urljoin
 
 from aiohttp import ClientError, ClientSession
-from emon_tools.api_common import Utils as Ut
-from emon_tools.api_common import HTTP_STATUS
-from emon_tools.api_common import MESSAGE_KEY
-from emon_tools.api_common import SUCCESS_KEY
+from emon_tools.api_utils import Utils as Ut
+from emon_tools.api_utils import HTTP_STATUS
+from emon_tools.api_utils import MESSAGE_KEY
+from emon_tools.api_utils import SUCCESS_KEY
 
 logging.basicConfig()
 
