@@ -1,7 +1,7 @@
 """Fina Utils unit tests module"""
 import pytest
-from emon_tools.fina_utils import Utils
 import numpy as np
+from emon_tools.fina_utils import Utils
 
 
 class TestUtils:
