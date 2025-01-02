@@ -124,7 +124,7 @@ class TestUtils:
         # Corresponds to "2023-11-14 02:13:20"
         result = Utils.get_string_datetime_from_timestamp(1700000000 + 3600)
         assert result == '2023-11-14 23:13:20'
-    
+
     def test_get_string_datetime_from_timestamp_invalid_timestamp(self):
         """Test get_string_datetime_from_timestamp with invalid  timestamp."""
         match_error = "timestamp timestamp must be a non-negative number."
