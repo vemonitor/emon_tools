@@ -5,6 +5,7 @@ from unittest.mock import MagicMock
 from datetime import datetime, timezone
 import numpy as np
 import pytest
+from emon_tools.emon_fina import StatsType
 from emon_tools.emon_fina import FinaStats
 from emon_tools.fina_reader import MetaData
 from emon_tools.fina_utils import Utils
@@ -47,32 +48,131 @@ class TestFinaStats:
         )
         return FinaStats(feed_id=1, data_dir="mock_dir")
 
+    def test_validate_and_prepare_params_valid(self, fina_stats):
+        """Test _validate_and_prepare_params with valid parameters."""
+        start_time = 0
+        steps_window = 100
+        max_size = 1000
+        result = fina_stats._validate_and_prepare_params(
+            start_time,
+            steps_window,
+            max_size
+        )
+        assert result is not None
+
     @pytest.mark.parametrize(
-        "min_value, max_value, expected_stats",
+        "params, expected_exception, error_msg",
         [
             (
-                None,
-                None,
-                [1575936000.0, 20.0, 4339.5, 8659.0],
+                {
+                    "start_time": -1,
+                    "steps_window": 100,
+                    "max_size": 1000
+                },
+                ValueError,
+                'Start time must be a non-negative integer.'
             ),
             (
-                21,
-                None,
-                [1575936000.0, 21.0, 4340.0, 8659.0],
+                {
+                    "start_time": 0,
+                    "steps_window": -100,
+                    "max_size": 1000
+                },
+                ValueError,
+                'Window steps must be a positive integer.'
             ),
             (
-                None,
-                23,
-                [1575936000.0, 20.0, 21.5, 23.0],
-            ),
-            (
-                21,
-                23,
-                [1575936000.0, 21.0, 22.0, 23.0],
+                {
+                    "start_time": 0,
+                    "steps_window": 100,
+                    "max_size": -1
+                },
+                ValueError,
+                'Max size must be a positive integer.'
             ),
         ],
     )
-    def test_get_stats(self, min_value, max_value, expected_stats, fina_stats):
+    def test_validate_and_prepare_params_invalid(
+        self,
+        params,
+        expected_exception,
+        error_msg,
+        fina_stats
+    ):
+        """Test _validate_and_prepare_params with invalid start_time."""
+        with pytest.raises(expected_exception, match=error_msg):
+            fina_stats._validate_and_prepare_params(
+                **params)
+
+    def test_validate_chunk_within_day_boundary(self, fina_stats):
+        """Test _validate_chunk with positions within the day boundary."""
+        positions = np.array([0, 1, 2, 3, 4])
+        next_day_start = fina_stats.meta.start_time + 86400
+        try:
+            fina_stats._validate_chunk(positions, next_day_start)
+        except ValueError:
+            pytest.fail("Unexpected ValueError raised.")
+
+    def test_validate_chunk_exceeds_day_boundary(self, fina_stats):
+        """Test _validate_chunk with positions exceeding the day boundary."""
+        positions = np.array([0, 1, 2, 3, 8641])
+        next_day_start = fina_stats.meta.start_time + 86400
+        match_error = (
+            "Reader Error: Last timestamp 1576022410.0 "
+            "exceeds day boundary 1576022400.0.")
+        with pytest.raises(
+                ValueError, match=match_error):
+            fina_stats._validate_chunk(positions, next_day_start)
+
+    def test_trim_results_empty(self, fina_stats):
+        """Test _trim_results with empty data."""
+        result = fina_stats._trim_results(np.full([1, 2], np.nan))
+        assert np.isnan(result).sum() == 2
+
+    @pytest.mark.parametrize(
+        "stats_props, expected_stats",
+        [
+            (
+                {
+                    "min_value": None
+                },
+                [1575936000.0, 20.0, 4339.5, 8659.0],
+            ),
+            (
+                {
+                    "min_value": 21
+                },
+                [1575936000.0, 21.0, 4340.0, 8659.0],
+            ),
+            (
+                {
+                    "max_value": 23
+                },
+                [1575936000.0, 20.0, 21.5, 23.0],
+            ),
+            (
+                {
+                    "min_value": 21,
+                    "max_value": 23
+                },
+                [1575936000.0, 21.0, 22.0, 23.0],
+            ),
+            (
+                {
+                    "min_value": 21,
+                    "max_value": 23
+                },
+                [1575936000.0, 21.0, 22.0, 23.0],
+            ),
+            (
+                {
+                    "stats_type": StatsType.INTEGRITY
+                },
+                [1575936000.0, 8640.0, 8640.0],
+            ),
+        ],
+    )
+    def test_get_stats(self, stats_props, expected_stats, fina_stats):
         """
         Test get_stats computes correct statistics with and without filters.
 
@@ -82,11 +182,54 @@ class TestFinaStats:
             max_value: Maximum value for filtering.
             expected_stats: Expected statistics array for comparison.
         """
-        stats = fina_stats.get_stats(
-            max_size=172800,  # Max size for data processing
-            min_value=min_value,
-            max_value=max_value,
-        )
+        stats = fina_stats.get_stats(**stats_props)
+        # Validate output
+        assert len(stats) == 1  # Expecting stats for three days
+        # Allow for floating-point precision errors
+        assert stats[0] == expected_stats
+    
+    @pytest.mark.parametrize(
+        "stats_props, expected_stats",
+        [
+            (
+                {
+                    "start_date": None
+                },
+                [1575936000.0, 20.0, 4339.5, 8659.0],
+            ),
+            (
+                {
+                    "start_date": "2019-12-10 00:00:00"
+                },
+                [1575936000.0, 20.0, 4339.5, 8659.0],
+            ),
+            (
+                {
+                    "end_date": "2019-12-11 00:00:00"
+                },
+                [1575936000.0, 20.0, 4339.5, 8659.0],
+            ),
+            (
+                {
+                    "start_date": "2019-12-10 00:00:00",
+                    "end_date": "2019-12-11 00:00:00"
+                },
+                [1575936000.0, 20.0, 4339.5, 8659.0],
+            ),
+        ],
+    )
+    def test_get_stats_by_date(self, stats_props, expected_stats, fina_stats):
+        """
+        Test get_stats_by_date computes correct statistics
+        with and without filters.
+
+        Args:
+            fina_stats: Mocked FinaStats instance.
+            min_value: Minimum value for filtering.
+            max_value: Maximum value for filtering.
+            expected_stats: Expected statistics array for comparison.
+        """
+        stats = fina_stats.get_stats_by_date(**stats_props)
         # Validate output
         assert len(stats) == 1  # Expecting stats for three days
         # Allow for floating-point precision errors
