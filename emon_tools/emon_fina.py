@@ -525,10 +525,14 @@ class FinaData:
               both minimum and maximum constraints.
         """
         max_chunk_size: int = self.reader.CHUNK_SIZE_LIMIT
-        if window <= 0:
-            raise ValueError("Window size must be a positive integer.")
-        if min_chunk_size <= 0 or max_chunk_size <= 0:
-            raise ValueError("Chunk size limits must be positive integers.")
+
+        window = Utils.validate_integer(
+            window, "window size", positive=True)
+        min_chunk_size = Utils.validate_integer(
+            min_chunk_size, "Minimum chunk size", positive=True)
+        scale_factor = Utils.validate_number(
+            scale_factor, "Scale factor", positive=True)
+
         if min_chunk_size > max_chunk_size:
             raise ValueError(
                 "min_chunk_size must be less than or equal "
@@ -547,6 +551,8 @@ class FinaData:
 
         # Ensure chunk size is divisible by divisor and within limits
         if divisor is not None:
+            divisor = Utils.validate_integer(
+                divisor, "divisor", positive=True)
             chunk_size = FinaData.calculate_nearest_divisible(
                 value=chunk_size,
                 divisor=divisor,
