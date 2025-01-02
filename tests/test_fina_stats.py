@@ -187,7 +187,7 @@ class TestFinaStats:
         assert len(stats) == 1  # Expecting stats for three days
         # Allow for floating-point precision errors
         assert stats[0] == expected_stats
-    
+
     @pytest.mark.parametrize(
         "stats_props, expected_stats",
         [
