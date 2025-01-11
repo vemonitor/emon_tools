@@ -171,21 +171,21 @@ class PlotStats(FinaPlot):
         ax = plt.gca()
         ax.grid(which='minor', alpha=0.2)
         ax.grid(which='major', alpha=0.5)
-        ax.set_ylabel("Daily Points", color=color_y1)
+        ax.set_ylabel("Daily nb_finite Points (%)", color=color_y1)
         ax.tick_params(axis="y", labelcolor=color_y1)
         ax.set_xlabel("time")
         if isinstance(data, np.ndarray):
             ax.plot(data[:, 0], data[:, 1] * 100 / data[:, 2],
-                    label='Daily nb_finite (%)',
+                    label='Daily nb_finite Points',
                     lw=3,
                     color=color_y1)
             ax2 = ax.twinx()
-            ax2.set_ylabel("Daily Points (%)", color=color_y2)
+            ax2.set_ylabel("Daily Points", color=color_y2)
             ax2.tick_params(axis="y", labelcolor=color_y2)
             ax2.plot(
                 data[:, 0],
                 data[:, 1],
-                label='Daily mean nb_finite values',
+                label='Daily nb_finite values',
                 lw=3,
                 color=color_y2)
             ax2.fill_between(
@@ -197,16 +197,16 @@ class PlotStats(FinaPlot):
                 color=color_fill)
         else:
             ax.plot(data.index, data['nb_finite'] * 100 / data['nb_total'],
-                    label='Daily nb_finite (%)',
+                    label='Daily nb_finite Points',
                     lw=3,
                     color=color_y1)
             ax2 = ax.twinx()
-            ax2.set_ylabel("Daily Points (%)", color=color_y2)
+            ax2.set_ylabel("Daily nb_finite Points", color=color_y2)
             ax2.tick_params(axis="y", labelcolor=color_y2)
             ax2.plot(
                 data.index,
                 data['nb_finite'],
-                label='Daily mean nb_finite values',
+                label='Daily nb_finite points',
                 lw=3,
                 color=color_y2)
             ax2.fill_between(
@@ -216,7 +216,6 @@ class PlotStats(FinaPlot):
                 alpha=0.2,
                 label='Daily min-max nb_points',
                 color=color_fill)
-        ax2.legend()
         plt.title("Fina File Integrity Stats")
 
         FinaPlot.auto_plot_grid(x_grid=True, y_grid=False)
