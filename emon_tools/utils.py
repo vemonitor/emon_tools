@@ -57,6 +57,38 @@ class Utils:
         return result
 
     @staticmethod
+    def is_set(data: Any, not_empty: bool = False) -> bool:
+        """
+        Test if data is a set.
+
+        :Example :
+            >>> Utils.is_set(data=['hello'])
+            >>> True
+        :param data: Any: Value to test.
+        :return: bool: True if value is valid set object.
+        """
+        result = isinstance(data, set)
+        if not_empty:
+            result = result is True and len(data) > 0
+        return result
+
+    @staticmethod
+    def is_tuple(data: Any, not_empty: bool = False) -> bool:
+        """
+        Test if data is a set.
+
+        :Example :
+            >>> Utils.is_set(data=['hello'])
+            >>> True
+        :param data: Any: Value to test.
+        :return: bool: True if value is valid set object.
+        """
+        result = isinstance(data, tuple)
+        if not_empty:
+            result = result is True and len(data) > 0
+        return result
+
+    @staticmethod
     def validate_number(
         value: Union[int, float],
         field_name: str,
