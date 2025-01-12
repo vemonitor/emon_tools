@@ -853,7 +853,7 @@ class EmonFeeds:
         - {"success": false, "message": "Invalid fields"}
         """
         feed_id = Ut.validate_integer(feed_id, "Feed ID", positive=True)
-        Ut.validate_feed_fields(fields)
+        Ut.validate_feed_fields(fields, is_create=False)
         params = {
                 "feed_id": feed_id,
                 "fields": fields
