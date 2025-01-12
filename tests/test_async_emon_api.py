@@ -4,6 +4,7 @@ from aiohttp import web, ClientSession
 from aiohttp.client_exceptions import ClientError
 import pytest
 from emon_tools.emon_api_core import InputGetType
+from emon_tools.emon_api_core import RequestType
 from emon_tools.async_emon_api import AsyncEmonRequest
 from emon_tools.async_emon_api import AsyncEmonInputs
 from emon_tools.async_emon_api import AsyncEmonFeeds
@@ -152,6 +153,146 @@ class TestAsyncEmonRequest:
         """Test reusing an existing session."""
         session = mock_emon_request.session
         assert mock_emon_request.session is session
+
+
+MOCK_INPUTS = [{"id": 1, "name": "input1"}, {"id": 2, "name": "input2"}]
+
+
+class TestAsyncEmonInputs:
+    """AsyncEmonInputs unit test class"""
+
+    @pytest.fixture
+    def emon_inputs(self):
+        """Fixture to initialize an AsyncEmonInputs instance."""
+        return AsyncEmonInputs(VALID_URL, API_KEY)
+
+    @pytest.mark.asyncio
+    async def test_async_list_inputs_empty(self, emon_inputs):
+        """Test retrieving an empty input list."""
+        with patch.object(
+            emon_inputs, "async_request", new=AsyncMock()
+        ) as mock_request:
+            mock_request.return_value = {"success": False}
+            inputs = await emon_inputs.async_list_inputs()
+            assert inputs == {"success": False}
+            mock_request.assert_called_once_with(
+                "/input/get", msg="get list inputs"
+            )
+
+    @pytest.mark.asyncio
+    async def test_async_list_inputs(self, emon_inputs):
+        """Test listing inputs."""
+        with patch.object(
+            emon_inputs, "async_request", new=AsyncMock()
+        ) as mock_request:
+            mock_request.return_value = {
+                "success": True, "message": MOCK_INPUTS}
+            inputs = await emon_inputs.async_list_inputs()
+            assert inputs == {"success": True, "message": MOCK_INPUTS}
+            mock_request.assert_called_once_with(
+                "/input/get", msg="get list inputs"
+            )
+
+    @pytest.mark.asyncio
+    async def test_async_list_inputs_with_node(self, emon_inputs):
+        """Test listing inputs filtered by node."""
+        with patch.object(
+            emon_inputs, "async_request", new=AsyncMock()
+        ) as mock_request:
+            mock_request.return_value = {
+                "success": True, "message": MOCK_INPUTS}
+            inputs = await emon_inputs.async_list_inputs(node="test_node")
+            assert inputs == {"success": True, "message": MOCK_INPUTS}
+            mock_request.assert_called_once_with(
+                "/input/get/test_node", msg="get list inputs"
+            )
+
+    @pytest.mark.asyncio
+    async def test_async_list_inputs_fields(self, emon_inputs):
+        """Test retrieving inputs with fields."""
+        with patch.object(
+            emon_inputs, "async_request", new=AsyncMock()
+        ) as mock_request:
+            mock_request.return_value = {
+                "success": True, "message": MOCK_INPUTS}
+            inputs = await emon_inputs.async_list_inputs_fields(
+                get_type=InputGetType.PROCESS_LIST
+            )
+            assert inputs == {"success": True, "message": MOCK_INPUTS}
+            mock_request.assert_called_once_with(
+                "/input/getinputs", msg="get list inputs fields"
+            )
+
+    @pytest.mark.asyncio
+    async def test_async_get_input_fields(self, emon_inputs):
+        """Test retrieving specific input fields."""
+        with patch.object(
+            emon_inputs, "async_request", new=AsyncMock()
+        ) as mock_request:
+            mock_request.return_value = {"id": 1, "name": "input1"}
+            input_fields = await emon_inputs.async_get_input_fields(
+                node="test_node", name="input1"
+            )
+            assert input_fields == {"id": 1, "name": "input1"}
+            mock_request.assert_called_once_with(
+                "/input/get/test_node/input1", msg="get list inputs fields"
+            )
+
+    @pytest.mark.asyncio
+    async def test_async_set_input_fields(self, emon_inputs):
+        """Test setting input fields."""
+        with patch.object(
+            emon_inputs, "async_request", new=AsyncMock()
+        ) as mock_request:
+            mock_request.return_value = True
+            result = await emon_inputs.async_set_input_fields(
+                input_id=1, fields={"key": "value"}
+            )
+            assert result is True
+            mock_request.assert_called_once_with(
+                path="/input/set",
+                params={"inputid": 1, "fields": {"key": "value"}},
+                msg="Set input fields",
+                request_type=RequestType.GET,
+            )
+
+    @pytest.mark.asyncio
+    async def test_async_set_input_process_list(self, emon_inputs):
+        """Test setting input process list."""
+        with patch.object(
+            emon_inputs, "async_request", new=AsyncMock()
+        ) as mock_request:
+            mock_request.return_value = True
+            result = await emon_inputs.async_set_input_process_list(
+                input_id=1, process_list="[]"
+            )
+            assert result is True
+            mock_request.assert_called_once_with(
+                path="/input/process/set",
+                params={"inputid": 1},
+                data={'processlist': '[]'},
+                json=None,
+                msg="Set input process list",
+                request_type=RequestType.POST,
+            )
+
+    @pytest.mark.asyncio
+    async def test_async_post_inputs(self, emon_inputs):
+        """Test posting input data points."""
+        with patch.object(
+            emon_inputs, "async_request", new=AsyncMock()
+        ) as mock_request:
+            mock_request.return_value = True
+            result = await emon_inputs.async_post_inputs(
+                node="test_node", data={"key": 123}
+            )
+            assert result is True
+            mock_request.assert_called_once_with(
+                path="/input/post",
+                params={"node": "test_node", "fulljson": {"key": 123}},
+                msg="Add input data point",
+                request_type=RequestType.GET,
+            )
 
 
 class TestAsyncEmonFeeds:
