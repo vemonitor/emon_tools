@@ -341,7 +341,16 @@ class Utils(Ut):
 
         # Validate 'tag' and 'name'
         for field in ['tag', 'name']:
-            if field not in data or not Utils.is_valid_node(data[field]):
+            if is_create and field not in data:
+                errors.append(
+                    f"Field '{field}' is required")
+            elif is_create\
+                    and not Utils.is_valid_node(data[field]):
+                errors.append(
+                    f"Invalid value for '{field}': {data.get(field)}")
+            elif not is_create\
+                    and field in data\
+                    and not Utils.is_valid_node(data[field]):
                 errors.append(
                     f"Invalid value for '{field}': {data.get(field)}")
 
