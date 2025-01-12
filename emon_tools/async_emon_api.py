@@ -218,11 +218,11 @@ class AsyncEmonRequest:
                     )
         except ClientError as err:
             error_msg = f"Client error: {msg} - {err}"
-            data[MESSAGE_KEY] = error_msg
+            result[MESSAGE_KEY] = error_msg
             self.logger.error(error_msg)
         except asyncio.TimeoutError:
             error_msg = f"Request {msg} timeout."
-            data[MESSAGE_KEY] = error_msg
+            result[MESSAGE_KEY] = error_msg
             self.logger.error(error_msg)
 
         return result
