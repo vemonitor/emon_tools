@@ -396,7 +396,7 @@ class TestEmonFeeds:
         """Test `prep_update_feed` method with invalid inputs."""
         with pytest.raises(ValueError):
             EmonFeeds.prep_update_feed(
-                feed_id=1, fields={"name": "@123 \/$*ù"})
+                feed_id=1, fields={"name": "@123 /$*ù"})
 
     def test_prep_delete_feed(self):
         """Test the `prep_delete_feed` method with valid inputs."""
