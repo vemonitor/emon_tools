@@ -115,7 +115,7 @@ class Utils(Ut):
                     elif filter_in and k in item and item[k] == v:
                         valid += 1
                     elif not filter_in\
-                            and (k in item or item[k] != v):
+                            and (k in item and item[k] != v):
                         valid += 1
                 if valid == len(filter_data):
                     result.append(item)
@@ -124,7 +124,7 @@ class Utils(Ut):
     @staticmethod
     def compute_input_list_to_string(
         process_list: list[tuple]
-    ) -> str:
+    ) -> list:
         """
         Compute string inputs process list to list of tuples.
         """
