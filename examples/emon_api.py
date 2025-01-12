@@ -1,43 +1,13 @@
-"""Emoncms API example."""
+"""
+Emoncms API example.
+
+Create EmonCms Inputs Feeds structure if not exist.
+"""
 import os
 import time
 from emon_tools.emon_api_core import EmonEngines
 from emon_tools.emon_api_core import EmonProcessList
 from emon_tools.emonpy import EmonPy
-
-
-def print_results(response, title):
-    """Prints the response."""
-    print("-" * 20)
-    print(title)
-    print("-" * 20)
-    if response is not None:
-        print("nb - ", len(response))
-    print(response)
-
-
-def print_emon_structure(extended_inputs):
-    """Prints the response."""
-    sep = "-" * 20
-    ident = "   "
-    print(sep)
-    print("Emoncms Inputs Feeds Structure")
-    print("nb inputs - ", len(extended_inputs))
-    print(sep)
-    if isinstance(extended_inputs, list):
-        for input_data in extended_inputs:
-            print("Input: ", input_data["name"])
-            print("Node: ", input_data["nodeid"])
-            print("Related feeds: ")
-            for feed in input_data["feeds"]:
-                print(ident, "id: ", feed["id"])
-                print(ident, "name: ", feed["name"])
-                print(ident, "node: ", feed["tag"])
-                print(ident, "last value: ", feed["value"])
-                print(ident, "last time: ", feed["time"])
-                print(sep)
-            print(sep)
-            print(sep)
 
 
 def get_emon_structure():
