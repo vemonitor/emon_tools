@@ -26,28 +26,25 @@ Security and validation:
   and sanitized to prevent injection attacks.
 - The API key is validated to ensure it is alphanumeric and secure.
 """
-import asyncio
-from enum import Enum
 import logging
-from dataclasses import dataclass, field
-from typing import Any, Optional, TypeVar, List, Dict
-from urllib.parse import quote, urljoin
-
-from aiohttp import ClientError, ClientSession
+from dataclasses import dataclass
+from typing import Any, Optional, TypeVar, List, Dict, Union
+from urllib.parse import quote, quote_plus, urljoin
+import simplejson as sjson
+import requests
 from emon_tools.api_utils import Utils as Ut
 from emon_tools.api_utils import HTTP_STATUS
 from emon_tools.api_utils import MESSAGE_KEY
 from emon_tools.api_utils import SUCCESS_KEY
+from emon_tools.emon_api_core import InputGetType
+from emon_tools.emon_api_core import RequestType
+from emon_tools.emon_api_core import EmonInputs
+from emon_tools.emon_api_core import EmonFeeds
+from emon_tools.emon_api_core import EmonHelper
 
 logging.basicConfig()
 
 Self = TypeVar("Self", bound="EmonRequest")
-
-
-class InputGetType(Enum):
-    """Remove Nan Method Enum"""
-    PROCESS_LIST = "process_list"
-    EXTENDED = "extended"
 
 
 @dataclass
@@ -70,72 +67,52 @@ class EmonRequest:
     url: str
     api_key: str
     request_timeout: int = 20
-    _session: Optional[ClientSession] = field(default=None, init=False)
-    _close_session: bool = field(default=False, init=False)
     logger = logging.getLogger(__name__)
 
     def __post_init__(self):
         """Validate and sanitize initialization parameters."""
-        self.url = self._sanitize_url(self.url)
-        self.api_key = self._validate_api_key(self.api_key)
+        self.url = EmonHelper.sanitize_url(self.url)
+        self.api_key = EmonHelper.validate_api_key(self.api_key)
 
-    @staticmethod
-    def _sanitize_url(url: str) -> str:
-        """
-        Ensure the URL is valid and properly formatted.
-
-        Args:
-            url (str): The base URL.
-
-        Returns:
-            str: Sanitized URL.
-
-        Raises:
-            ValueError: If the URL is empty or improperly formatted.
-        """
-        if not isinstance(url, str) or not url.strip():
-            raise TypeError("URL must be a non-empty string.")
-        if not (url.startswith("http://") or url.startswith("https://")):
-            raise ValueError("URL must start with 'http://' or 'https://'.")
-        return url.rstrip("/")  # Remove trailing slash for consistency.
-
-    @staticmethod
-    def _validate_api_key(api_key: str) -> str:
-        """
-        Validate the API key for proper format.
-
-        Args:
-            api_key (str): The API key.
-
-        Returns:
-            str: Validated API key.
-
-        Raises:
-            ValueError: If the API key is not a non-empty alphanumeric string.
-        """
-        if not isinstance(api_key, str) or not api_key.isalnum():
-            raise ValueError(
-                "API key must be a non-empty alphanumeric string."
+    def compute_response(
+        self,
+        response,
+        msg: str = None
+    ) -> Dict[str, Any]:
+        """Compute request response"""
+        data = {SUCCESS_KEY: False, MESSAGE_KEY: None}
+        if response.status_code in [200, 201]:
+            if response.headers.get('Content-Type') == 'text/plain':
+                response_data = response.text
+                if '"' in response_data:
+                    response_data = sjson.loads(response_data)
+            else:
+                response_data = response.json()
+            self.logger.debug(
+                "Response %s json: %s",
+                msg,
+                response_data
             )
-        return api_key
+            success, message = Ut.compute_response(
+                response_data
+            )
+            data[SUCCESS_KEY] = success
+            data[MESSAGE_KEY] = message
+        else:
+            error_msg = (
+                f"HTTP {msg} {response.status}: "
+                f"{HTTP_STATUS.get(response.status, 'Unknown error')}")
+            data[MESSAGE_KEY] = error_msg
+            self.logger.error(error_msg)
+        return data
 
-    @property
-    def session(self) -> ClientSession:
-        """
-        Get or create an aiohttp ClientSession.
-
-        Returns:
-            ClientSession: The active session for making HTTP requests.
-        """
-        if self._session is None:
-            self._session = ClientSession()
-            self._close_session = True
-        return self._session
-
-    async def async_request(
+    def execute_request(
         self,
         path: str,
-        params: Optional[Dict[str, Any]] = None
+        params: Optional[Dict[str, Any]] = None,
+        data: Optional[Dict[str, Any]] = None,
+        msg: str = None,
+        request_type: RequestType = RequestType.GET
     ) -> Dict[str, Any]:
         """
         Make a GET request to the Emoncms server.
@@ -152,7 +129,10 @@ class EmonRequest:
             ValueError: If the path is invalid or empty.
         """
         if not path or not isinstance(path, str):
-            raise ValueError("Path must be a non-empty string.")
+            raise ValueError(
+                f"request error: {msg}. "
+                "Path must be a non-empty string."
+                )
 
         # Encode unsafe characters in the path.
         path = quote(path.lstrip('/'), safe="/")
@@ -165,156 +145,70 @@ class EmonRequest:
         params["apikey"] = self.api_key
 
         # Validate and encode all parameters
-        encoded_params = {
-            key: quote(str(value), safe="")
-            for key, value in params.items()
-        }
+        encoded_params = {}
+        keys_unquote = []
+        for key, value in params.items():
+            is_not_object = isinstance(value, (float, str))\
+                and key not in keys_unquote
+            if is_not_object:
+                encoded_params[key] = quote_plus(str(value), safe="-")
+            elif request_type == RequestType.GET\
+                    and isinstance(value, (list, dict)):
+                encoded_params[key] = sjson.dumps(value)
+            else:
+                encoded_params[key] = value
 
-        data = {SUCCESS_KEY: False, MESSAGE_KEY: None}
+        result = {SUCCESS_KEY: False, MESSAGE_KEY: None}
         self.logger.debug(
-            "Requesting URL: %s with params: %s",
+            "Requesting %s - URL: %s with params: %s",
+            msg,
             full_url,
             encoded_params)
-
+        headers = {
+            'content-type': 'application/x-www-form-urlencoded',
+            'charset': 'UTF-8'
+        }
         try:
-            async with self.session.get(
-                full_url, timeout=self.request_timeout, params=encoded_params
-            ) as response:
-                if response.status == 200:
-                    success, message = Ut.compute_response(
-                        await response.json()
-                    )
-                    data[SUCCESS_KEY] = success
-                    data[MESSAGE_KEY] = message
-                else:
-                    error_msg = (
-                        f"HTTP {response.status}: "
-                        f"{HTTP_STATUS.get(response.status, 'Unknown error')}")
-                    data[MESSAGE_KEY] = error_msg
-                    self.logger.error(error_msg)
-        except ClientError as err:
-            error_msg = f"Client error: {err}"
+            response = None
+            if request_type == RequestType.GET:
+                response = requests.get(
+                    full_url,
+                    params=encoded_params,
+                    headers=headers,
+                    timeout=self.request_timeout)
+
+            elif request_type == RequestType.POST:
+                response = requests.post(
+                    full_url,
+                    params=encoded_params,
+                    data=data,
+                    headers=headers,
+                    timeout=self.request_timeout)
+
+            result = self.compute_response(
+                response=response,
+                msg=msg
+            )
+        except requests.exceptions.ConnectionError as err:
+            error_msg = f"Connection error: {err}"
             data[MESSAGE_KEY] = error_msg
             self.logger.error(error_msg)
-        except asyncio.TimeoutError:
+        except requests.exceptions.Timeout:
             error_msg = "Request timeout."
             data[MESSAGE_KEY] = error_msg
             self.logger.error(error_msg)
 
-        return data
-
-    async def close(self) -> None:
-        """Close the ClientSession if it was created internally."""
-        if self._session and self._close_session:
-            await self._session.close()
-
-    async def __aenter__(self) -> Self:
-        """Enter an asynchronous context manager."""
-        return self
-
-    async def __aexit__(self, *_exc_info: Any) -> None:
-        """Exit an asynchronous context manager and close the session."""
-        await self.close()
+        return result
 
 
 @dataclass
-class EmonReader(EmonRequest):
+class EmonInputsApi(EmonRequest):
     """
     Extended client for interacting with specific Emoncms endpoints.
 
-    Provides additional methods for fetching feed, input, and user data.
+    Provides additional methods for fetching inputs.
     """
-
-    async def async_list_feeds(self) -> Optional[List[Dict[str, Any]]]:
-        """
-        Retrieve the list of feeds.
-
-        Returns:
-            Optional[List[Dict[str, Any]]]: A list of feed dictionaries
-            or None if retrieval fails.
-        """
-        feed_data = await self.async_request("/feed/list.json")
-        if feed_data.get(SUCCESS_KEY):
-            return feed_data.get(MESSAGE_KEY)
-        self.logger.warning(
-            "Failed to list feeds: %s", feed_data.get(MESSAGE_KEY))
-        return None
-
-    async def async_get_feed_fields(
-        self,
-        feed_id: int
-    ) -> Optional[Dict[str, Any]]:
-        """
-        Get all fields for a specific feed by ID.
-
-        Args:
-            feed_id (int): The ID of the feed to retrieve.
-
-        Returns:
-            Optional[Dict[str, Any]]:
-                A dictionary of feed fields or None if the feed does not exist.
-        """
-        feed_id = Ut.validate_integer(feed_id, "Feed ID", positive=True)
-        params = {"id": feed_id}
-        response = await self.async_request("/feed/aget.json", params=params)
-        if response.get(SUCCESS_KEY):
-            return response.get(MESSAGE_KEY)
-        self.logger.warning(
-            "Failed to get feed fields: %s", response.get(MESSAGE_KEY))
-        return None
-
-    async def async_get_feed_meta(
-        self,
-        feed_id: int
-    ) -> Optional[Dict[str, Any]]:
-        """
-        Get metadata for a specific feed by ID.
-
-        Args:
-            feed_id (int): The ID of the feed to retrieve metadata for.
-
-        Returns:
-            Optional[Dict[str, Any]]: A dictionary of metadata
-                or None if the feed does not exist.
-        """
-        feed_id = Ut.validate_integer(feed_id, "Feed ID", positive=True)
-        params = {"id": feed_id}
-        feed_data = await self.async_request(
-            "/feed/getmeta.json",
-            params=params)
-        if feed_data.get(SUCCESS_KEY):
-            return feed_data.get(MESSAGE_KEY)
-        self.logger.warning(
-            "Failed to get feed meta: %s", feed_data.get(MESSAGE_KEY))
-        return None
-
-    async def async_get_last_value_feed(
-        self,
-        feed_id: int
-    ) -> Optional[Dict[str, Any]]:
-        """
-        Get the last time and value for a specific feed by ID.
-
-        Args:
-            feed_id (int): The ID of the feed to retrieve.
-
-        Returns:
-            Optional[Dict[str, Any]]:
-                A dictionary containing the last time and value
-                or None if the feed does not exist.
-        """
-        feed_id = Ut.validate_integer(feed_id, "Feed ID", positive=True)
-        params = {"id": feed_id}
-        feed_data = await self.async_request(
-            "/feed/timevalue.json",
-            params=params)
-        if feed_data.get(SUCCESS_KEY):
-            return feed_data.get(MESSAGE_KEY)
-        self.logger.warning(
-            "Failed to get last feed value: %s", feed_data.get(MESSAGE_KEY))
-        return None
-
-    async def async_list_inputs(
+    def list_inputs(
         self,
         node: Optional[str] = None
     ) -> Optional[List[Dict[str, Any]]]:
@@ -330,15 +224,15 @@ class EmonReader(EmonRequest):
             Optional[List[Dict[str, Any]]]: A list of input dictionaries
             or None if retrieval fails.
         """
-        path = f"/input/get/{quote(node)}" if node else "/input/get"
-        feed_data = await self.async_request(path)
-        if feed_data.get(SUCCESS_KEY):
-            return feed_data.get(MESSAGE_KEY)
-        self.logger.warning(
-            "Failed to list inputs: %s", feed_data.get(MESSAGE_KEY))
-        return None
+        path, _ = EmonInputs.prep_list_inputs(
+            node=node
+        )
+        return self.execute_request(
+            path,
+            msg="get list inputs"
+        )
 
-    async def async_list_inputs_fields(
+    def list_inputs_fields(
         self,
         get_type: InputGetType = InputGetType.PROCESS_LIST
     ) -> Optional[List[Dict[str, Any]]]:
@@ -357,19 +251,15 @@ class EmonReader(EmonRequest):
             Optional[List[Dict[str, Any]]]: A list of input dictionaries
             or None if retrieval fails.
         """
-        if get_type == InputGetType.PROCESS_LIST:
-            path = "/input/getinputs"
-        else:
-            path = "/input/list"
+        path, _ = EmonInputs.prep_list_inputs_fields(
+            get_type=get_type
+        )
+        return self.execute_request(
+            path,
+            msg="get list inputs fields"
+        )
 
-        feed_data = await self.async_request(path)
-        if feed_data.get(SUCCESS_KEY):
-            return feed_data.get(MESSAGE_KEY)
-        self.logger.warning(
-            "Failed to list inputs fields: %s", feed_data.get(MESSAGE_KEY))
-        return None
-
-    async def async_get_input_fields(
+    def get_input_fields(
         self,
         node: str,
         name: str
@@ -386,27 +276,218 @@ class EmonReader(EmonRequest):
                 A dictionary of input details
                 or None if the input does not exist.
         """
-        if not node or not name:
-            raise ValueError("Node and name must be non-empty strings.")
-        path = f"/input/get/{quote(node)}/{quote(name)}"
-        response = await self.async_request(path)
-        if response.get(SUCCESS_KEY):
-            return response.get(MESSAGE_KEY)
-        self.logger.warning(
-            "Failed to get input fields: %s", response.get(MESSAGE_KEY))
-        return None
+        path, _ = EmonInputs.prep_input_fields(
+            node=node,
+            name=name
+        )
+        return self.execute_request(
+            path,
+            msg="get list inputs fields"
+        )
+
+    def set_input_fields(
+        self,
+        input_id: int,
+        fields: dict
+    ) -> bool:
+        """
+        On error return a dict as:
+        - {"success": false, "message": "Invalid fields"}
+        """
+        path, params = EmonInputs.prep_set_input_fields(
+            input_id=input_id,
+            fields=fields
+        )
+        return self.execute_request(
+            path=path,
+            params=params,
+            msg="Set input fields",
+            request_type=RequestType.GET
+        )
+
+    def set_input_process_list(
+        self,
+        input_id: int,
+        process_list: str
+    ) -> bool:
+        """
+        On error return a dict as:
+        - {"success": false, "message": "Invalid fields"}
+        """
+        path, query_data = EmonInputs.prep_set_input_process_list(
+            input_id=input_id,
+            process_list=process_list
+        )
+        return self.execute_request(
+            path=path,
+            params=query_data.get('params'),
+            data=query_data.get('data'),
+            msg="Set input process list",
+            request_type=RequestType.POST
+        )
+
+    def post_inputs(
+        self,
+        node: str,
+        data: dict
+    ) -> bool:
+        """
+        On error return a dict as:
+        - {"success": false, "message": "Invalid fields"}
+        """
+        path, params = EmonInputs.prep_post_inputs(
+            node=node,
+            data=data
+        )
+        params['fulljson'] = sjson.dumps(params['fulljson'])
+        return self.execute_request(
+            path=path,
+            params=params,
+            msg="Add input data point",
+            request_type=RequestType.GET
+        )
 
 
 @dataclass
-class EmoncmsWrite(EmonRequest):
-    """Emoncms Write client Api."""
+class EmonFeedsApi(EmonInputsApi):
+    """
+    Extended client for interacting with specific Emoncms endpoints.
 
-    async def async_create_feed(self,
-                                name: str,
-                                tag: str,
-                                engine: Optional[int] = None,
-                                options: Optional[dict] = None
-                                ) -> Optional[dict[str, Any]]:
+    Provides additional methods for fetching feeds.
+    """
+
+    def list_feeds(self) -> Optional[List[Dict[str, Any]]]:
+        """
+        Retrieve the list of feeds.
+
+        Returns:
+            Optional[List[Dict[str, Any]]]: A list of feed dictionaries
+            or None if retrieval fails.
+        """
+        path, _ = EmonFeeds.prep_list_feeds()
+        return self.execute_request(
+            path=path,
+            msg="get list feeds"
+        )
+
+    def get_feed_fields(
+        self,
+        feed_id: int
+    ) -> Optional[Dict[str, Any]]:
+        """
+        Get all fields for a specific feed by ID.
+
+        Args:
+            feed_id (int): The ID of the feed to retrieve.
+
+        Returns:
+            Optional[Dict[str, Any]]:
+                A dictionary of feed fields or None if the feed does not exist.
+        """
+        path, params = EmonFeeds.prep_feed_fields(
+            feed_id=feed_id
+        )
+        return self.execute_request(
+            path=path,
+            params=params,
+            msg="get feed fields"
+        )
+
+    def get_feed_meta(
+        self,
+        feed_id: int
+    ) -> Optional[Dict[str, Any]]:
+        """
+        Get metadata for a specific feed by ID.
+
+        Args:
+            feed_id (int): The ID of the feed to retrieve metadata for.
+
+        Returns:
+            Optional[Dict[str, Any]]: A dictionary of metadata
+                or None if the feed does not exist.
+        """
+        path, params = EmonFeeds.prep_feed_meta(
+            feed_id=feed_id
+        )
+        return self.execute_request(
+            path,
+            params=params,
+            msg="get feed meta"
+        )
+
+    def get_last_value_feed(
+        self,
+        feed_id: int
+    ) -> Optional[Dict[str, Any]]:
+        """
+        Get the last time and value for a specific feed by ID.
+
+        Args:
+            feed_id (int): The ID of the feed to retrieve.
+
+        Returns:
+            Optional[Dict[str, Any]]:
+                A dictionary containing the last time and value
+                or None if the feed does not exist.
+        """
+        path, params = EmonFeeds.prep_last_value_feed(
+            feed_id=feed_id
+        )
+        return self.execute_request(
+            path,
+            params=params,
+            msg="get last feed value"
+        )
+
+    def get_fetch_feed_data(
+        self,
+        feed_id: int,
+        start: int,
+        end: int,
+        interval: int,
+        average: bool = False,
+        time_format: str = "unix",
+        skip_missing: bool = False,
+        limi_interval: bool = False,
+        delta: bool = False
+    ) -> Optional[Dict[str, Any]]:
+        """
+        Fetch feed data from specic time.
+
+        Args:
+            node (str): The name of the node containing the input.
+            name (str): The name of the input to retrieve.
+
+        Returns:
+            Optional[Dict[str, Any]]:
+                A dictionary of input details
+                or None if the input does not exist.
+        """
+        path, params = EmonFeeds.prep_fetch_feed_data(
+            feed_id=feed_id,
+            start=start,
+            end=end,
+            interval=interval,
+            average=average,
+            time_format=time_format,
+            skip_missing=skip_missing,
+            limi_interval=limi_interval,
+            delta=delta
+        )
+        return self.execute_request(
+            path,
+            params=params,
+            msg="fetch data points"
+        )
+
+    def create_feed(
+        self,
+        name: str,
+        tag: str,
+        engine: Optional[int] = None,
+        options: Optional[dict] = None
+    ) -> Optional[dict[str, Any]]:
         """
         Create new feed.
         On error return a dict as:
@@ -423,7 +504,7 @@ class EmoncmsWrite(EmonRequest):
         [see valid engines here](https://github.com/emoncms/emoncms/blob/master/Lib/enum.php#L40)
 
         :Example :
-            - > await async_create_feed( name"tmp" ) => 1
+            - > await create_feed( name"tmp" ) => 1
             - > UType.is_str(value="tmp", not_null=True) => True
             - > UType.is_str( 0 ) => False
         :param name: Name of the new Feed
@@ -432,18 +513,127 @@ class EmoncmsWrite(EmonRequest):
         :param options: Dict of options
         :return: True if the given value is a str instance, otherwise False.
         """
-        result = None
-        if Ut.is_valid_node(name)\
-                and Ut.is_valid_node(tag):
-            params = {
-                "apikey": self.api_key,
-                "tag": tag,
-                "name": name,
-                "engine": engine,
-                "options": options
-            }
-            feed_data = await self.async_request(
-                "/feed/create.json", params=params)
-            if feed_data.get(SUCCESS_KEY):
-                return feed_data.get(MESSAGE_KEY)
-        return result
+        path, params = EmonFeeds.prep_create_feed(
+            name=name,
+            tag=tag,
+            engine=engine,
+            options=options
+        )
+        return self.execute_request(
+            path=path,
+            params=params,
+            msg="create feed",
+            request_type=RequestType.GET
+        )
+
+    def update_feed(
+        self,
+        feed_id: int,
+        fields: dict
+    ) -> Optional[dict[str, Any]]:
+        """
+        Update feed fields.
+        On error return a dict as:
+        - {"success": false, "message": "Invalid fields"}
+        """
+        path, params = EmonFeeds.prep_update_feed(
+            feed_id=feed_id,
+            fields=fields
+        )
+        return self.execute_request(
+            path=path,
+            params=params,
+            msg="update feed fields"
+        )
+
+    def delete_feed(
+        self,
+        feed_id: int
+    ) -> Optional[dict[str, Any]]:
+        """
+        Delete existant feed.
+        On error return a dict as:
+        - {"success": false, "message": "Invalid fields"}
+        """
+        path, params = EmonFeeds.prep_delete_feed(
+            feed_id=feed_id
+        )
+        return self.execute_request(
+            path=path,
+            params=params,
+            msg="delete feed"
+        )
+
+    def add_data_point(
+        self,
+        feed_id: int,
+        time: int,
+        value: Union[int, float]
+    ) -> bool:
+        """
+        Add data point to feed id.
+        On error return a dict as:
+        - {"success": false, "message": "Invalid fields"}
+        """
+        path, params = EmonFeeds.prep_add_data_point(
+            feed_id=feed_id,
+            time=time,
+            value=value
+        )
+        return self.execute_request(
+            path=path,
+            params=params,
+            msg="add feed data point"
+        )
+
+    def add_data_points(
+        self,
+        feed_id: int,
+        data: list[list[int, Union[int, float]]]
+    ) -> bool:
+        """
+        Add data points to feed id.
+        On error return a dict as:
+        - {"success": false, "message": "Invalid fields"}
+        """
+        path, params = EmonFeeds.prep_add_data_points(
+            feed_id=feed_id,
+            data=data
+        )
+        return self.execute_request(
+            path=path,
+            params=params,
+            msg="add feed data points"
+        )
+
+    def delete_data_point(
+        self,
+        feed_id: int,
+        time: int
+    ) -> bool:
+        """
+        Delete data point by time from feed id.
+        On error return a dict as:
+        - {"success": false, "message": "Invalid fields"}
+        """
+        path, params = EmonFeeds.prep_delete_data_point(
+            feed_id=feed_id,
+            time=time
+        )
+        return self.execute_request(
+            path=path,
+            params=params,
+            msg="delete feed data point"
+        )
+
+    def add_feed_process_list(
+        self,
+        feed_id: int,
+        process_id: int,
+        process: int
+    ) -> bool:
+        """
+
+        On error return a dict as:
+        - {"success": false, "message": "Invalid fields"}
+        """
