@@ -1,0 +1,4 @@
+# Eg. http://127.0.0.1:8080
+EMONCMS_URL="MY_EMONCMS_BASE_URL"
+# Emoncms write api key
+API_KEY="MY_EMONCMS_WRITE_API_KEY"
