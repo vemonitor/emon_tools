@@ -93,7 +93,8 @@ class TestApiUtils:
 
     def test_get_formatted_feed_name(self):
         """Test the get_formatted_feed_name method."""
-        assert Utils.get_formatted_feed_name("Node1", "Feed1") == "node:Node1:Feed1"
+        assert Utils.get_formatted_feed_name(
+            "Node1", "Feed1") == "node:Node1:Feed1"
         assert Utils.get_formatted_feed_name("", "Feed1") is None
         assert Utils.get_formatted_feed_name("Node1", None) is None
         assert Utils.get_formatted_feed_name(None, None) is None
@@ -147,7 +148,8 @@ class TestApiUtils:
         """Test the validate_time_series_data_point method."""
         assert Utils.validate_time_series_data_point(1672531200, 42.5) is True
 
-        with pytest.raises(ValueError, match="time must be a positive integer"):
+        with pytest.raises(
+                ValueError, match="time must be a positive integer"):
             Utils.validate_time_series_data_point(-1, 42.5)
 
         with pytest.raises(ValueError, match="value must be a number"):
