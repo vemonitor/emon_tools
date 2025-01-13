@@ -942,3 +942,11 @@ class EmonFeeds:
         On error return a dict as:
         - {"success": false, "message": "Invalid fields"}
         """
+        feed_id = Ut.validate_integer(feed_id, "Feed ID", positive=True)
+        process_id = Ut.validate_integer(process_id, "Process ID")
+        process = Ut.validate_integer(process, "Process")
+        params = {
+            "feed_id": feed_id,
+            "processlist": f"{process}:{process_id}"
+        }
+        return "/feed/process/set.json", params
