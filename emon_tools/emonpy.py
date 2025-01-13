@@ -55,9 +55,9 @@ class EmonPy(EmonFeedsApi):
     def create_inputs(
         self,
         inputs=list
-    ):
+    ) -> int:
         """Create input feeds structure"""
-        result = False
+        result = 0
         if Ut.is_list(inputs, not_empty=True):
             inputs_tmp = {}
             for item in inputs:
@@ -66,23 +66,23 @@ class EmonPy(EmonFeedsApi):
                     inputs_tmp[node] = set()
                 inputs_tmp[node].add((item.get('name'), 0))
 
-                if Ut.is_dict(inputs_tmp, not_empty=True):
-                    for node, items in inputs_tmp.items():
-                        data = {
-                            tmp[0]: tmp[1]
-                            for tmp in items
-                        }
-                        new_inputs = self.post_inputs(
-                            node=node,
-                            data=data
+            if Ut.is_dict(inputs_tmp, not_empty=True):
+                for node, items in inputs_tmp.items():
+                    data = {
+                        tmp[0]: tmp[1]
+                        for tmp in items
+                    }
+                    new_inputs = self.post_inputs(
+                        node=node,
+                        data=data
+                    )
+                    if new_inputs.get(SUCCESS_KEY) is False:
+                        raise ValueError(
+                            "Fatal error: "
+                            "Unable to set inputs structure "
+                            f"node {node} - names {items}"
                         )
-                        if new_inputs.get(SUCCESS_KEY) is False:
-                            raise ValueError(
-                                "Fatal error: "
-                                "Unable to set inputs structure "
-                                f"node {node} - names {items}"
-                            )
-                    result = True
+                    result += len(items)
 
         return result
 
@@ -91,7 +91,7 @@ class EmonPy(EmonFeedsApi):
         structure: list
     ):
         """Initialyze inputs structure from EmonCms API."""
-        result = None
+        result = 0
         if Ut.is_list(structure, not_empty=True):
             filter_inputs = EmonHelper.get_inputs_filters_from_structure(
                 structure=structure
@@ -162,17 +162,21 @@ class EmonPy(EmonFeedsApi):
         input_id: int,
         current: str,
         description: str
-    ):
+    ) -> int:
         """Initialyze inputs structure from EmonCms API."""
-        result = None
+        result = 0
+        response = None
         Ut.validate_integer(input_id, "Input Id", positive=True)
         if Ut.is_valid_node(description)\
                 and current != description:
             fields = {"description": description}
-            result = self.set_input_fields(
+            response = self.set_input_fields(
                 input_id=input_id,
                 fields=fields
             )
+        if Ut.is_request_success(response)\
+                and response[MESSAGE_KEY] == 'Field updated':
+            result += 1
         return result
 
     def update_input_process_list(
@@ -182,7 +186,7 @@ class EmonPy(EmonFeedsApi):
         new_processes: list
     ):
         """Initialyze inputs structure from EmonCms API."""
-        result = None
+        result = 0
         process_list = EmonHelper.format_process_list(new_processes)
 
         nb_process = len(process_list)
@@ -196,10 +200,13 @@ class EmonPy(EmonFeedsApi):
         if nb_process > 0\
                 and nb_current != nb_process:
             process_list = ','.join(process_list)
-            result = self.set_input_process_list(
+            response = self.set_input_process_list(
                 input_id=input_id,
                 process_list=process_list
             )
+            if Ut.is_request_success(response)\
+                    and response[MESSAGE_KEY] == 'Input processlist updated':
+                result += 1
         return result
 
     def create_structure(
