@@ -57,21 +57,132 @@ class TestApiUtils:
         assert Utils.compute_response(
             123) == (False, "Invalid response")
 
-    def test_filter_list_of_dicts(self):
-        """Test the filter_list_of_dicts method."""
-        input_data = [
-            {"key1": "value1", "key2": "value2"},
-            {"key1": "value3", "key2": "value4"},
-        ]
-        filter_data = {"key1": "value1"}
+    @pytest.mark.parametrize(
+        "input_data, filter_data, filter_in, expected",
+        [
+            # Test: Exact match (filter_in=True)
+            (
+                [
+                    {
+                        "name": "I1", "nodeid": "emon_tools_ex1",
+                        "description": "Managed Input"},
+                    {
+                        "name": "I2", "nodeid": "emon_tools_ex1",
+                        "description": "Managed Input"},
+                    {
+                        "name": "I3", "nodeid": "emon_tools_ex1",
+                        "description": "Managed Input"},
+                ],
+                {"name": "I1", "nodeid": "emon_tools_ex1"},
+                True,
+                [{
+                    "name": "I1", "nodeid": "emon_tools_ex1",
+                    "description": "Managed Input"}],
+            ),
+            # Test: No match (filter_in=True)
+            (
+                [
+                    {
+                        "name": "I2", "nodeid": "emon_tools_ex1",
+                        "description": "Managed Input"},
+                    {
+                        "name": "I3", "nodeid": "emon_tools_ex1",
+                        "description": "Managed Input"},
+                ],
+                {"name": "I1", "nodeid": "emon_tools_ex1"},
+                True,
+                [],
+            ),
+            # Test: Negate match (filter_in=False)
+            (
+                [
+                    {
+                        "name": "I1", "nodeid": "emon_tools_ex1",
+                        "description": "Managed Input"},
+                    {
+                        "name": "I2", "nodeid": "emon_tools_ex1",
+                        "description": "Managed Input"},
+                    {
+                        "name": "I3", "nodeid": "emon_tools_ex1",
+                        "description": "Managed Input"},
+                ],
+                {"name": "I1", "nodeid": "emon_tools_ex1"},
+                False,
+                [
+                    {
+                        "name": "I2", "nodeid": "emon_tools_ex1",
+                        "description": "Managed Input"},
+                    {
+                        "name": "I3", "nodeid": "emon_tools_ex1",
+                        "description": "Managed Input"},
+                ],
+            ),
+            # Test: Empty filter data
+            (
+                [
+                    {
+                        "name": "I1", "nodeid": "emon_tools_ex1",
+                        "description": "Managed Input"},
+                    {
+                        "name": "I2", "nodeid": "emon_tools_ex1",
+                        "description": "Managed Input"},
+                ],
+                {},
+                True,
+                [],
+            ),
+            # Test: Empty input data
+            (
+                [],
+                {"name": "I1", "nodeid": "emon_tools_ex1"},
+                True,
+                [],
+            ),
+            # Test: Partial key-value match
+            (
+                [
+                    {
+                        "name": "I1", "nodeid": "emon_tools_ex1",
+                        "description": "Managed Input"},
+                    {
+                        "name": "I2", "nodeid": "emon_tools_ex2",
+                        "description": "Managed Input"},
+                    {
+                        "name": "I3", "nodeid": "emon_tools_ex1",
+                        "description": "Managed Input"},
+                ],
+                {"nodeid": "emon_tools_ex1"},
+                True,
+                [
+                    {
+                        "name": "I1", "nodeid": "emon_tools_ex1",
+                        "description": "Managed Input"},
+                    {
+                        "name": "I3", "nodeid": "emon_tools_ex1",
+                        "description": "Managed Input"},
+                ],
+            ),
+        ],
+    )
+    def test_filter_list_of_dicts(
+        self,
+        input_data,
+        filter_data,
+        filter_in, expected
+    ):
+        """
+        Test the filter_list_of_dicts method with various scenarios.
 
+        Args:
+            input_data (list): The input list of dictionaries to filter.
+            filter_data (dict): The dictionary of filter conditions.
+            filter_in (bool): Whether to include or exclude matching items.
+            expected (list): The expected result after filtering.
+        """
         result = Utils.filter_list_of_dicts(
-            input_data, filter_data, filter_in=True)
-        assert result == [{"key1": "value1", "key2": "value2"}]
-
-        result = Utils.filter_list_of_dicts(
-            input_data, filter_data, filter_in=False)
-        assert result == [{"key1": "value3", "key2": "value4"}]
+            input_data=input_data, filter_data=filter_data, filter_in=filter_in
+        )
+        assert result == expected, f"Expected {expected}, got {result}"
 
     def test_compute_input_list_to_string(self):
         """Test the compute_input_list_to_string method."""
