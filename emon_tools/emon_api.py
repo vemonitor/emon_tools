@@ -1,7 +1,7 @@
 """
 Emoncms Client for interacting with feed, input, and user data.
 
-This module provides an asynchronous client
+This module provides an synchronous client
 to communicate with an Emoncms server,
 allowing users to retrieve feeds, inputs,
 and other related data through the Emoncms API.
@@ -15,11 +15,6 @@ Emoncms API behavior:
     - `/feed/basket.json` if the route is invalid.
   - The route `/feed/list.json` always returns an array of JSON objects,
     which can be empty if no feeds exist.
-- For the `user` module:
-  - A non-existing JSON route responds with `false`,
-    which is not a JSON object.
-  - This behavior can result in a `TypeError`
-    when accessing keys in the response.
 
 Security and validation:
 - Parameters such as `url`, `path`, and query parameters are validated
@@ -100,8 +95,8 @@ class EmonRequest:
             data[MESSAGE_KEY] = message
         else:
             error_msg = (
-                f"HTTP {msg} {response.status}: "
-                f"{HTTP_STATUS.get(response.status, 'Unknown error')}")
+                f"HTTP {msg} {response.status_code}: "
+                f"{HTTP_STATUS.get(response.status_code, 'Unknown error')}")
             data[MESSAGE_KEY] = error_msg
             self.logger.error(error_msg)
         return data
@@ -191,11 +186,11 @@ class EmonRequest:
             )
         except requests.exceptions.ConnectionError as err:
             error_msg = f"Connection error: {err}"
-            data[MESSAGE_KEY] = error_msg
+            result[MESSAGE_KEY] = error_msg
             self.logger.error(error_msg)
         except requests.exceptions.Timeout:
             error_msg = "Request timeout."
-            data[MESSAGE_KEY] = error_msg
+            result[MESSAGE_KEY] = error_msg
             self.logger.error(error_msg)
 
         return result
@@ -339,7 +334,6 @@ class EmonInputsApi(EmonRequest):
             node=node,
             data=data
         )
-        params['fulljson'] = sjson.dumps(params['fulljson'])
         return self.execute_request(
             path=path,
             params=params,
@@ -637,3 +631,13 @@ class EmonFeedsApi(EmonInputsApi):
         On error return a dict as:
         - {"success": false, "message": "Invalid fields"}
         """
+        path, params = EmonFeeds.prep_add_feed_process_list(
+            feed_id=feed_id,
+            process_id=process_id,
+            process=process
+        )
+        return self.execute_request(
+            path=path,
+            params=params,
+            msg="add_feed_process_list"
+        )
