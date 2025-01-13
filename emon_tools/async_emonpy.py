@@ -182,19 +182,20 @@ class AsyncEmonPy(AsyncEmonFeeds):
         new_processes: list
     ):
         """Initialyze inputs structure from EmonCms API."""
-        result = None
+        result = []
         process_list = EmonHelper.format_process_list(new_processes)
 
         nb_process = len(process_list)
-        nb_current = 0
+
         if Ut.is_str(current_processes) and nb_process > 0:
             currents = EmonHelper.format_string_process_list(current_processes)
             if Ut.is_set(currents, not_empty=True):
-                nb_current = len(currents)
+                # Skip update if processes are the same
+                if currents == process_list:
+                    return []
                 process_list = process_list.union(currents)
 
-        if nb_process > 0\
-                and nb_current != nb_process:
+        if nb_process > 0:
             process_list = ','.join(process_list)
             result = await self.async_set_input_process_list(
                 input_id=input_id,
