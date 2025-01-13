@@ -103,21 +103,18 @@ class Utils(Ut):
         result = []
         if Ut.is_list(input_data, not_empty=True)\
                 and Ut.is_dict(filter_data, not_empty=True):
+            nb_filters = len(filter_data)
             for item in input_data:
                 valid = 0
                 for k, v in filter_data.items():
                     if isinstance(v, list):
                         is_in = k in item and item[k] in v
-                        if is_in and filter_in:
+                        if is_in:
                             valid += 1
-                        elif not is_in and not filter_in:
-                            valid += 1
-                    elif filter_in and k in item and item[k] == v:
+                    elif k in item and item[k] == v:
                         valid += 1
-                    elif not filter_in\
-                            and (k in item and item[k] != v):
-                        valid += 1
-                if valid == len(filter_data):
+                if filter_in is True and valid == nb_filters\
+                        or (not filter_in and valid != nb_filters):
                     result.append(item)
         return result
 
