@@ -29,6 +29,21 @@ class TestUtils:
         assert Utils.is_dict({}, not_empty=True) is False
         assert Utils.is_dict("not a dict") is False
 
+    def test_is_set(self):
+        """Test is_set method."""
+        assert Utils.is_set({"key", "value"}) is True
+        assert Utils.is_set(set()) is True
+        assert Utils.is_set(set(), not_empty=True) is False
+        assert Utils.is_set("not a dict") is False
+
+    def test_is_tuple(self):
+        """Test is_tuple method."""
+        assert Utils.is_tuple(("key", "value")) is True
+        assert Utils.is_tuple(tuple()) is True
+        assert Utils.is_tuple((1, )) is True
+        assert Utils.is_tuple(tuple(), not_empty=True) is False
+        assert Utils.is_tuple("not a dict") is False
+
     def test_validate_number_valid(self):
         """Test validate_number with valid input."""
         assert Utils.validate_number(10, "test_field", positive=True) == 10
