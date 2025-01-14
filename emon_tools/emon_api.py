@@ -75,7 +75,7 @@ class EmonRequest:
         msg: str = None
     ) -> Dict[str, Any]:
         """Compute request response"""
-        data = {SUCCESS_KEY: False, MESSAGE_KEY: None}
+        result = {SUCCESS_KEY: False, MESSAGE_KEY: None}
         if response.status_code in [200, 201]:
             if response.headers.get('Content-Type') == 'text/plain':
                 response_data = response.text
@@ -88,18 +88,16 @@ class EmonRequest:
                 msg,
                 response_data
             )
-            success, message = Ut.compute_response(
+            result = Ut.compute_response(
                 response_data
             )
-            data[SUCCESS_KEY] = success
-            data[MESSAGE_KEY] = message
         else:
             error_msg = (
                 f"HTTP {msg} {response.status_code}: "
                 f"{HTTP_STATUS.get(response.status_code, 'Unknown error')}")
-            data[MESSAGE_KEY] = error_msg
+            result[MESSAGE_KEY] = error_msg
             self.logger.error(error_msg)
-        return data
+        return result
 
     def execute_request(
         self,

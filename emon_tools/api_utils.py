@@ -68,7 +68,7 @@ class Utils(Ut):
 
     @staticmethod
     def compute_response(
-        result: Union[dict, list, str, None]
+        response: Union[dict, list, str, None]
     ) -> tuple[bool, Union[str, list, dict]]:
         """
         Computes and interprets the response from Emoncms.
@@ -76,20 +76,31 @@ class Utils(Ut):
         :param result: The response from Emoncms.
         :return: A tuple of success status and message.
         """
-        is_dict = isinstance(result, dict)
-        if is_dict and all(
-                k in result for k in (SUCCESS_KEY, MESSAGE_KEY)):
-            return bool(result[SUCCESS_KEY]), str(result[MESSAGE_KEY])
+        result = {SUCCESS_KEY: False, MESSAGE_KEY: "Invalid response"}
+        is_dict = isinstance(response, dict)
+        is_json = is_dict\
+            and SUCCESS_KEY in response\
+            and MESSAGE_KEY in response
+        if is_json:
+            result[SUCCESS_KEY] = bool(response[SUCCESS_KEY])
+            extra = Utils.filter_dict_by_keys(
+                input_data=response,
+                filter_data=[SUCCESS_KEY],
+                filter_in=False
+            )
+            if Ut.is_dict(extra, not_empty=True):
+                result[SUCCESS_KEY] = bool(response[SUCCESS_KEY])
+                del result[MESSAGE_KEY]
+                result.update(extra)
 
-        if is_dict and SUCCESS_KEY in result and len(result) == 1:
-            return bool(result[SUCCESS_KEY]), ''
+        elif is_dict and SUCCESS_KEY in response and len(response) == 1:
+            result[SUCCESS_KEY] = bool(response[SUCCESS_KEY])
+            result[MESSAGE_KEY] = ''
 
-        if is_dict:
-            return True, result
-
-        if isinstance(result, (list, str)):
-            return True, result
-        return False, "Invalid response"
+        elif isinstance(response, (list, dict, str, int, float)):
+            result[SUCCESS_KEY] = True
+            result[MESSAGE_KEY] = response
+        return result
 
     @staticmethod
     def filter_dict_by_keys(
