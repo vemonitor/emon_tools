@@ -97,7 +97,7 @@ class AsyncEmonRequest:
         msg: str = None
     ) -> Dict[str, Any]:
         """Compute request response"""
-        data = {SUCCESS_KEY: False, MESSAGE_KEY: None}
+        result = {SUCCESS_KEY: False, MESSAGE_KEY: None}
         if response.status == 200:
             if response.content_type == 'text/plain':
                 response_data = await response.text()
@@ -110,18 +110,16 @@ class AsyncEmonRequest:
                 msg,
                 response_data
             )
-            success, message = Ut.compute_response(
+            result = Ut.compute_response(
                 response_data
             )
-            data[SUCCESS_KEY] = success
-            data[MESSAGE_KEY] = message
         else:
             error_msg = (
                 f"HTTP {msg} {response.status}: "
                 f"{HTTP_STATUS.get(response.status, 'Unknown error')}")
-            data[MESSAGE_KEY] = error_msg
+            result[MESSAGE_KEY] = error_msg
             self.logger.error(error_msg)
-        return data
+        return result
 
     async def async_request(
         self,

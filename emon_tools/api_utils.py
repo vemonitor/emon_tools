@@ -68,7 +68,7 @@ class Utils(Ut):
 
     @staticmethod
     def compute_response(
-        result: Union[dict, list, str, None]
+        response: Union[dict, list, str, None]
     ) -> tuple[bool, Union[str, list, dict]]:
         """
         Computes and interprets the response from Emoncms.
@@ -76,20 +76,51 @@ class Utils(Ut):
         :param result: The response from Emoncms.
         :return: A tuple of success status and message.
         """
-        is_dict = isinstance(result, dict)
-        if is_dict and all(
-                k in result for k in (SUCCESS_KEY, MESSAGE_KEY)):
-            return bool(result[SUCCESS_KEY]), str(result[MESSAGE_KEY])
+        result = {SUCCESS_KEY: False, MESSAGE_KEY: "Invalid response"}
+        is_dict = isinstance(response, dict)
+        is_json = is_dict\
+            and SUCCESS_KEY in response\
+            and MESSAGE_KEY in response
+        if is_json:
+            result[SUCCESS_KEY] = bool(response[SUCCESS_KEY])
+            extra = Utils.filter_dict_by_keys(
+                input_data=response,
+                filter_data=[SUCCESS_KEY],
+                filter_in=False
+            )
+            if Ut.is_dict(extra, not_empty=True):
+                result[SUCCESS_KEY] = bool(response[SUCCESS_KEY])
+                del result[MESSAGE_KEY]
+                result.update(extra)
 
-        if is_dict and SUCCESS_KEY in result and len(result) == 1:
-            return bool(result[SUCCESS_KEY]), ''
+        elif is_dict and SUCCESS_KEY in response and len(response) == 1:
+            result[SUCCESS_KEY] = bool(response[SUCCESS_KEY])
+            result[MESSAGE_KEY] = ''
 
-        if is_dict:
-            return True, result
+        elif isinstance(response, (list, dict, str, int, float)):
+            result[SUCCESS_KEY] = True
+            result[MESSAGE_KEY] = response
+        return result
 
-        if isinstance(result, (list, str)):
-            return True, result
-        return False, "Invalid response"
+    @staticmethod
+    def filter_dict_by_keys(
+        input_data: dict,
+        filter_data: list,
+        filter_in: bool = True
+    ) -> list[dict]:
+        """
+        Extracts a specific items from input data list.
+        """
+        result = None
+        if Ut.is_dict(input_data, not_empty=True)\
+                and Ut.is_list(filter_data, not_empty=True):
+            result = {
+                x: input_data[x]
+                for x in input_data
+                if filter_in and x in filter_data
+                or not filter_in and x not in filter_data
+            }
+        return result
 
     @staticmethod
     def filter_list_of_dicts(
@@ -146,23 +177,6 @@ class Utils(Ut):
         result = []
         if isinstance(process_list, str) and len(process_list) > 0:
             result = Utils.get_process_to_list(process_list)
-        return result
-
-    @staticmethod
-    def compute_inputs_list_processes(
-        input_data: list[dict]
-    ) -> list[dict]:
-        """
-        Compute string inputs process list to list of tuples.
-        """
-        result = []
-        if isinstance(input_data, list) and len(input_data) > 0:
-            for item in input_data:
-                process = Utils.get_process_to_list(item['processList'])
-                tmp = item.copy()
-                if isinstance(process, list) and len(process) > 0:
-                    tmp['processList'] = process
-                result.append(tmp)
         return result
 
     @staticmethod
@@ -237,9 +251,10 @@ class Utils(Ut):
         :param process: The input string.
         :return: A list of strings, or None if the input is invalid.
         """
+        result = None
         if isinstance(process, str) and process.strip():
-            return [item.strip() for item in process.split(',')]
-        return None
+            result = [item.strip() for item in process.split(',')]
+        return result
 
     @staticmethod
     def split_process(process: Union[str, None]) -> Optional[tuple]:
@@ -249,14 +264,15 @@ class Utils(Ut):
         :param process: The process string.
         :return: A tuple of integers, or None if invalid.
         """
+        result = None
         if isinstance(process, str) and ':' in process:
             parts = process.split(':')
             if len(parts) == 2:
                 proc, feed_id = map(
                     lambda x: int(x) if x.isdigit() else 0, parts)
                 if proc > 0 and feed_id > 0:
-                    return proc, feed_id
-        return None
+                    result = proc, feed_id
+        return result
 
     @staticmethod
     def get_process_to_list(process: Union[str, None]) -> list:
@@ -266,14 +282,15 @@ class Utils(Ut):
         :param process: The process string.
         :return: A list of tuples.
         """
+        result = []
         if isinstance(process, str):
             items = Utils.get_comma_separated_values_to_list(process)
-            return [
+            result = [
                 Utils.split_process(item)
                 for item in items
                 if Utils.split_process(item)
             ]
-        return []
+        return result
 
     @staticmethod
     def get_list_to_comma_separated_values(process: Union[list, None]) -> str:
@@ -283,43 +300,13 @@ class Utils(Ut):
         :param process: The input list.
         :return: A comma-separated string.
         """
+        result = ""
         if isinstance(process, list):
-            return ','.join(
+            result = ','.join(
                 f"{item[0]}:{item[1]}"
                 if isinstance(item, tuple) and len(item) == 2 else str(item)
                 for item in process
             )
-        return ""
-
-    @staticmethod
-    def prepare_feed_data(
-        data: Union[dict, None],
-        is_create: bool = True
-    ) -> Optional[dict]:
-        """
-        Prepares feed data for creation or update.
-
-        :param data: The feed data dictionary.
-        :param is_create: Indicates whether the operation is a creation.
-        :return: A formatted dictionary, or None if input is invalid.
-        """
-        if not isinstance(data, dict):
-            return None
-
-        result = {
-            key: data[key]
-            for key in (
-                'tag', 'name', 'unit', 'public',
-                'datatype', 'engine', 'interval')
-            if key in data and (
-                not is_create
-                or key not in ('datatype', 'engine', 'interval')
-                or isinstance(data[key], int))
-        }
-
-        if 'interval' in result:
-            result['options'] = f'{{"interval":{result.pop("interval")}}}'
-
         return result
 
     @staticmethod

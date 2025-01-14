@@ -1,6 +1,6 @@
 """Tests for emon_tools.api_utils module."""
 import pytest
-from emon_tools.api_utils import Utils
+from emon_tools.api_utils import MESSAGE_KEY, SUCCESS_KEY, Utils
 
 
 class TestApiUtils:
@@ -46,16 +46,110 @@ class TestApiUtils:
         assert Utils.is_request_success({"success": "false"}) is False
         assert Utils.is_request_success("not a dict") is False
 
-    def test_compute_response(self):
+    @pytest.mark.parametrize(
+        "response, expected_response",
+        [
+            (
+                {SUCCESS_KEY: True, MESSAGE_KEY: "ok"},
+                {SUCCESS_KEY: True, MESSAGE_KEY: "ok"}
+            ),
+            (
+                {SUCCESS_KEY: True, MESSAGE_KEY: "ok", "key1": "value1"},
+                {SUCCESS_KEY: True, MESSAGE_KEY: "ok", "key1": "value1"}
+            ),
+            (
+                {SUCCESS_KEY: False, MESSAGE_KEY: "error"},
+                {SUCCESS_KEY: False, MESSAGE_KEY: "error"}
+            ),
+            (
+                {SUCCESS_KEY: True},
+                {SUCCESS_KEY: True, MESSAGE_KEY: ""}
+            ),
+            (
+                "simple message",
+                {SUCCESS_KEY: True, MESSAGE_KEY: "simple message"}
+            ),
+            (
+                123,
+                {SUCCESS_KEY: True, MESSAGE_KEY: 123}
+            ),
+            (
+                [1, 2, 3, 4, 5],
+                {SUCCESS_KEY: True, MESSAGE_KEY: [1, 2, 3, 4, 5]}
+            ),
+            (
+                {'a': 1, 'b': 2},
+                {SUCCESS_KEY: True, MESSAGE_KEY: {'a': 1, 'b': 2}}
+            )
+
+        ]
+    )
+    def test_compute_response(
+        self,
+        response,
+        expected_response
+    ):
         """Test compute_response method."""
-        assert Utils.compute_response(
-            {"success": True, "message": "ok"}) == (True, "ok")
-        assert Utils.compute_response(
-            {"success": False, "message": "error"}) == (False, "error")
-        assert Utils.compute_response(
-            "simple message") == (True, "simple message")
-        assert Utils.compute_response(
-            123) == (False, "Invalid response")
+        assert Utils.compute_response(response) == expected_response
+
+    @pytest.mark.parametrize(
+        "input_data, filter_data, filter_in, expected",
+        [
+            (
+                {
+                    "name": "I1", "nodeid": "emon_tools_ex1",
+                    "description": "Managed Input"
+                },
+                ["name", "nodeid"],
+                True,
+                {
+                    "name": "I1", "nodeid": "emon_tools_ex1"
+                }
+            ),
+            (
+                {
+                    "name": "I1", "nodeid": "emon_tools_ex1",
+                    "description": "Managed Input"
+                },
+                ["description"],
+                True,
+                {
+                    "description": "Managed Input"
+                }
+            ),
+            # Test: Negate match (filter_in=False)
+            (
+                {
+                    "name": "I1", "nodeid": "emon_tools_ex1",
+                    "description": "Managed Input"
+                },
+                ["description"],
+                False,
+                {
+                    "name": "I1", "nodeid": "emon_tools_ex1"
+                }
+            ),
+        ],
+    )
+    def test_filter_dict_by_keys(
+        self,
+        input_data,
+        filter_data,
+        filter_in, expected
+    ):
+        """
+        Test the filter_list_of_dicts method with various scenarios.
+
+        Args:
+            input_data (list): The input list of dictionaries to filter.
+            filter_data (dict): The dictionary of filter conditions.
+            filter_in (bool): Whether to include or exclude matching items.
+            expected (list): The expected result after filtering.
+        """
+        result = Utils.filter_dict_by_keys(
+            input_data=input_data, filter_data=filter_data, filter_in=filter_in
+        )
+        assert result == expected, f"Expected {expected}, got {result}"
 
     @pytest.mark.parametrize(
         "input_data, filter_data, filter_in, expected",
@@ -78,6 +172,34 @@ class TestApiUtils:
                 [{
                     "name": "I1", "nodeid": "emon_tools_ex1",
                     "description": "Managed Input"}],
+            ),
+            (
+                [
+                    {
+                        "name": "I1", "nodeid": "emon_tools_ex1",
+                        "description": "Managed Input"
+                    },
+                    {
+                        "name": "I2", "nodeid": "emon_tools_ex1",
+                        "description": "Managed Input"
+                    },
+                    {
+                        "name": "I3", "nodeid": "emon_tools_ex1",
+                        "description": "Managed Input"
+                    },
+                ],
+                {"name": ["I1", "I2"], "nodeid": "emon_tools_ex1"},
+                True,
+                [
+                    {
+                        "name": "I1", "nodeid": "emon_tools_ex1",
+                        "description": "Managed Input"
+                    },
+                    {
+                        "name": "I2", "nodeid": "emon_tools_ex1",
+                        "description": "Managed Input"
+                    },
+                ],
             ),
             # Test: No match (filter_in=True)
             (
@@ -230,30 +352,80 @@ class TestApiUtils:
         result = Utils.remove_feed_from_process(None, 10)
         assert result == ""
 
-    def test_validate_feed_fields(self):
+    @pytest.mark.parametrize(
+        (
+            "feed, is_create, expected_result, "
+            "is_error, expected_error, error_msg"),
+        [
+            (
+                {
+                    "tag": "Tag1",
+                    "name": "Feed1",
+                    "datatype": 1,
+                    "engine": 1,
+                    "interval": 10,
+                    "public": 1,
+                },
+                True,
+                True,
+                False, None, None
+            ),
+            (
+                {
+                    "datatype": 1,
+                    "engine": 1,
+                    "interval": 10,
+                    "public": 1,
+                },
+                True,
+                True,
+                True, ValueError,
+                "Field 'name' is required"
+            ),
+            (
+                [],
+                True,
+                True,
+                True, ValueError,
+                "Input data must be a dictionary."
+            ),
+            (
+                {
+                    "tag": "",
+                    "name": "",
+                    "datatype": -1,
+                    "engine": -1,
+                    "interval": -1,
+                    "public": 2,
+                },
+                True,
+                True,
+                True, ValueError,
+                "Invalid value for 'tag'"
+            ),
+        ],
+    )
+    def test_validate_feed_fields(
+        self,
+        feed,
+        is_create,
+        expected_result,
+        is_error,
+        expected_error,
+        error_msg
+    ):
         """Test the validate_feed_fields method."""
-        valid_data = {
-            "tag": "Tag1",
-            "name": "Feed1",
-            "datatype": 1,
-            "engine": 1,
-            "interval": 10,
-            "public": 1,
-        }
-
-        assert Utils.validate_feed_fields(valid_data) is True
-
-        invalid_data = {
-            "tag": "",
-            "name": "",
-            "datatype": -1,
-            "engine": -1,
-            "interval": -1,
-            "public": 2,
-        }
-
-        with pytest.raises(ValueError, match="Invalid value for 'tag'"):
-            Utils.validate_feed_fields(invalid_data)
+        if is_error:
+            with pytest.raises(expected_error, match=error_msg):
+                Utils.validate_feed_fields(
+                    data=feed,
+                    is_create=is_create
+                )
+        else:
+            assert Utils.validate_feed_fields(
+                data=feed,
+                is_create=is_create
+            ) is expected_result
 
     def test_validate_time_series_data_point(self):
         """Test the validate_time_series_data_point method."""
