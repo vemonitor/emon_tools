@@ -235,33 +235,32 @@ class EmonPy(EmonFeedsApi):
                     inputs=inputs,
                     feeds=feeds
                 )
-                if Ut.is_list(inputs_on) and Ut.is_list(feeds_on):
-                    # Create Input Feeds
-                    processes = self.add_input_feeds_structure(
-                        input_item=item,
-                        feeds_on=feeds_on
+                # is invalid current input
+                if not Ut.is_list(inputs_on)\
+                        or len(inputs_on) != 1:
+                    raise ValueError(
+                        "Fatal Error, inputs was not added to server."
                     )
+                # Create Input Feeds
+                processes = self.add_input_feeds_structure(
+                    input_item=item,
+                    feeds_on=feeds_on
+                )
 
-                    # create item input
-                    if not Ut.is_list(inputs_on)\
-                            or len(inputs_on) != 1:
-                        raise ValueError(
-                            "Fatal Error, inputs was not added to server."
-                        )
-                    inputs_on = inputs_on[0]
-                    input_id = int(inputs_on.get('id'))
-                    key = f"input_{input_id}"
-                    result[key] = {}
-                    # Set Input description
-                    result[key]['fields'] = self.update_input_fields(
-                        input_id=input_id,
-                        current=inputs_on.get('description'),
-                        description=item.get('description')
-                    )
-                    # Set input Process list
-                    result[key]['process'] = self.update_input_process_list(
-                        input_id=input_id,
-                        current_processes=inputs_on.get('processList'),
-                        new_processes=processes
-                    )
+                inputs_on = inputs_on[0]
+                input_id = int(inputs_on.get('id'))
+                key = f"input_{input_id}"
+                result[key] = {}
+                # Set Input description
+                result[key]['fields'] = self.update_input_fields(
+                    input_id=input_id,
+                    current=inputs_on.get('description'),
+                    description=item.get('description')
+                )
+                # Set input Process list
+                result[key]['process'] = self.update_input_process_list(
+                    input_id=input_id,
+                    current_processes=inputs_on.get('processList'),
+                    new_processes=processes
+                )
         return result
