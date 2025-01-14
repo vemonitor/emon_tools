@@ -60,6 +60,65 @@ class TestApiUtils:
     @pytest.mark.parametrize(
         "input_data, filter_data, filter_in, expected",
         [
+            (
+                {
+                    "name": "I1", "nodeid": "emon_tools_ex1",
+                    "description": "Managed Input"
+                },
+                ["name", "nodeid"],
+                True,
+                {
+                    "name": "I1", "nodeid": "emon_tools_ex1"
+                }
+            ),
+            (
+                {
+                    "name": "I1", "nodeid": "emon_tools_ex1",
+                    "description": "Managed Input"
+                },
+                ["description"],
+                True,
+                {
+                    "description": "Managed Input"
+                }
+            ),
+            # Test: Negate match (filter_in=False)
+            (
+                {
+                    "name": "I1", "nodeid": "emon_tools_ex1",
+                    "description": "Managed Input"
+                },
+                ["description"],
+                False,
+                {
+                    "name": "I1", "nodeid": "emon_tools_ex1"
+                }
+            ),
+        ],
+    )
+    def test_filter_dict_by_keys(
+        self,
+        input_data,
+        filter_data,
+        filter_in, expected
+    ):
+        """
+        Test the filter_list_of_dicts method with various scenarios.
+
+        Args:
+            input_data (list): The input list of dictionaries to filter.
+            filter_data (dict): The dictionary of filter conditions.
+            filter_in (bool): Whether to include or exclude matching items.
+            expected (list): The expected result after filtering.
+        """
+        result = Utils.filter_dict_by_keys(
+            input_data=input_data, filter_data=filter_data, filter_in=filter_in
+        )
+        assert result == expected, f"Expected {expected}, got {result}"
+
+    @pytest.mark.parametrize(
+        "input_data, filter_data, filter_in, expected",
+        [
             # Test: Exact match (filter_in=True)
             (
                 [

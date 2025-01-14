@@ -92,6 +92,26 @@ class Utils(Ut):
         return False, "Invalid response"
 
     @staticmethod
+    def filter_dict_by_keys(
+        input_data: dict,
+        filter_data: list,
+        filter_in: bool = True
+    ) -> list[dict]:
+        """
+        Extracts a specific items from input data list.
+        """
+        result = None
+        if Ut.is_dict(input_data, not_empty=True)\
+                and Ut.is_list(filter_data, not_empty=True):
+            return {
+                x: input_data[x]
+                for x in input_data
+                if filter_in and x in filter_data
+                or not filter_in and x not in filter_data
+            }
+        return result
+
+    @staticmethod
     def filter_list_of_dicts(
         input_data: list[dict],
         filter_data: dict[str, Union[str, int, float, list]],
