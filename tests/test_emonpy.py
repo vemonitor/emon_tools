@@ -67,6 +67,11 @@ class TestEmonPy:
                 [{"message": {"feedid": "1"}, SUCCESS_KEY: True}],
                 [[1, 1]],
             ),
+            (
+                [{"name": "feed1", "tag": "tag1", "process": "1:1"}],
+                [{"message": {"feedid": "1"}, SUCCESS_KEY: True}],
+                [[1, 1]],
+            ),
             ([], [], []),
         ],
     )
@@ -82,6 +87,20 @@ class TestEmonPy:
 
         result = api.create_input_feeds(feeds=feeds)
         assert result == expected_processes
+
+    def test_create_input_feeds_invalid(
+        self,
+        api
+    ):
+        """Test the create_input_feeds method."""
+        api.create_feed.side_effect = [
+            {"message": "Error", SUCCESS_KEY: False}
+        ]
+
+        with pytest.raises(
+                ValueError,
+                match="Fatal error: Unable to set feed structure.*"):
+            api.create_input_feeds(feeds=[{"name": "feed1", "tag": "tag1"}])
 
     @pytest.mark.parametrize(
         "inputs, post_inputs_responses, expected_count",

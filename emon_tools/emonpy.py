@@ -33,10 +33,17 @@ class EmonPy(EmonFeedsApi):
             for feed in feeds:
                 if Ut.is_dict(feed, not_empty=True):
                     if "process" in feed:
-                        del feed['process']
-                    new_feed = self.create_feed(
-                        **feed
-                    )
+                        new_feed = self.create_feed(
+                            **Ut.filter_dict_by_keys(
+                                input_data=feed,
+                                filter_data=['process'],
+                                filter_in=False
+                            )
+                        )
+                    else:
+                        new_feed = self.create_feed(
+                            **feed
+                        )
                     if new_feed.get(SUCCESS_KEY) is False:
                         raise ValueError(
                             "Fatal error: "
@@ -138,7 +145,7 @@ class EmonPy(EmonFeedsApi):
 
                     for existant_feed in feeds_on:
                         is_new = feed.get('name') != existant_feed.get('name')\
-                            and feed.get('tag') != existant_feed.get('tag')
+                            or feed.get('tag') != existant_feed.get('tag')
                         if is_new:
                             feeds_out.append(feed)
                         else:
