@@ -2,6 +2,7 @@
 from unittest.mock import patch, MagicMock
 import pytest
 import requests
+from emon_tools.api_utils import MESSAGE_KEY, SUCCESS_KEY
 from emon_tools.emon_api_core import RequestType
 from emon_tools.emon_api_core import InputGetType
 from emon_tools.emon_api import EmonRequest
@@ -80,11 +81,14 @@ class TestEmonRequest:
         )
         with patch(
                 "emon_tools.api_utils.Utils.compute_response",
-                return_value=(expected_success, expected_message)):
+                return_value={
+                    SUCCESS_KEY: expected_success,
+                    MESSAGE_KEY: expected_message}
+                ):
             result = emon_request.compute_response(
                 response_mock, msg="test error")
-            assert result["success"] == expected_success
-            assert result["message"] == expected_message
+            assert result[SUCCESS_KEY] == expected_success
+            assert result[MESSAGE_KEY] == expected_message
 
     def test_execute_request_invalid_path(self, emon_request):
         """Test that invalid paths raise a ValueError."""

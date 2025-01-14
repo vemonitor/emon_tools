@@ -2,6 +2,7 @@
 from unittest.mock import MagicMock
 import pytest
 from emon_tools.api_utils import SUCCESS_KEY, MESSAGE_KEY
+from emon_tools.emon_api_core import EmonProcessList
 from emon_tools.emonpy import EmonPy
 
 
@@ -126,23 +127,147 @@ class TestEmonPy:
         result = api.create_inputs(inputs=inputs)
         assert result == expected_count
 
+    def test_create_inputs_invalid(
+        self,
+        api
+    ):
+        """Test the create_input_feeds method."""
+        api.post_inputs.side_effect = [
+            {"message": "Error", SUCCESS_KEY: False}
+        ]
+
+        with pytest.raises(
+                ValueError,
+                match="Fatal error: Unable to set inputs structure.*"):
+            api.create_inputs(inputs=[{"nodeid": "node1", "name": "input1"}])
+
     @pytest.mark.parametrize(
-        "structure, expected_count",
+        "structure, inputs, expected_count",
         [
-            ([{"nodeid": "node1", "name": "input1"}], 1),
-            ([], 0),
+            (
+                [
+                    {"nodeid": "node2", "name": "input1"},
+                    {"nodeid": "node2", "name": "input2"}
+                ],
+                {
+                    SUCCESS_KEY: True,
+                    MESSAGE_KEY: [
+                        {"nodeid": "node1", "name": "input1"},
+                        {"nodeid": "node1", "name": "input2"},
+                        {"nodeid": "node1", "name": "input3"},
+                        {"nodeid": "node2", "name": "input1"}
+                    ]
+                },
+                1
+            ),
+            (
+                [
+                    {"nodeid": "node3", "name": "input1"},
+                    {"nodeid": "node3", "name": "input2"}
+                ],
+                {
+                    SUCCESS_KEY: True,
+                    MESSAGE_KEY: [
+                        {"nodeid": "node1", "name": "input1"},
+                        {"nodeid": "node1", "name": "input2"},
+                        {"nodeid": "node1", "name": "input3"},
+                        {"nodeid": "node2", "name": "input1"}
+                    ]
+                },
+                1
+            ),
+            ([], [], 0),
         ],
     )
     def test_init_inputs_structure(
         self,
         api,
         structure,
+        inputs,
         expected_count
     ):
         """Test the init_inputs_structure method."""
+        api.list_inputs_fields = MagicMock(return_value=inputs)
         api.create_inputs = MagicMock(return_value=expected_count)
         result = api.init_inputs_structure(structure=structure)
         assert result == expected_count
+
+    @pytest.mark.parametrize(
+        "input_item, feeds_on, expected_created, expected_process",
+        [
+            (
+                {
+                    'name': 'I1', 'nodeid': 'emon_tools_ex1',
+                    'description': 'Managed Input',
+                    'feeds': [
+                        {
+                            'name': 'I1', 'tag': 'emon_tools_ex1',
+                            'process': EmonProcessList.LOG_TO_FEED,
+                            'engine': 5,
+                            'options': {'interval': 1}
+                        },
+                        {
+                            'name': 'I2', 'tag': 'emon_tools_ex1',
+                            'process': EmonProcessList.LOG_TO_FEED,
+                            'engine': 5,
+                            'options': {'interval': 10}
+                        }
+                    ]
+                },
+                [
+                    {
+                        'id': '158', 'userid': '1',
+                        'name': 'I1', 'tag': 'emon_tools_ex1',
+                        'public': '', 'size': '0',
+                        'engine': '5', 'unit': '',
+                        'time': None, 'value': None,
+                        'start_time': 0, 'end_time': 0,
+                        'interval': 5
+                    }
+                ],
+                [[1, 159]],
+                [[1, 158], [1, 159]]
+            ),
+            (
+                {
+                    'name': 'I1', 'nodeid': 'emon_tools_ex1',
+                    'description': 'Managed Input',
+                    'feeds': [
+                        {
+                            'name': 'I1', 'tag': 'emon_tools_ex1',
+                            'process': EmonProcessList.LOG_TO_FEED,
+                            'engine': 5,
+                            'options': {'interval': 1}
+                        },
+                        {
+                            'name': 'I2', 'tag': 'emon_tools_ex1',
+                            'process': EmonProcessList.LOG_TO_FEED,
+                            'engine': 5,
+                            'options': {'interval': 10}
+                        }
+                    ]
+                },
+                [],
+                [[1, 158], [1, 159]],
+                [[1, 158], [1, 159]]
+            ),
+            ({}, [], [], []),
+        ],
+    )
+    def test_add_input_feeds_structure(
+        self,
+        api,
+        input_item,
+        feeds_on,
+        expected_created,
+        expected_process
+    ):
+        """Test the init_inputs_structure method."""
+        api.create_input_feeds = MagicMock(return_value=expected_created)
+        result = api.add_input_feeds_structure(
+            input_item=input_item,
+            feeds_on=feeds_on)
+        assert result == expected_process
 
     @pytest.mark.parametrize(
         (
@@ -182,12 +307,12 @@ class TestEmonPy:
         [
             (
                 1,
-                "1,2,3",
+                "1:5,1:6,1:7",
                 [[1, 4]],
                 {SUCCESS_KEY: True, MESSAGE_KEY: "Input processlist updated"},
                 1,
             ),
-            (1, "1,2,3", [[1, 2]], None, 0),
+            (1, "1:2,1:6,1:7", [[1, 2]], None, 0),
         ],
     )
     def test_update_input_process_list(
@@ -267,8 +392,6 @@ class TestEmonPy:
                     "Fatal Error, inputs was not added to server."
                 )
             )
-
-        if raises_error:
             with pytest.raises(
                     ValueError,
                     match="Fatal Error, inputs was not added to server."):
