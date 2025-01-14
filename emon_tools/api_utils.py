@@ -180,23 +180,6 @@ class Utils(Ut):
         return result
 
     @staticmethod
-    def compute_inputs_list_processes(
-        input_data: list[dict]
-    ) -> list[dict]:
-        """
-        Compute string inputs process list to list of tuples.
-        """
-        result = []
-        if isinstance(input_data, list) and len(input_data) > 0:
-            for item in input_data:
-                process = Utils.get_process_to_list(item['processList'])
-                tmp = item.copy()
-                if isinstance(process, list) and len(process) > 0:
-                    tmp['processList'] = process
-                result.append(tmp)
-        return result
-
-    @staticmethod
     def get_formatted_feed_name(
         node: Union[str, None],
         name: Union[str, None]
@@ -268,9 +251,10 @@ class Utils(Ut):
         :param process: The input string.
         :return: A list of strings, or None if the input is invalid.
         """
+        result = None
         if isinstance(process, str) and process.strip():
-            return [item.strip() for item in process.split(',')]
-        return None
+            result = [item.strip() for item in process.split(',')]
+        return result
 
     @staticmethod
     def split_process(process: Union[str, None]) -> Optional[tuple]:
@@ -297,14 +281,15 @@ class Utils(Ut):
         :param process: The process string.
         :return: A list of tuples.
         """
+        result = []
         if isinstance(process, str):
             items = Utils.get_comma_separated_values_to_list(process)
-            return [
+            result = [
                 Utils.split_process(item)
                 for item in items
                 if Utils.split_process(item)
             ]
-        return []
+        return result
 
     @staticmethod
     def get_list_to_comma_separated_values(process: Union[list, None]) -> str:
@@ -314,43 +299,13 @@ class Utils(Ut):
         :param process: The input list.
         :return: A comma-separated string.
         """
+        result = ""
         if isinstance(process, list):
-            return ','.join(
+            result = ','.join(
                 f"{item[0]}:{item[1]}"
                 if isinstance(item, tuple) and len(item) == 2 else str(item)
                 for item in process
             )
-        return ""
-
-    @staticmethod
-    def prepare_feed_data(
-        data: Union[dict, None],
-        is_create: bool = True
-    ) -> Optional[dict]:
-        """
-        Prepares feed data for creation or update.
-
-        :param data: The feed data dictionary.
-        :param is_create: Indicates whether the operation is a creation.
-        :return: A formatted dictionary, or None if input is invalid.
-        """
-        if not isinstance(data, dict):
-            return None
-
-        result = {
-            key: data[key]
-            for key in (
-                'tag', 'name', 'unit', 'public',
-                'datatype', 'engine', 'interval')
-            if key in data and (
-                not is_create
-                or key not in ('datatype', 'engine', 'interval')
-                or isinstance(data[key], int))
-        }
-
-        if 'interval' in result:
-            result['options'] = f'{{"interval":{result.pop("interval")}}}'
-
         return result
 
     @staticmethod

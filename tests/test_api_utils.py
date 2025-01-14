@@ -173,6 +173,34 @@ class TestApiUtils:
                     "name": "I1", "nodeid": "emon_tools_ex1",
                     "description": "Managed Input"}],
             ),
+            (
+                [
+                    {
+                        "name": "I1", "nodeid": "emon_tools_ex1",
+                        "description": "Managed Input"
+                    },
+                    {
+                        "name": "I2", "nodeid": "emon_tools_ex1",
+                        "description": "Managed Input"
+                    },
+                    {
+                        "name": "I3", "nodeid": "emon_tools_ex1",
+                        "description": "Managed Input"
+                    },
+                ],
+                {"name": ["I1", "I2"], "nodeid": "emon_tools_ex1"},
+                True,
+                [
+                    {
+                        "name": "I1", "nodeid": "emon_tools_ex1",
+                        "description": "Managed Input"
+                    },
+                    {
+                        "name": "I2", "nodeid": "emon_tools_ex1",
+                        "description": "Managed Input"
+                    },
+                ],
+            ),
             # Test: No match (filter_in=True)
             (
                 [
