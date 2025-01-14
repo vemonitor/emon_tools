@@ -352,30 +352,80 @@ class TestApiUtils:
         result = Utils.remove_feed_from_process(None, 10)
         assert result == ""
 
-    def test_validate_feed_fields(self):
+    @pytest.mark.parametrize(
+        (
+            "feed, is_create, expected_result, "
+            "is_error, expected_error, error_msg"),
+        [
+            (
+                {
+                    "tag": "Tag1",
+                    "name": "Feed1",
+                    "datatype": 1,
+                    "engine": 1,
+                    "interval": 10,
+                    "public": 1,
+                },
+                True,
+                True,
+                False, None, None
+            ),
+            (
+                {
+                    "datatype": 1,
+                    "engine": 1,
+                    "interval": 10,
+                    "public": 1,
+                },
+                True,
+                True,
+                True, ValueError,
+                "Field 'name' is required"
+            ),
+            (
+                [],
+                True,
+                True,
+                True, ValueError,
+                "Input data must be a dictionary."
+            ),
+            (
+                {
+                    "tag": "",
+                    "name": "",
+                    "datatype": -1,
+                    "engine": -1,
+                    "interval": -1,
+                    "public": 2,
+                },
+                True,
+                True,
+                True, ValueError,
+                "Invalid value for 'tag'"
+            ),
+        ],
+    )
+    def test_validate_feed_fields(
+        self,
+        feed,
+        is_create,
+        expected_result,
+        is_error,
+        expected_error,
+        error_msg
+    ):
         """Test the validate_feed_fields method."""
-        valid_data = {
-            "tag": "Tag1",
-            "name": "Feed1",
-            "datatype": 1,
-            "engine": 1,
-            "interval": 10,
-            "public": 1,
-        }
-
-        assert Utils.validate_feed_fields(valid_data) is True
-
-        invalid_data = {
-            "tag": "",
-            "name": "",
-            "datatype": -1,
-            "engine": -1,
-            "interval": -1,
-            "public": 2,
-        }
-
-        with pytest.raises(ValueError, match="Invalid value for 'tag'"):
-            Utils.validate_feed_fields(invalid_data)
+        if is_error:
+            with pytest.raises(expected_error, match=error_msg):
+                Utils.validate_feed_fields(
+                    data=feed,
+                    is_create=is_create
+                )
+        else:
+            assert Utils.validate_feed_fields(
+                data=feed,
+                is_create=is_create
+            ) is expected_result
 
     def test_validate_time_series_data_point(self):
         """Test the validate_time_series_data_point method."""

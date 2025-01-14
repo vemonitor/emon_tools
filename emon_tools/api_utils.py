@@ -114,7 +114,7 @@ class Utils(Ut):
         result = None
         if Ut.is_dict(input_data, not_empty=True)\
                 and Ut.is_list(filter_data, not_empty=True):
-            return {
+            result = {
                 x: input_data[x]
                 for x in input_data
                 if filter_in and x in filter_data
@@ -264,14 +264,15 @@ class Utils(Ut):
         :param process: The process string.
         :return: A tuple of integers, or None if invalid.
         """
+        result = None
         if isinstance(process, str) and ':' in process:
             parts = process.split(':')
             if len(parts) == 2:
                 proc, feed_id = map(
                     lambda x: int(x) if x.isdigit() else 0, parts)
                 if proc > 0 and feed_id > 0:
-                    return proc, feed_id
-        return None
+                    result = proc, feed_id
+        return result
 
     @staticmethod
     def get_process_to_list(process: Union[str, None]) -> list:
