@@ -155,12 +155,6 @@ class EmonProcessList(Enum):
         ]
 
     @classmethod
-    def loop_on_members(cls):
-        """Loop on Enum members and values (member, value)."""
-        for member, value in cls.get_members():
-            yield member, value
-
-    @classmethod
     def get_name_by_id(cls, process_id: int):
         """Get Name of process list by process id."""
         result = 0
@@ -228,24 +222,6 @@ class EmonHelper:
             and Ut.is_set(filters["filter_feeds"].get('name'))
 
     @staticmethod
-    def is_inputs_filters(
-        filters: dict
-    ) -> tuple[dict, dict]:
-        """Test if is valid filters structure"""
-        return Ut.is_dict(filters)\
-            and Ut.is_set(filters.get('nodeid'))\
-            and Ut.is_set(filters.get('name'))
-
-    @staticmethod
-    def is_feeds_filters(
-        filters: dict
-    ) -> tuple[dict, dict]:
-        """Test if is valid filters structure"""
-        return Ut.is_dict(filters)\
-            and Ut.is_set(filters.get('nodeid'))\
-            and Ut.is_set(filters.get('name'))
-
-    @staticmethod
     def format_process_with_feed_id(
         feed_id: int,
         process_id: int = 1
@@ -285,11 +261,11 @@ class EmonHelper:
             for process in process_list:
                 if isinstance(process, (list, tuple))\
                         and len(process) == 2:
-                    process_id, feed_id = EmonHelper.format_process_with_feed_id(
+                    pid, fid = EmonHelper.format_process_with_feed_id(
                         feed_id=process[1],
                         process_id=process[0]
                     )
-                    result.add(f"{process_id}:{feed_id}")
+                    result.add(f"{pid}:{fid}")
         return result
 
     @staticmethod
@@ -304,6 +280,7 @@ class EmonHelper:
                 nb_items = len(filter_item)
                 if nb_items > 1:
                     result[item_key] = list(filter_item)
+                    result[item_key].sort()
                 elif nb_items == 1:
                     result[item_key] = list(filter_item)[0]
         return result
@@ -347,6 +324,7 @@ class EmonHelper:
                         if not Ut.is_dict(result.get(cat_key)):
                             result[cat_key] = {}
                         result[cat_key][item_key] = list(filter_item)
+                        result[cat_key][item_key].sort()
                     elif nb_items == 1:
                         if not Ut.is_dict(result.get(cat_key)):
                             result[cat_key] = {}
@@ -373,12 +351,6 @@ class EmonHelper:
                 filters=result
             )
         return result
-
-    @staticmethod
-    def get_feeds_filters_from_structure(
-        structure: list
-    ) -> tuple[dict, dict]:
-        """Get filter from inputs structure"""
 
     @staticmethod
     def get_input_filters_from_structure(
@@ -412,65 +384,6 @@ class EmonHelper:
                 filters=result
             )
         return result
-
-    @staticmethod
-    def get_filters_from_structure(
-        structure: list
-    ) -> tuple[dict, dict]:
-        """Get filter from inputs structure"""
-        result = None
-        if Ut.is_list(structure, not_empty=True):
-            result = {
-                "filter_inputs": {
-                    "nodeid": set(),
-                    "name": set()
-                },
-                "filter_feeds": {
-                    "tag": set(),
-                    "name": set()
-                }
-            }
-            for item in structure:
-                result["filter_inputs"]["nodeid"].add(
-                    item.get("nodeid"))
-                result["filter_inputs"]["name"].add(
-                    item.get("name"))
-                if Ut.is_list(item.get("feeds"), not_empty=True):
-                    for feed in item.get("feeds"):
-                        result["filter_feeds"]["tag"].add(
-                            feed.get("tag"))
-                        result["filter_feeds"]["name"].add(
-                            feed.get("name"))
-            result = EmonHelper.clean_filters_structure(
-                filters=result
-            )
-        return result
-
-    @staticmethod
-    def get_structure_to_add(
-        inputs: list,
-        feeds: list,
-        structure: list
-    ) -> list:
-        """Get extended inputs structure from EmonCms API."""
-        if Ut.is_list(inputs)\
-                and Ut.is_list(feeds):
-            filters = EmonHelper.get_filters_from_structure(
-                structure=structure
-            )
-            if Ut.is_dict(filters, not_empty=True):
-                inputs_to_add = Ut.filter_list_of_dicts(
-                    inputs,
-                    filter_data=filters.get('filter_inputs'),
-                    filter_in=False
-                )
-                feeds_to_add = Ut.filter_list_of_dicts(
-                    feeds,
-                    filter_data=filters.get('filter_feeds'),
-                    filter_in=False
-                )
-                return inputs_to_add, feeds_to_add
-        return None, None
 
     @staticmethod
     def format_list_of_dicts(
