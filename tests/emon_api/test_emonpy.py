@@ -336,35 +336,39 @@ class TestEmonPy:
 
     @pytest.mark.parametrize(
         (
-            "structure, get_structure_return, inputs_on, feeds_on, "
+            "structure, get_structure_return, "
             "raises_error, expected_result"
         ),
         [
             (
-                [{"nodeid": "node1", "name": "input1"}],
-                ([], []),
-                None,
-                None,
-                True,  # Expecting a ValueError
-                None,
-            ),
-            (
-                [{"nodeid": "node1", "name": "input1"}],
-                ([], []),
                 [
-                    {"id": 1, "description": "test"},
-                    {"id": 2, "description": "test2"}
-                ],  # More than one input
-                [],
-                True,
-                None,
+                    {"nodeid": "n1", "name": "a1", "feeds": [
+                        {"name": "f1", "tag": "n1"}
+                    ]},
+                    {"nodeid": "n1", "name": "a2", "feeds": [
+                        {"name": "f2", "tag": "n1"}
+                    ]}
+                ],
+                (
+                    [
+                        {"id": "1", "name": "a1", "nodeid": "n1", "processList": "1:1"},
+                        {"id": "2", "name": "a2", "nodeid": "n1", "processList": "1:2"},
+                        {"id": "3", "name": "a3", "nodeid": "n1", "processList": "1:3"},
+                    ],
+                    [
+                        {"id": "1", "name": "f1", "tag": "n1"},
+                        {"id": "2", "name": "f2", "tag": "n1"},
+                        {"id": "3", "name": "f3", "tag": "n1"},
+                        {"id": "4", "name": "f4", "tag": "n1"},
+                    ]
+                ),
+                False,  # Expecting a ValueError
+                {'init_inputs': 2, 'input_1': {'fields': 0, 'process': 0}, 'input_2': {'fields': 0, 'process': 0}},
             ),
             (
-                [],
+                [{"nodeid": "node1", "name": "input1"}],
                 ([], []),
-                None,
-                None,
-                False,
+                True,
                 None,
             ),
         ],
@@ -374,19 +378,21 @@ class TestEmonPy:
         api,
         structure,
         get_structure_return,
-        inputs_on,
-        feeds_on,
         raises_error,
         expected_result,
     ):
         """Test the create_structure method."""
-        api.init_inputs_structure = MagicMock(return_value=len(structure))
-        api.get_structure = MagicMock(return_value=get_structure_return)
-        api.add_input_feeds_structure = MagicMock(return_value=[])
+        api.init_inputs_structure = MagicMock(
+            return_value=len(structure))
+        api.get_structure = MagicMock(
+            return_value=get_structure_return)
+        api.add_input_feeds_structure = MagicMock(
+            return_value=[]
+        )
         api.update_input_fields = MagicMock(return_value=0)
         api.update_input_process_list = MagicMock(return_value=0)
 
-        if raises_error:
+        if raises_error is True:
             api.add_input_feeds_structure = MagicMock(
                 side_effect=ValueError(
                     "Fatal Error, inputs was not added to server."
@@ -397,5 +403,7 @@ class TestEmonPy:
                     match="Fatal Error, inputs was not added to server."):
                 api.create_structure(structure=structure)
         else:
-            result = api.create_structure(structure=structure)
+            result = api.create_structure(
+                structure=structure
+            )
             assert result == expected_result
