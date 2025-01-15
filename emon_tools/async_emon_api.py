@@ -98,7 +98,7 @@ class AsyncEmonRequest:
     ) -> Dict[str, Any]:
         """Compute request response"""
         result = {SUCCESS_KEY: False, MESSAGE_KEY: None}
-        if response.status == 200:
+        if response.status in [200, 201]:
             if response.content_type == 'text/plain':
                 response_data = await response.text()
                 if '"' in response_data:
@@ -165,8 +165,9 @@ class AsyncEmonRequest:
         encoded_json = None
         keys_unquote = []
         for key, value in params.items():
-            is_not_object = isinstance(value, (float, str))
-            if is_not_object and key not in keys_unquote:
+            is_not_object = isinstance(value, (float, str))\
+                and key not in keys_unquote
+            if is_not_object:
                 encoded_params[key] = quote_plus(str(value), safe="-")
             elif request_type == RequestType.GET\
                     and isinstance(value, (list, dict)):
@@ -219,7 +220,7 @@ class AsyncEmonRequest:
             result[MESSAGE_KEY] = error_msg
             self.logger.error(error_msg)
         except asyncio.TimeoutError:
-            error_msg = f"Request {msg} timeout."
+            error_msg = f"Request timeout:  {msg}."
             result[MESSAGE_KEY] = error_msg
             self.logger.error(error_msg)
 
@@ -519,12 +520,13 @@ class AsyncEmonFeeds(AsyncEmonInputs):
             msg="fetch data points"
         )
 
-    async def async_create_feed(self,
-                                name: str,
-                                tag: str,
-                                engine: Optional[int] = None,
-                                options: Optional[dict] = None
-                                ) -> Optional[dict[str, Any]]:
+    async def async_create_feed(
+        self,
+        name: str,
+        tag: str,
+        engine: Optional[int] = None,
+        options: Optional[dict] = None
+    ) -> Optional[dict[str, Any]]:
         """
         Create new feed.
         On error return a dict as:
@@ -673,3 +675,13 @@ class AsyncEmonFeeds(AsyncEmonInputs):
         On error return a dict as:
         - {"success": false, "message": "Invalid fields"}
         """
+        path, params = EmonFeeds.prep_add_feed_process_list(
+            feed_id=feed_id,
+            process_id=process_id,
+            process=process
+        )
+        return await self.async_request(
+            path=path,
+            params=params,
+            msg="add_feed_process_list"
+        )

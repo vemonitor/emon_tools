@@ -96,7 +96,7 @@ class EmonPy(EmonFeedsApi):
     def init_inputs_structure(
         self,
         structure: list
-    ):
+    ) -> int:
         """Initialyze inputs structure from EmonCms API."""
         result = 0
         if Ut.is_list(structure, not_empty=True):
@@ -134,7 +134,7 @@ class EmonPy(EmonFeedsApi):
         self,
         input_item: dict,
         feeds_on: list
-    ):
+    ) -> list:
         """Create inputs feeds structure from EmonCms API."""
         processes = []
         if Ut.is_dict(input_item, not_empty=True):
@@ -191,7 +191,7 @@ class EmonPy(EmonFeedsApi):
         input_id: int,
         current_processes: str,
         new_processes: list
-    ):
+    ) -> int:
         """Initialyze inputs structure from EmonCms API."""
         result = 0
         process_list = EmonHelper.format_process_list(new_processes)

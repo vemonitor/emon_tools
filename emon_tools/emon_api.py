@@ -183,11 +183,11 @@ class EmonRequest:
                 msg=msg
             )
         except requests.exceptions.ConnectionError as err:
-            error_msg = f"Connection error: {err}"
+            error_msg = f"Connection error: {msg} - {err}"
             result[MESSAGE_KEY] = error_msg
             self.logger.error(error_msg)
         except requests.exceptions.Timeout:
-            error_msg = "Request timeout."
+            error_msg = "Request timeout  {msg}."
             result[MESSAGE_KEY] = error_msg
             self.logger.error(error_msg)
 
@@ -496,7 +496,7 @@ class EmonFeedsApi(EmonInputsApi):
         [see valid engines here](https://github.com/emoncms/emoncms/blob/master/Lib/enum.php#L40)
 
         :Example :
-            - > await create_feed( name"tmp" ) => 1
+            - > create_feed( name"tmp" ) => 1
             - > UType.is_str(value="tmp", not_null=True) => True
             - > UType.is_str( 0 ) => False
         :param name: Name of the new Feed
