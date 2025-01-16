@@ -557,7 +557,7 @@ class EmonRequestCore:
         return encoded_params
 
 
-class EmonInputs:
+class EmonInputsCore:
     """Emon Inputs Api"""
     @staticmethod
     def prep_list_inputs(
@@ -718,7 +718,7 @@ class EmonInputs:
         return "/input/bulk", params, data
 
 
-class EmonFeeds:
+class EmonFeedsCore:
     """Emon Feeds Api"""
     @staticmethod
     def prep_list_feeds() -> tuple[str, Optional[Dict[str, Any]]]:

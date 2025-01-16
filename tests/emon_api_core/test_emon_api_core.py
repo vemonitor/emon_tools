@@ -5,8 +5,8 @@ from emon_tools.api_utils import SUCCESS_KEY
 from emon_tools.emon_api_core import InputGetType
 from emon_tools.emon_api_core import EmonHelper
 from emon_tools.emon_api_core import EmonRequestCore
-from emon_tools.emon_api_core import EmonInputs
-from emon_tools.emon_api_core import EmonFeeds
+from emon_tools.emon_api_core import EmonInputsCore
+from emon_tools.emon_api_core import EmonFeedsCore
 
 
 class TestEmonHelper:
@@ -691,7 +691,7 @@ class TestEmonInputs:
     )
     def test_prep_list_inputs(self, node, expected_path):
         """Test prep_list_inputs method."""
-        path, params = EmonInputs.prep_list_inputs(node)
+        path, params = EmonInputsCore.prep_list_inputs(node)
         assert path == expected_path
         assert params is None
 
@@ -704,7 +704,7 @@ class TestEmonInputs:
     )
     def test_prep_list_inputs_fields(self, get_type, expected_path):
         """Test prep_list_inputs_fields method."""
-        path, params = EmonInputs.prep_list_inputs_fields(get_type)
+        path, params = EmonInputsCore.prep_list_inputs_fields(get_type)
         assert path == expected_path
         assert params is None
 
@@ -716,7 +716,7 @@ class TestEmonInputs:
     )
     def test_prep_input_fields(self, node, name, expected_path):
         """Test prep_input_fields method."""
-        path, params = EmonInputs.prep_input_fields(node, name)
+        path, params = EmonInputsCore.prep_input_fields(node, name)
         assert path == expected_path
         assert params is None
 
@@ -736,7 +736,7 @@ class TestEmonInputs:
     ):
         """Test prep_input_fields with invalid input."""
         with pytest.raises(expected_exception):
-            EmonInputs.prep_input_fields(node, name)
+            EmonInputsCore.prep_input_fields(node, name)
 
     @pytest.mark.parametrize(
         "input_id, fields, expected_params",
@@ -761,7 +761,7 @@ class TestEmonInputs:
         expected_params
     ):
         """Test prep_set_input_fields method."""
-        path, params = EmonInputs.prep_set_input_fields(input_id, fields)
+        path, params = EmonInputsCore.prep_set_input_fields(input_id, fields)
         assert path == "/input/set"
         assert params == expected_params
 
@@ -781,7 +781,7 @@ class TestEmonInputs:
     ):
         """Test prep_set_input_fields with invalid input."""
         with pytest.raises(expected_exception):
-            EmonInputs.prep_set_input_fields(input_id, fields)
+            EmonInputsCore.prep_set_input_fields(input_id, fields)
 
     @pytest.mark.parametrize(
         "input_id, process_list, expected_params",
@@ -803,7 +803,7 @@ class TestEmonInputs:
         expected_params
     ):
         """Test prep_set_input_process_list method."""
-        path, params = EmonInputs.prep_set_input_process_list(
+        path, params = EmonInputsCore.prep_set_input_process_list(
             input_id, process_list)
         assert path == "/input/process/set"
         assert params == expected_params
@@ -824,7 +824,7 @@ class TestEmonInputs:
     ):
         """Test prep_set_input_process_list with invalid input."""
         with pytest.raises(expected_exception):
-            EmonInputs.prep_set_input_process_list(input_id, process_list)
+            EmonInputsCore.prep_set_input_process_list(input_id, process_list)
 
     @pytest.mark.parametrize(
         "node, data, expected_params",
@@ -846,7 +846,7 @@ class TestEmonInputs:
         expected_params
     ):
         """Test prep_post_inputs method."""
-        path, params = EmonInputs.prep_post_inputs(node, data)
+        path, params = EmonInputsCore.prep_post_inputs(node, data)
         assert path == "/input/post"
         assert params == expected_params
 
@@ -866,7 +866,7 @@ class TestEmonInputs:
     ):
         """Test prep_post_inputs with invalid input."""
         with pytest.raises(expected_exception):
-            EmonInputs.prep_post_inputs(node, data)
+            EmonInputsCore.prep_post_inputs(node, data)
 
 
 class TestEmonFeeds:
@@ -879,7 +879,7 @@ class TestEmonFeeds:
 
     def test_prep_list_feeds(self):
         """Test the `prep_list_feeds` method for correctness."""
-        assert EmonFeeds.prep_list_feeds() == ("/feed/list.json", None)
+        assert EmonFeedsCore.prep_list_feeds() == ("/feed/list.json", None)
 
     @pytest.mark.parametrize("feed_id, expected", [
         (1, ("/feed/aget.json", {"id": 1})),
@@ -887,12 +887,12 @@ class TestEmonFeeds:
     ])
     def test_prep_feed_fields(self, feed_id, expected):
         """Test the `prep_feed_fields` method with valid inputs."""
-        assert EmonFeeds.prep_feed_fields(feed_id) == expected
+        assert EmonFeedsCore.prep_feed_fields(feed_id) == expected
 
     def test_prep_feed_fields_invalid(self):
         """Test `prep_feed_fields` method with invalid inputs."""
         with pytest.raises(ValueError):
-            EmonFeeds.prep_feed_fields(-1)  # Invalid feed ID
+            EmonFeedsCore.prep_feed_fields(-1)  # Invalid feed ID
 
     @pytest.mark.parametrize("feed_id, expected", [
         (1, ("/feed/getmeta.json", {"id": 1})),
@@ -900,12 +900,12 @@ class TestEmonFeeds:
     ])
     def test_prep_feed_meta(self, feed_id, expected):
         """Test the `prep_feed_meta` method with valid inputs."""
-        assert EmonFeeds.prep_feed_meta(feed_id) == expected
+        assert EmonFeedsCore.prep_feed_meta(feed_id) == expected
 
     def test_prep_feed_meta_invalid(self):
         """Test `prep_feed_meta` method with invalid inputs."""
         with pytest.raises(ValueError):
-            EmonFeeds.prep_feed_meta(0)  # Invalid feed ID
+            EmonFeedsCore.prep_feed_meta(0)  # Invalid feed ID
 
     @pytest.mark.parametrize("feed_id, expected", [
         (1, ("/feed/timevalue.json", {"id": 1})),
@@ -913,12 +913,12 @@ class TestEmonFeeds:
     ])
     def test_prep_last_value_feed(self, feed_id, expected):
         """Test the `prep_last_value_feed` method with valid inputs."""
-        assert EmonFeeds.prep_last_value_feed(feed_id) == expected
+        assert EmonFeedsCore.prep_last_value_feed(feed_id) == expected
 
     def test_prep_last_value_feed_invalid(self):
         """Test `prep_last_value_feed` method with invalid inputs."""
         with pytest.raises(ValueError):
-            EmonFeeds.prep_last_value_feed(-10)  # Invalid feed ID
+            EmonFeedsCore.prep_last_value_feed(-10)  # Invalid feed ID
 
     @pytest.mark.parametrize(
         "feed_id, start, end, interval, average, expected",
@@ -945,7 +945,7 @@ class TestEmonFeeds:
         self, feed_id, start, end, interval, average, expected
     ):
         """Test the `prep_fetch_feed_data` method with valid parameters."""
-        result = EmonFeeds.prep_fetch_feed_data(
+        result = EmonFeedsCore.prep_fetch_feed_data(
             feed_id, start, end, interval, average
         )
         assert result == ("/feed/data.json", expected)
@@ -953,13 +953,13 @@ class TestEmonFeeds:
     def test_prep_fetch_feed_data_invalid(self):
         """Test `prep_fetch_feed_data` method with invalid inputs."""
         with pytest.raises(ValueError):
-            EmonFeeds.prep_fetch_feed_data(
+            EmonFeedsCore.prep_fetch_feed_data(
                 -1, 1609459200, 1609545600, 60, False
             )  # Invalid feed ID
 
     def test_prep_create_feed(self):
         """Test the `prep_create_feed` method with valid inputs."""
-        result = EmonFeeds.prep_create_feed(
+        result = EmonFeedsCore.prep_create_feed(
             name="test_feed",
             tag="test_tag",
             engine=5,
@@ -977,11 +977,11 @@ class TestEmonFeeds:
     def test_prep_create_feed_invalid(self):
         """Test `prep_create_feed` method with invalid inputs."""
         with pytest.raises(ValueError):
-            EmonFeeds.prep_create_feed(name="", tag="tag")  # Invalid name
+            EmonFeedsCore.prep_create_feed(name="", tag="tag")  # Invalid name
 
     def test_prep_update_feed(self):
         """Test the `prep_update_feed` method with valid inputs."""
-        result = EmonFeeds.prep_update_feed(
+        result = EmonFeedsCore.prep_update_feed(
             feed_id=1,
             fields={"tag": "value"}
         )
@@ -992,22 +992,22 @@ class TestEmonFeeds:
     def test_prep_update_feed_invalid(self):
         """Test `prep_update_feed` method with invalid inputs."""
         with pytest.raises(ValueError):
-            EmonFeeds.prep_update_feed(
+            EmonFeedsCore.prep_update_feed(
                 feed_id=1, fields={"name": "@123 /$*ù"})
 
     def test_prep_delete_feed(self):
         """Test the `prep_delete_feed` method with valid inputs."""
-        result = EmonFeeds.prep_delete_feed(feed_id=1)
+        result = EmonFeedsCore.prep_delete_feed(feed_id=1)
         assert result == ("/feed/delete.json", {"id": 1})
 
     def test_prep_delete_feed_invalid(self):
         """Test `prep_delete_feed` method with invalid inputs."""
         with pytest.raises(ValueError):
-            EmonFeeds.prep_delete_feed(feed_id=-5)  # Invalid feed ID
+            EmonFeedsCore.prep_delete_feed(feed_id=-5)  # Invalid feed ID
 
     def test_prep_add_data_point(self):
         """Test the `prep_add_data_point` method with valid inputs."""
-        result = EmonFeeds.prep_add_data_point(
+        result = EmonFeedsCore.prep_add_data_point(
             feed_id=1, time=1609459200, value=123.45)
         expected = (
             "/feed/insert.json",
@@ -1018,12 +1018,12 @@ class TestEmonFeeds:
     def test_prep_add_data_point_invalid(self):
         """Test `prep_add_data_point` method with invalid inputs."""
         with pytest.raises(ValueError):
-            EmonFeeds.prep_add_data_point(
+            EmonFeedsCore.prep_add_data_point(
                 feed_id=1, time=1609459200, value="abc")  # Invalid value
 
     def test_prep_add_data_points(self):
         """Test the `prep_add_data_points` method with valid inputs."""
-        result = EmonFeeds.prep_add_data_points(
+        result = EmonFeedsCore.prep_add_data_points(
             feed_id=1,
             data=[[1609459200, 123.45], [1609545600, 678.90]]
         )
@@ -1039,5 +1039,5 @@ class TestEmonFeeds:
     def test_prep_add_data_points_invalid(self):
         """Test `prep_add_data_points` method with invalid inputs."""
         with pytest.raises(ValueError):
-            EmonFeeds.prep_add_data_points(
+            EmonFeedsCore.prep_add_data_points(
                 feed_id=1, data=[[1609459200, "abc"]])

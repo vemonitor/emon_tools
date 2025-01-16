@@ -32,8 +32,8 @@ from emon_tools.api_utils import SUCCESS_KEY
 from emon_tools.emon_api_core import InputGetType
 from emon_tools.emon_api_core import RequestType
 from emon_tools.emon_api_core import EmonRequestCore
-from emon_tools.emon_api_core import EmonInputs
-from emon_tools.emon_api_core import EmonFeeds
+from emon_tools.emon_api_core import EmonInputsCore
+from emon_tools.emon_api_core import EmonFeedsCore
 from emon_tools.emon_api_core import EmonHelper
 
 logging.basicConfig()
@@ -197,7 +197,7 @@ class EmonInputsApi(EmonRequest):
             Optional[List[Dict[str, Any]]]: A list of input dictionaries
             or None if retrieval fails.
         """
-        path, _ = EmonInputs.prep_list_inputs(
+        path, _ = EmonInputsCore.prep_list_inputs(
             node=node
         )
         return self.execute_request(
@@ -224,7 +224,7 @@ class EmonInputsApi(EmonRequest):
             Optional[List[Dict[str, Any]]]: A list of input dictionaries
             or None if retrieval fails.
         """
-        path, _ = EmonInputs.prep_list_inputs_fields(
+        path, _ = EmonInputsCore.prep_list_inputs_fields(
             get_type=get_type
         )
         return self.execute_request(
@@ -249,7 +249,7 @@ class EmonInputsApi(EmonRequest):
                 A dictionary of input details
                 or None if the input does not exist.
         """
-        path, _ = EmonInputs.prep_input_fields(
+        path, _ = EmonInputsCore.prep_input_fields(
             node=node,
             name=name
         )
@@ -267,7 +267,7 @@ class EmonInputsApi(EmonRequest):
         On error return a dict as:
         - {"success": false, "message": "Invalid fields"}
         """
-        path, params = EmonInputs.prep_set_input_fields(
+        path, params = EmonInputsCore.prep_set_input_fields(
             input_id=input_id,
             fields=fields
         )
@@ -287,7 +287,7 @@ class EmonInputsApi(EmonRequest):
         On error return a dict as:
         - {"success": false, "message": "Invalid fields"}
         """
-        path, query_data = EmonInputs.prep_set_input_process_list(
+        path, query_data = EmonInputsCore.prep_set_input_process_list(
             input_id=input_id,
             process_list=process_list
         )
@@ -308,7 +308,7 @@ class EmonInputsApi(EmonRequest):
         On error return a dict as:
         - {"success": false, "message": "Invalid fields"}
         """
-        path, params = EmonInputs.prep_post_inputs(
+        path, params = EmonInputsCore.prep_post_inputs(
             node=node,
             data=data
         )
@@ -330,7 +330,7 @@ class EmonInputsApi(EmonRequest):
         On error return a dict as:
         - {"success": false, "message": "Invalid fields"}
         """
-        path, params, data_post = EmonInputs.prep_input_bulk(
+        path, params, data_post = EmonInputsCore.prep_input_bulk(
             data=data,
             timestamp=timestamp,
             sentat=sentat,
@@ -363,7 +363,7 @@ class EmonFeedsApi(EmonInputsApi):
             Optional[List[Dict[str, Any]]]: A list of feed dictionaries
             or None if retrieval fails.
         """
-        path, _ = EmonFeeds.prep_list_feeds()
+        path, _ = EmonFeedsCore.prep_list_feeds()
         return self.execute_request(
             path=path,
             msg="get list feeds"
@@ -383,7 +383,7 @@ class EmonFeedsApi(EmonInputsApi):
             Optional[Dict[str, Any]]:
                 A dictionary of feed fields or None if the feed does not exist.
         """
-        path, params = EmonFeeds.prep_feed_fields(
+        path, params = EmonFeedsCore.prep_feed_fields(
             feed_id=feed_id
         )
         return self.execute_request(
@@ -406,7 +406,7 @@ class EmonFeedsApi(EmonInputsApi):
             Optional[Dict[str, Any]]: A dictionary of metadata
                 or None if the feed does not exist.
         """
-        path, params = EmonFeeds.prep_feed_meta(
+        path, params = EmonFeedsCore.prep_feed_meta(
             feed_id=feed_id
         )
         return self.execute_request(
@@ -430,7 +430,7 @@ class EmonFeedsApi(EmonInputsApi):
                 A dictionary containing the last time and value
                 or None if the feed does not exist.
         """
-        path, params = EmonFeeds.prep_last_value_feed(
+        path, params = EmonFeedsCore.prep_last_value_feed(
             feed_id=feed_id
         )
         return self.execute_request(
@@ -463,7 +463,7 @@ class EmonFeedsApi(EmonInputsApi):
                 A dictionary of input details
                 or None if the input does not exist.
         """
-        path, params = EmonFeeds.prep_fetch_feed_data(
+        path, params = EmonFeedsCore.prep_fetch_feed_data(
             feed_id=feed_id,
             start=start,
             end=end,
@@ -512,7 +512,7 @@ class EmonFeedsApi(EmonInputsApi):
         :param options: Dict of options
         :return: True if the given value is a str instance, otherwise False.
         """
-        path, params = EmonFeeds.prep_create_feed(
+        path, params = EmonFeedsCore.prep_create_feed(
             name=name,
             tag=tag,
             engine=engine,
@@ -535,7 +535,7 @@ class EmonFeedsApi(EmonInputsApi):
         On error return a dict as:
         - {"success": false, "message": "Invalid fields"}
         """
-        path, params = EmonFeeds.prep_update_feed(
+        path, params = EmonFeedsCore.prep_update_feed(
             feed_id=feed_id,
             fields=fields
         )
@@ -554,7 +554,7 @@ class EmonFeedsApi(EmonInputsApi):
         On error return a dict as:
         - {"success": false, "message": "Invalid fields"}
         """
-        path, params = EmonFeeds.prep_delete_feed(
+        path, params = EmonFeedsCore.prep_delete_feed(
             feed_id=feed_id
         )
         return self.execute_request(
@@ -574,7 +574,7 @@ class EmonFeedsApi(EmonInputsApi):
         On error return a dict as:
         - {"success": false, "message": "Invalid fields"}
         """
-        path, params = EmonFeeds.prep_add_data_point(
+        path, params = EmonFeedsCore.prep_add_data_point(
             feed_id=feed_id,
             time=time,
             value=value
@@ -595,7 +595,7 @@ class EmonFeedsApi(EmonInputsApi):
         On error return a dict as:
         - {"success": false, "message": "Invalid fields"}
         """
-        path, params = EmonFeeds.prep_add_data_points(
+        path, params = EmonFeedsCore.prep_add_data_points(
             feed_id=feed_id,
             data=data
         )
@@ -615,7 +615,7 @@ class EmonFeedsApi(EmonInputsApi):
         On error return a dict as:
         - {"success": false, "message": "Invalid fields"}
         """
-        path, params = EmonFeeds.prep_delete_data_point(
+        path, params = EmonFeedsCore.prep_delete_data_point(
             feed_id=feed_id,
             time=time
         )
@@ -636,7 +636,7 @@ class EmonFeedsApi(EmonInputsApi):
         On error return a dict as:
         - {"success": false, "message": "Invalid fields"}
         """
-        path, params = EmonFeeds.prep_add_feed_process_list(
+        path, params = EmonFeedsCore.prep_add_feed_process_list(
             feed_id=feed_id,
             process_id=process_id,
             process=process
