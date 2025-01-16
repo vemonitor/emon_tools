@@ -21,7 +21,7 @@ class Utils:
         """
         result = isinstance(text, str)
         if not_empty:
-            result = result is True and len(text) > 0
+            result = result is True and len(text.strip()) > 0
         return result
 
     @staticmethod
