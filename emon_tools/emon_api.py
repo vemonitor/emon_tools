@@ -121,16 +121,8 @@ class EmonRequest:
         Raises:
             ValueError: If the path is invalid or empty.
         """
-        if not path or not isinstance(path, str):
-            raise ValueError(
-                f"request error: {msg}. "
-                "Path must be a non-empty string."
-                )
-
-        # Encode unsafe characters in the path.
-        path = quote(path.lstrip('/'), safe="/")
-        # Safely join the base URL and path.
-        full_url = urljoin(self.url, path)
+        full_url = EmonRequestCore.encode_url_path(
+            url=self.url, path=path, msg=msg)
 
         if params is None:
             params = {}
@@ -138,18 +130,7 @@ class EmonRequest:
         params["apikey"] = self.api_key
 
         # Validate and encode all parameters
-        encoded_params = {}
-        keys_unquote = []
-        for key, value in params.items():
-            is_not_object = isinstance(value, (float, str))\
-                and key not in keys_unquote
-            if is_not_object:
-                encoded_params[key] = quote_plus(str(value), safe="-")
-            elif request_type == RequestType.GET\
-                    and isinstance(value, (list, dict)):
-                encoded_params[key] = sjson.dumps(value)
-            else:
-                encoded_params[key] = value
+        encoded_params = EmonRequestCore.encode_params(params)
 
         result = {SUCCESS_KEY: False, MESSAGE_KEY: None}
         self.logger.debug(
