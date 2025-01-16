@@ -638,7 +638,7 @@ class EmonInputsCore:
         """
         _ = Ut.validate_integer(input_id, 'Input Id', positive=True)
         if not Ut.is_dict(fields, not_empty=True):
-            raise ValueError("Invalid data to post inputs.")
+            raise ValueError("Invalid fields to post inputs.")
         params = {
             "inputid": input_id,
             "fields": fields
@@ -706,12 +706,24 @@ class EmonInputsCore:
         if not Ut.is_list(data, not_empty=True):
             raise ValueError("Invalid data to post inputs.")
         params = {}
-        if isinstance(timestamp, (int, float)):
+        if timestamp is not None:
+            Ut.validate_timestamp(
+                timestamp, "inputBulkTime")
             params.update({"time": timestamp})
-        elif isinstance(sentat, int):
+        if sentat is not None:
+            Ut.validate_integer(
+                sentat, "inputBulkSentat")
             params.update({"sentat": sentat})
-        elif isinstance(offset, int):
+        if offset is not None:
+            Ut.validate_integer(
+                offset, "inputBulkOffset")
             params.update({"offset": offset})
+
+        if len(params) > 1:
+            raise ValueError(
+                "You must chose an unique format "
+                "from (timestamp, sentat or offset)."
+                )
         data = {
             "data": sj.dumps(data)
         }

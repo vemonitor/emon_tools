@@ -693,6 +693,15 @@ class TestEmonRequestCore:
             (
                 {
                     "url": "http://127.0.0.1:8080",
+                    "path": "/abc/d e f",
+                    "msg": "encode_url_test"
+                },
+                "http://127.0.0.1:8080/abc/d+e+f",
+                False, None, None
+            ),
+            (
+                {
+                    "url": "http://127.0.0.1:8080",
                     "path": "/abc/def",
                     "msg": "encode_url_test"
                 },
@@ -717,6 +726,40 @@ class TestEmonRequestCore:
         else:
             assert EmonRequestCore.encode_url_path(
                 **params) == expected_response
+
+    @pytest.mark.parametrize(
+        "params, expected_response",
+        [
+            (
+                {
+                    "params": {
+                        "key1": "value1",
+                        "key2": ["value1"],
+                        "key3": 1,
+                        "key4": "a a a",
+                        "key5": "a a a",
+                    },
+                    "unquote_keys": ["key5"]
+                },
+                {
+                    "key1": "value1",
+                    "key2": '["value1"]',
+                    "key3": 1,
+                    "key4": "a+a+a",
+                    "key5": "a a a",
+                }
+            )
+
+        ]
+    )
+    def test_encode_params(
+        self,
+        params,
+        expected_response
+    ):
+        """Test compute_response method."""
+        assert EmonRequestCore.encode_params(
+            **params) == expected_response
 
 
 class TestEmonInputs:
@@ -779,7 +822,10 @@ class TestEmonInputs:
             EmonInputsCore.prep_input_fields(node, name)
 
     @pytest.mark.parametrize(
-        "input_id, fields, expected_params",
+        (
+            "input_id, fields, expected_params, "
+            "is_error, expected_error, error_msg"
+        ),
         [
             (
                 123,
@@ -791,6 +837,31 @@ class TestEmonInputs:
                         "field2": "value2"
                     }
                 },
+                False, None, None
+            ),
+            (
+                123,
+                {},
+                {},
+                True, ValueError, "Invalid fields to post inputs."
+            ),
+            (
+                123,
+                None,
+                {},
+                True, ValueError, "Invalid fields to post inputs."
+            ),
+            (
+                "123",
+                {"field1": "value1", "field2": "value2"},
+                {},
+                True, ValueError, "Input Id must be an integer."
+            ),
+            (
+                0,
+                {"field1": "value1", "field2": "value2"},
+                {},
+                True, ValueError, "Input Id must be a positive integer."
             ),
         ],
     )
@@ -798,30 +869,22 @@ class TestEmonInputs:
         self,
         input_id,
         fields,
-        expected_params
+        expected_params,
+        is_error,
+        expected_error,
+        error_msg
     ):
         """Test prep_set_input_fields method."""
-        path, params = EmonInputsCore.prep_set_input_fields(input_id, fields)
-        assert path == "/input/set"
-        assert params == expected_params
-
-    @pytest.mark.parametrize(
-        "input_id, fields, expected_exception",
-        [
-            ("123", {}, ValueError),
-            ("123", None, ValueError),
-            ("", {"field1": "value1"}, ValueError),
-        ],
-    )
-    def test_prep_set_input_fields_invalid(
-        self,
-        input_id,
-        fields,
-        expected_exception
-    ):
-        """Test prep_set_input_fields with invalid input."""
-        with pytest.raises(expected_exception):
-            EmonInputsCore.prep_set_input_fields(input_id, fields)
+        if is_error is True:
+            with pytest.raises(expected_error, match=error_msg):
+                EmonInputsCore.prep_set_input_fields(
+                    input_id, fields
+                )
+        else:
+            path, params = EmonInputsCore.prep_set_input_fields(
+                input_id, fields)
+            assert path == "/input/set"
+            assert params == expected_params
 
     @pytest.mark.parametrize(
         "input_id, process_list, expected_params",
@@ -849,21 +912,34 @@ class TestEmonInputs:
         assert params == expected_params
 
     @pytest.mark.parametrize(
-        "input_id, process_list, expected_exception",
+        "input_id, process_list, expected_exception, error_msg",
         [
-            ("123", "", ValueError),
-            ("123", None, ValueError),
-            ("", "process1:1,process2:2", ValueError),
+            (
+                "123", "",
+                ValueError,
+                "Input Id must be an integer."
+            ),
+            (
+                123, None,
+                ValueError,
+                "Invalid data to post inputs."
+            ),
+            (
+                "", "process1:1,process2:2",
+                ValueError,
+                ""
+            ),
         ],
     )
     def test_prep_set_input_process_list_invalid(
         self,
         input_id,
         process_list,
-        expected_exception
+        expected_exception,
+        error_msg
     ):
         """Test prep_set_input_process_list with invalid input."""
-        with pytest.raises(expected_exception):
+        with pytest.raises(expected_exception, match=error_msg):
             EmonInputsCore.prep_set_input_process_list(input_id, process_list)
 
     @pytest.mark.parametrize(
@@ -907,6 +983,107 @@ class TestEmonInputs:
         """Test prep_post_inputs with invalid input."""
         with pytest.raises(expected_exception):
             EmonInputsCore.prep_post_inputs(node, data)
+
+    @pytest.mark.parametrize(
+        (
+            "params, expected_params, "
+            "is_error, expected_error, error_msg"
+        ),
+        [
+            (
+                {
+                    "data": ["test"],
+                    "timestamp": None,
+                    "sentat": None,
+                    "offset": None
+                },
+                (
+                    "/input/bulk", {}, {"data": '["test"]'}
+                ),
+                False, None, None
+            ),
+            (
+                {
+                    "data": [],
+                    "timestamp": None,
+                    "sentat": None,
+                    "offset": None
+                },
+                (),
+                True, ValueError, "Invalid data to post inputs."
+            ),
+            (
+                {
+                    "data": {"a": "1"},
+                    "timestamp": None,
+                    "sentat": None,
+                    "offset": None
+                },
+                (),
+                True, ValueError, "Invalid data to post inputs."
+            ),
+            (
+                {
+                    "data": ["test"],
+                    "timestamp": -1,
+                    "sentat": None,
+                    "offset": None
+                },
+                (),
+                True, ValueError,
+                "inputBulkTime timestamp must be a non-negative number."
+            ),
+            (
+                {
+                    "data": ["test"],
+                    "timestamp": None,
+                    "sentat": "-1",
+                    "offset": None
+                },
+                (),
+                True, ValueError,
+                "inputBulkSentat must be an integer."
+            ),
+            (
+                {
+                    "data": ["test"],
+                    "timestamp": None,
+                    "sentat": None,
+                    "offset": "-1"
+                },
+                (),
+                True, ValueError,
+                "inputBulkOffset must be an integer."
+            ),
+            (
+                {
+                    "data": ["test"],
+                    "timestamp": 2,
+                    "sentat": 1,
+                    "offset": 1
+                },
+                (),
+                True, ValueError,
+                r"You must chose an unique format.*"
+            ),
+        ],
+    )
+    def test_prep_input_bulk(
+        self,
+        params,
+        expected_params,
+        is_error,
+        expected_error,
+        error_msg
+    ):
+        """Test prep_set_input_fields method."""
+        if is_error is True:
+            with pytest.raises(expected_error, match=error_msg):
+                EmonInputsCore.prep_input_bulk(**params)
+        else:
+            result = EmonInputsCore.prep_input_bulk(
+                **params)
+            assert result == expected_params
 
 
 class TestEmonFeeds:
