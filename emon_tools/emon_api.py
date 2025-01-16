@@ -26,7 +26,6 @@ from dataclasses import dataclass
 from typing import Any, Optional, TypeVar, List, Dict, Union
 import simplejson as sjson
 import requests
-from emon_tools.api_utils import Utils as Ut
 from emon_tools.api_utils import HTTP_STATUS
 from emon_tools.api_utils import MESSAGE_KEY
 from emon_tools.api_utils import SUCCESS_KEY
@@ -168,7 +167,7 @@ class EmonRequest:
             result[MESSAGE_KEY] = error_msg
             self.logger.error(error_msg)
         except requests.exceptions.Timeout:
-            error_msg = "Request timeout  {msg}."
+            error_msg = f"Request timeout: {msg}."
             result[MESSAGE_KEY] = error_msg
             self.logger.error(error_msg)
 

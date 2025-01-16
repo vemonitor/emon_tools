@@ -29,12 +29,11 @@ Security and validation:
 import asyncio
 import logging
 from dataclasses import dataclass, field
-from typing import Any, Optional, TypeVar, List, Dict, Union
-from urllib.parse import quote, quote_plus, urljoin
+from typing import Any, Optional, TypeVar
+from typing import List, Dict, Union
 import simplejson as sjson
 
 from aiohttp import ClientError, ClientSession
-from emon_tools.api_utils import Utils as Ut
 from emon_tools.api_utils import HTTP_STATUS
 from emon_tools.api_utils import MESSAGE_KEY
 from emon_tools.api_utils import SUCCESS_KEY
@@ -202,7 +201,7 @@ class AsyncEmonRequest:
             result[MESSAGE_KEY] = error_msg
             self.logger.error(error_msg)
         except asyncio.TimeoutError:
-            error_msg = f"Request timeout:  {msg}."
+            error_msg = f"Request timeout: {msg}."
             result[MESSAGE_KEY] = error_msg
             self.logger.error(error_msg)
 
