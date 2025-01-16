@@ -171,7 +171,7 @@ class EmonProcessList(Enum):
 class EmonHelper:
     """Emon api helper methods"""
     @staticmethod
-    def sanitize_url(url: str) -> str:
+    def validate_url(url: str) -> str:
         """
         Ensure the URL is valid and properly formatted.
 
@@ -184,7 +184,7 @@ class EmonHelper:
         Raises:
             ValueError: If the URL is empty or improperly formatted.
         """
-        if not isinstance(url, str) or not url.strip():
+        if Ut.is_str(url, not_empty=True):
             raise TypeError("URL must be a non-empty string.")
         if not (url.startswith("http://") or url.startswith("https://")):
             raise ValueError("URL must start with 'http://' or 'https://'.")

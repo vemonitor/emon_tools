@@ -58,7 +58,7 @@ class TestEmonHelper:
 
     def test_validate_url_valid(self):
         """Test URL validation with a valid URL."""
-        validated_url = EmonHelper.sanitize_url("http://localhost:8080")
+        validated_url = EmonHelper.validate_url("http://localhost:8080")
         assert validated_url == "http://localhost:8080"
 
     @pytest.mark.parametrize(
@@ -82,7 +82,7 @@ class TestEmonHelper:
     ):
         """Test URL validation with an invalid URL."""
         with pytest.raises(expected_exception, match=error_msg):
-            EmonHelper.sanitize_url(url)
+            EmonHelper.validate_url(url)
 
     @pytest.mark.parametrize(
         "filters, expected_result",
@@ -677,6 +677,46 @@ class TestEmonRequestCore:
     ):
         """Test compute_response method."""
         assert EmonRequestCore.compute_response(response) == expected_response
+
+    @pytest.mark.parametrize(
+        "params, expected_response, is_error, expected_exception, error_msg",
+        [
+            (
+                {
+                    "url": "http://127.0.0.1:8080",
+                    "path": "/abc/def",
+                    "msg": "encode_url_test"
+                },
+                "http://127.0.0.1:8080/abc/def",
+                False, None, None
+            ),
+            (
+                {
+                    "url": "http://127.0.0.1:8080",
+                    "path": "/abc/def",
+                    "msg": "encode_url_test"
+                },
+                "http://127.0.0.1:8080/abc/def",
+                False, None, None
+            )
+
+        ]
+    )
+    def test_encode_url_path(
+        self,
+        params,
+        expected_response,
+        is_error,
+        expected_exception,
+        error_msg
+    ):
+        """Test compute_response method."""
+        if is_error is True:
+            with pytest.raises(expected_exception, match=error_msg):
+                EmonRequestCore.encode_url_path(**params)
+        else:
+            assert EmonRequestCore.encode_url_path(
+                **params) == expected_response
 
 
 class TestEmonInputs:
