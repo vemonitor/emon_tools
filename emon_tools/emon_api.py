@@ -77,7 +77,7 @@ class EmonRequest:
         """Compute request response"""
         result = {SUCCESS_KEY: False, MESSAGE_KEY: None}
         if response.status_code in [200, 201]:
-            if response.headers.get('Content-Type') == 'text/plain':
+            if 'text/plain' in response.headers.get('Content-Type'):
                 response_data = response.text
                 if '"' in response_data:
                     response_data = sjson.loads(response_data)
