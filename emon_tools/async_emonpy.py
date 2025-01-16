@@ -28,7 +28,7 @@ class AsyncEmonPy(AsyncEmonFeeds):
         feeds=list
     ):
         """Create input feeds structure"""
-        processes = []
+        nb_added, processes = 0, []
         if Ut.is_list(feeds, not_empty=True):
             for feed in feeds:
                 if Ut.is_dict(feed, not_empty=True):
@@ -56,8 +56,9 @@ class AsyncEmonPy(AsyncEmonFeeds):
                         "Feed id",
                         positive=True
                     )
+                    nb_added += 1
                     processes.append([1, feed_id])
-        return processes
+        return nb_added, processes
 
     async def create_inputs(
         self,
@@ -136,7 +137,7 @@ class AsyncEmonPy(AsyncEmonFeeds):
         feeds_on: list
     ) -> list:
         """Create inputs feeds structure from EmonCms API."""
-        processes = []
+        nb_added, processes = 0, []
         if Ut.is_dict(input_item, not_empty=True):
 
             if Ut.is_list(feeds_on, not_empty=True):
@@ -152,17 +153,17 @@ class AsyncEmonPy(AsyncEmonFeeds):
                             processes.append([1, int(existant_feed.get('id'))])
 
                 if Ut.is_list(feeds_out, not_empty=True):
-                    new_processes = await self.create_input_feeds(
+                    nb_added, new_processes = await self.create_input_feeds(
                         feeds=feeds_out
                     )
                     if Ut.is_list(new_processes, not_empty=True):
                         processes += new_processes
             else:
                 # create item feeds
-                processes = await self.create_input_feeds(
+                nb_added, processes = await self.create_input_feeds(
                     feeds=input_item.get('feeds')
                 )
-        return processes
+        return nb_added, processes
 
     async def update_input_fields(
         self,

@@ -86,7 +86,7 @@ class TestEmonPy:
         """Test the create_input_feeds method."""
         api.create_feed.side_effect = create_feed_results
 
-        result = api.create_input_feeds(feeds=feeds)
+        _, result = api.create_input_feeds(feeds=feeds)
         assert result == expected_processes
 
     def test_create_input_feeds_invalid(
@@ -225,7 +225,7 @@ class TestEmonPy:
                         'interval': 5
                     }
                 ],
-                [[1, 159]],
+                (1, [[1, 159]]),
                 [[1, 158], [1, 159]]
             ),
             (
@@ -248,7 +248,7 @@ class TestEmonPy:
                     ]
                 },
                 [],
-                [[1, 158], [1, 159]],
+                (1, [[1, 158], [1, 159]]),
                 [[1, 158], [1, 159]]
             ),
             ({}, [], [], []),
@@ -264,7 +264,7 @@ class TestEmonPy:
     ):
         """Test the init_inputs_structure method."""
         api.create_input_feeds = MagicMock(return_value=expected_created)
-        result = api.add_input_feeds_structure(
+        _, result = api.add_input_feeds_structure(
             input_item=input_item,
             feeds_on=feeds_on)
         assert result == expected_process
@@ -387,7 +387,7 @@ class TestEmonPy:
         api.get_structure = MagicMock(
             return_value=get_structure_return)
         api.add_input_feeds_structure = MagicMock(
-            return_value=[]
+            return_value=(0, [])
         )
         api.update_input_fields = MagicMock(return_value=0)
         api.update_input_process_list = MagicMock(return_value=0)
