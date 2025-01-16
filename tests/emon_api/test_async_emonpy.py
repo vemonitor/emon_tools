@@ -71,7 +71,7 @@ class TestAsyncEmonPy:
             (
                 [{"name": "feed1", "tag": "tag1"}],
                 [{SUCCESS_KEY: True, MESSAGE_KEY: {"feedid": "1"}}],
-                [[1, 1]],
+                (1, [[1, 1]]),
                 False,
                 None,
             ),
@@ -131,7 +131,7 @@ class TestAsyncEmonPy:
                 ],
                 [],  # Feeds
                 1,  # init_inputs_structure result
-                [{"id": 1}],  # add_input_feeds_structure result
+                [1, [[1, 1]]],  # add_input_feeds_structure result
                 [
                     {
                         "id": 1, "nodeid": "node1", "name": "input1",
@@ -152,7 +152,7 @@ class TestAsyncEmonPy:
                 [],  # Inputs are not successfully added
                 [],  # Feeds
                 1,  # init_inputs_structure result
-                [],  # add_input_feeds_structure returns no inputs
+                (0, []),  # add_input_feeds_structure returns no inputs
                 [],  # inputs_on
                 True,  # Exception expected
                 "Fatal Error, inputs was not added to server.",
@@ -187,8 +187,8 @@ class TestAsyncEmonPy:
                 return_value=(inputs, feeds))
             api.add_input_feeds_structure = AsyncMock(
                 return_value=add_inputs_result)
-            api.set_input_fields = AsyncMock(return_value=None)
-            api.set_input_process_list = AsyncMock(return_value=None)
+            api.set_input_fields = AsyncMock(return_value=0)
+            api.set_input_process_list = AsyncMock(return_value=0)
 
             if raises_exception:
                 with pytest.raises(ValueError, match=exception_message):
@@ -196,8 +196,14 @@ class TestAsyncEmonPy:
             else:
                 result = await api.create_structure(structure=structure)
                 expected_result = {
-                    "init_inputs": init_inputs_result,
-                    "input_1": {"fields": None, "process": None},
+                    'nb_updated_inputs': 0,
+                    "nb_added_inputs": init_inputs_result,
+                    'nb_added_feeds': 1,
+                    "input_1": {
+                        "input_feeds": 1,
+                        "input_fields": 0,
+                        "input_process": 0
+                    },
                 }
                 assert result == expected_result
 
@@ -212,8 +218,8 @@ class TestAsyncEmonPy:
     @pytest.mark.parametrize(
         "input_id, current, description, expected_result",
         [
-            (1, "current_desc", "new_desc", "success_response"),
-            (1, "current_desc", "current_desc", None),
+            (1, "current_desc", "new_desc", 1),
+            (1, "current_desc", "current_desc", 0),
         ],
     )
     async def test_set_input_fields(
@@ -224,9 +230,10 @@ class TestAsyncEmonPy:
 
         This method ensures fields are updated only when necessary.
         """
-        api.async_set_input_fields = AsyncMock(return_value="success_response")
+        api.async_set_input_fields = AsyncMock(
+            return_value={SUCCESS_KEY: True, MESSAGE_KEY: 'Field updated'})
 
-        result = await api.set_input_fields(
+        result = await api.update_input_fields(
             input_id=input_id, current=current, description=description
         )
 
@@ -235,8 +242,8 @@ class TestAsyncEmonPy:
     @pytest.mark.parametrize(
         "input_id, current_processes, new_processes, expected_result",
         [
-            (1, "", [[1, 1]], "success_response"),  # Update required
-            (1, "1:1", [[1, 1]], []),            # No update needed
+            (1, "", [[1, 1]], 1),  # Update required
+            (1, "1:1", [[1, 1]], 0),            # No update needed
         ],
     )
     async def test_set_input_process_list(
@@ -249,10 +256,12 @@ class TestAsyncEmonPy:
         """
         # Mock the async method to simulate API behavior
         api.async_set_input_process_list = AsyncMock(
-            return_value="success_response")
+            return_value={
+                SUCCESS_KEY: True,
+                MESSAGE_KEY: 'Input processlist updated'})
 
         # Call the method under test
-        result = await api.set_input_process_list(
+        result = await api.update_input_process_list(
             input_id=input_id,
             current_processes=current_processes,
             new_processes=new_processes,

@@ -80,7 +80,7 @@ class TestEmonRequest:
             MOCK_RESPONSE_SUCCESS if status_code == 200 else MOCK_RESPONSE_FAIL
         )
         with patch(
-                "emon_tools.api_utils.Utils.compute_response",
+                "emon_tools.emon_api_core.EmonRequestCore.compute_response",
                 return_value={
                     SUCCESS_KEY: expected_success,
                     MESSAGE_KEY: expected_message}

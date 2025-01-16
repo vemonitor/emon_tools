@@ -118,7 +118,7 @@ class TestAsyncEmonRequest:
         response = await mock_emon_request.async_request(
             "/valid-path", msg='test async')
         assert response["success"] is False
-        assert response["message"] == "Request test async timeout."
+        assert response["message"] == "Request timeout: test async."
 
     @pytest.mark.asyncio
     async def test_async_request_client_error(self, mock_emon_request):
