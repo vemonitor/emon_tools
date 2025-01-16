@@ -67,42 +67,6 @@ class Utils(Ut):
             and result.get(SUCCESS_KEY) in ("true", True)
 
     @staticmethod
-    def compute_response(
-        response: Union[dict, list, str, None]
-    ) -> tuple[bool, Union[str, list, dict]]:
-        """
-        Computes and interprets the response from Emoncms.
-
-        :param result: The response from Emoncms.
-        :return: A tuple of success status and message.
-        """
-        result = {SUCCESS_KEY: False, MESSAGE_KEY: "Invalid response"}
-        is_dict = isinstance(response, dict)
-        is_json = is_dict\
-            and SUCCESS_KEY in response\
-            and MESSAGE_KEY in response
-        if is_json:
-            result[SUCCESS_KEY] = bool(response[SUCCESS_KEY])
-            extra = Utils.filter_dict_by_keys(
-                input_data=response,
-                filter_data=[SUCCESS_KEY],
-                filter_in=False
-            )
-            if Ut.is_dict(extra, not_empty=True):
-                result[SUCCESS_KEY] = bool(response[SUCCESS_KEY])
-                del result[MESSAGE_KEY]
-                result.update(extra)
-
-        elif is_dict and SUCCESS_KEY in response and len(response) == 1:
-            result[SUCCESS_KEY] = bool(response[SUCCESS_KEY])
-            result[MESSAGE_KEY] = ''
-
-        elif isinstance(response, (list, dict, str, int, float)):
-            result[SUCCESS_KEY] = True
-            result[MESSAGE_KEY] = response
-        return result
-
-    @staticmethod
     def filter_dict_by_keys(
         input_data: dict,
         filter_data: list,

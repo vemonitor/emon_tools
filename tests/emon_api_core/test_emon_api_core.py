@@ -1,7 +1,10 @@
 """Tests for the EmonRequest class using async"""
 import pytest
+from emon_tools.api_utils import MESSAGE_KEY
+from emon_tools.api_utils import SUCCESS_KEY
 from emon_tools.emon_api_core import InputGetType
 from emon_tools.emon_api_core import EmonHelper
+from emon_tools.emon_api_core import EmonRequestCore
 from emon_tools.emon_api_core import EmonInputs
 from emon_tools.emon_api_core import EmonFeeds
 
@@ -549,7 +552,7 @@ class TestEmonHelper:
         assert EmonHelper.get_feeds_from_inputs_process(
             input_data=input_data,
             feed_data=feed_data) == expected_result
-    
+
     @pytest.mark.parametrize(
         (
             "input_data, feed_data, filter_inputs, "
@@ -625,6 +628,55 @@ class TestEmonHelper:
             filter_inputs=filter_inputs,
             filter_feeds=filter_feeds,
             filter_in=filter_in) == expected_result
+
+
+class TestEmonRequestCore:
+    """Unit tests for EmonRequestCore class."""
+    @pytest.mark.parametrize(
+        "response, expected_response",
+        [
+            (
+                {SUCCESS_KEY: True, MESSAGE_KEY: "ok"},
+                {SUCCESS_KEY: True, MESSAGE_KEY: "ok"}
+            ),
+            (
+                {SUCCESS_KEY: True, MESSAGE_KEY: "ok", "key1": "value1"},
+                {SUCCESS_KEY: True, MESSAGE_KEY: "ok", "key1": "value1"}
+            ),
+            (
+                {SUCCESS_KEY: False, MESSAGE_KEY: "error"},
+                {SUCCESS_KEY: False, MESSAGE_KEY: "error"}
+            ),
+            (
+                {SUCCESS_KEY: True},
+                {SUCCESS_KEY: True, MESSAGE_KEY: ""}
+            ),
+            (
+                "simple message",
+                {SUCCESS_KEY: True, MESSAGE_KEY: "simple message"}
+            ),
+            (
+                123,
+                {SUCCESS_KEY: True, MESSAGE_KEY: 123}
+            ),
+            (
+                [1, 2, 3, 4, 5],
+                {SUCCESS_KEY: True, MESSAGE_KEY: [1, 2, 3, 4, 5]}
+            ),
+            (
+                {'a': 1, 'b': 2},
+                {SUCCESS_KEY: True, MESSAGE_KEY: {'a': 1, 'b': 2}}
+            )
+
+        ]
+    )
+    def test_compute_response(
+        self,
+        response,
+        expected_response
+    ):
+        """Test compute_response method."""
+        assert EmonRequestCore.compute_response(response) == expected_response
 
 
 class TestEmonInputs:

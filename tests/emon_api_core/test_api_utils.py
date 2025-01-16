@@ -1,6 +1,6 @@
 """Tests for emon_tools.api_utils module."""
 import pytest
-from emon_tools.api_utils import MESSAGE_KEY, SUCCESS_KEY, Utils
+from emon_tools.api_utils import Utils
 
 
 class TestApiUtils:
@@ -45,52 +45,6 @@ class TestApiUtils:
         assert Utils.is_request_success({"success": "true"}) is True
         assert Utils.is_request_success({"success": "false"}) is False
         assert Utils.is_request_success("not a dict") is False
-
-    @pytest.mark.parametrize(
-        "response, expected_response",
-        [
-            (
-                {SUCCESS_KEY: True, MESSAGE_KEY: "ok"},
-                {SUCCESS_KEY: True, MESSAGE_KEY: "ok"}
-            ),
-            (
-                {SUCCESS_KEY: True, MESSAGE_KEY: "ok", "key1": "value1"},
-                {SUCCESS_KEY: True, MESSAGE_KEY: "ok", "key1": "value1"}
-            ),
-            (
-                {SUCCESS_KEY: False, MESSAGE_KEY: "error"},
-                {SUCCESS_KEY: False, MESSAGE_KEY: "error"}
-            ),
-            (
-                {SUCCESS_KEY: True},
-                {SUCCESS_KEY: True, MESSAGE_KEY: ""}
-            ),
-            (
-                "simple message",
-                {SUCCESS_KEY: True, MESSAGE_KEY: "simple message"}
-            ),
-            (
-                123,
-                {SUCCESS_KEY: True, MESSAGE_KEY: 123}
-            ),
-            (
-                [1, 2, 3, 4, 5],
-                {SUCCESS_KEY: True, MESSAGE_KEY: [1, 2, 3, 4, 5]}
-            ),
-            (
-                {'a': 1, 'b': 2},
-                {SUCCESS_KEY: True, MESSAGE_KEY: {'a': 1, 'b': 2}}
-            )
-
-        ]
-    )
-    def test_compute_response(
-        self,
-        response,
-        expected_response
-    ):
-        """Test compute_response method."""
-        assert Utils.compute_response(response) == expected_response
 
     @pytest.mark.parametrize(
         "input_data, filter_data, filter_in, expected",

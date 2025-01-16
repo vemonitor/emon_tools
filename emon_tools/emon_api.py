@@ -24,7 +24,6 @@ Security and validation:
 import logging
 from dataclasses import dataclass
 from typing import Any, Optional, TypeVar, List, Dict, Union
-from urllib.parse import quote, quote_plus, urljoin
 import simplejson as sjson
 import requests
 from emon_tools.api_utils import Utils as Ut
@@ -33,6 +32,7 @@ from emon_tools.api_utils import MESSAGE_KEY
 from emon_tools.api_utils import SUCCESS_KEY
 from emon_tools.emon_api_core import InputGetType
 from emon_tools.emon_api_core import RequestType
+from emon_tools.emon_api_core import EmonRequestCore
 from emon_tools.emon_api_core import EmonInputs
 from emon_tools.emon_api_core import EmonFeeds
 from emon_tools.emon_api_core import EmonHelper
@@ -88,8 +88,8 @@ class EmonRequest:
                 msg,
                 response_data
             )
-            result = Ut.compute_response(
-                response_data
+            result = EmonRequestCore.compute_response(
+                response=response_data
             )
         else:
             error_msg = (
