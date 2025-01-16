@@ -1,5 +1,5 @@
 """Fina Utils Module"""
-from typing import Any
+from typing import Any, Optional
 from typing import Tuple
 from typing import Union
 import datetime as dt
@@ -200,7 +200,7 @@ class Utils:
         return timestamp
 
     @staticmethod
-    def get_start_day(timestamp: Union[int, float]) -> float:
+    def get_utc_timestamp(timestamp: Union[int, float]) -> float:
         """
         Get the start-of-day timestamp for a given timestamp in UTC.
 
@@ -210,27 +210,48 @@ class Utils:
         Returns:
             float: The start-of-day timestamp in UTC.
         """
-        dt_point = dt.datetime.fromtimestamp(timestamp, tz=dt.timezone.utc)
+        dt_point = dt.datetime.fromtimestamp(timestamp)
+        dt_point = dt_point.replace(tzinfo=dt.timezone.utc)
+        return dt_point.timestamp()
+
+    @staticmethod
+    def get_start_day(
+        timestamp: Union[int, float],
+        timezone: Optional[dt.timezone] = dt.timezone.utc
+    ) -> float:
+        """
+        Get the start-of-day timestamp for a given timestamp in UTC.
+
+        Parameters:
+            timestamp (Union[int, float]): The input UNIX timestamp.
+
+        Returns:
+            float: The start-of-day timestamp in UTC.
+        """
+        dt_point = dt.datetime.fromtimestamp(timestamp)
         start_of_day = dt.datetime(
-            dt_point.year, dt_point.month, dt_point.day, tzinfo=dt.timezone.utc
+            dt_point.year, dt_point.month, dt_point.day
         )
+        if isinstance(timezone, dt.timezone):
+            return Utils.get_utc_timestamp(start_of_day.timestamp())
         return start_of_day.timestamp()
 
     @staticmethod
     def get_string_datetime_from_timestamp(
         timestamp: str,
-        timezone: dt.timezone = dt.timezone.utc,
+        timezone: Optional[dt.timezone] = dt.timezone.utc,
         date_format: str = "%Y-%m-%d %H:%M:%S"
     ) -> dt.datetime:
         """Get string representation of UTC timestamp."""
         timestamp = Utils.validate_timestamp(timestamp, "timestamp")
 
-        if not isinstance(timezone, dt.timezone):
-            raise ValueError(
-                "The timezone must be a datetime.timezone object.")
-
-        result = dt.datetime.fromtimestamp(timestamp, tz=timezone)
-        result = result.replace(tzinfo=timezone)
+        if isinstance(timezone, dt.timezone):
+            result = dt.datetime.fromtimestamp(
+                timestamp,
+                tz=timezone
+            )
+        else:
+            result = dt.datetime.fromtimestamp(timestamp)
         return result.strftime(date_format)
 
     @staticmethod
