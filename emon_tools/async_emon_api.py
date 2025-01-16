@@ -74,8 +74,8 @@ class AsyncEmonRequest:
     logger = logging.getLogger(__name__)
 
     def __post_init__(self):
-        """Validate and sanitize initialization parameters."""
-        self.url = EmonHelper.sanitize_url(self.url)
+        """Validate initialization parameters."""
+        self.url = EmonHelper.validate_url(self.url)
         self.api_key = EmonHelper.validate_api_key(self.api_key)
 
     @property
