@@ -30,7 +30,7 @@ class Utils(Ut):
         :param text: Node value.
         :return: True if the text is valid, otherwise False.
         """
-        if not isinstance(text, str) or not text.strip():
+        if not isinstance(text, str) or len(text.strip()) == 0:
             return False
 
         matches = re.findall(r'^[\w\s\-:]+$', text, flags=re.UNICODE)
@@ -47,7 +47,7 @@ class Utils(Ut):
         :param text: Node value.
         :return: True if the text is valid, otherwise False.
         """
-        if not isinstance(text, str) or not text.strip():
+        if not isinstance(text, str) or len(text.strip()) == 0:
             raise TypeError(f"{field_name} must be a not empty string.")
 
         matches = re.findall(r'^[\w\s\-:]+$', text, flags=re.UNICODE)
