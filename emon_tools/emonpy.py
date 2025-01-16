@@ -276,4 +276,25 @@ class EmonPy(EmonFeedsApi):
                 result['nb_updated_inputs'] += nb_updated
                 result[key]['input_process'] = nb_updated
         return result
+
+    def get_extended_structure(
+        self,
+        structure=list
+    ):
+        """Get extended structure."""
+        result = []
+        if Ut.is_list(structure, not_empty=True):
+            inputs, feeds = self.get_structure()
+            for item in structure:
+                inputs_on, feeds_on = EmonHelper.get_existant_structure(
+                    input_item=item,
+                    inputs=inputs,
+                    feeds=feeds
+                )
+                if Ut.is_list(inputs_on) and len(inputs_on) == 1:
+                    inputs_on = inputs_on[0]
+                    inputs_on.update({'feeds': feeds_on})
+                    result.append(
+                        inputs_on
+                    )
         return result
