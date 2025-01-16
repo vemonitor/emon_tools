@@ -3,7 +3,8 @@ Emoncms API example.
 
 Inputs Feeds structure supervision.
 Create or Update Emoncms Inputs Feeds structure,
-based on structured dictionary.
+based on structured dictionary returned by `get_emon_structure`.
+
 
 Input bulk post data example.
 Send 5 * 60 dummy data points at 1s interval,
@@ -177,8 +178,7 @@ class DataBulk:
         return data
 
 
-def main():
-    """fetches somes datas in emoncms"""
+if __name__ == "__main__":
     emonpy = DataBulk(
         os.getenv('EMONCMS_URL'), os.getenv('API_KEY'))
     emonpy.init_structure(
@@ -187,7 +187,3 @@ def main():
     emonpy.dummy_bulk(
         structure=get_emon_structure()
     )
-
-
-if __name__ == "__main__":
-    main()
