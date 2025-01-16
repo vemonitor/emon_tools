@@ -1,4 +1,4 @@
-"""Test Suite for EmonPy class with 100% coverage."""
+"""Test Suite for EmonPy class."""
 from unittest.mock import MagicMock
 import pytest
 from emon_tools.api_utils import SUCCESS_KEY, MESSAGE_KEY
@@ -351,9 +351,18 @@ class TestEmonPy:
                 ],
                 (
                     [
-                        {"id": "1", "name": "a1", "nodeid": "n1", "processList": "1:1"},
-                        {"id": "2", "name": "a2", "nodeid": "n1", "processList": "1:2"},
-                        {"id": "3", "name": "a3", "nodeid": "n1", "processList": "1:3"},
+                        {
+                            "id": "1", "name": "a1", "nodeid": "n1",
+                            "processList": "1:1"
+                        },
+                        {
+                            "id": "2", "name": "a2", "nodeid": "n1",
+                            "processList": "1:2"
+                        },
+                        {
+                            "id": "3", "name": "a3", "nodeid": "n1",
+                            "processList": "1:3"
+                        },
                     ],
                     [
                         {"id": "1", "name": "f1", "tag": "n1"},
@@ -363,7 +372,13 @@ class TestEmonPy:
                     ]
                 ),
                 False,  # Expecting a ValueError
-                {'init_inputs': 2, 'input_1': {'fields': 0, 'process': 0}, 'input_2': {'fields': 0, 'process': 0}},
+                {
+                    'nb_updated_inputs': 0,
+                    'nb_added_inputs': 2,
+                    'nb_added_feeds': 0,
+                    'input_1': {'input_feeds': 0, 'input_fields': 0, 'input_process': 0},
+                    'input_2': {'input_feeds': 0, 'input_fields': 0, 'input_process': 0}
+                },
             ),
             (
                 [{"nodeid": "node1", "name": "input1"}],

@@ -224,8 +224,12 @@ class EmonPy(EmonFeedsApi):
         """Create inputs feeds structure from EmonCms API."""
         result = None
         if Ut.is_list(structure, not_empty=True):
-            result = {}
-            result['init_inputs'] = self.init_inputs_structure(
+            result = {
+                'nb_updated_inputs': 0,
+                'nb_added_inputs': 0,
+                'nb_added_feeds': 0
+            }
+            result['nb_added_inputs'] = self.init_inputs_structure(
                 structure=structure
             )
             inputs, feeds = self.get_structure()
@@ -243,7 +247,7 @@ class EmonPy(EmonFeedsApi):
                         "Fatal Error, inputs was not added to server."
                     )
                 # Create Input Feeds
-                processes = self.add_input_feeds_structure(
+                nb_added, processes = self.add_input_feeds_structure(
                     input_item=item,
                     feeds_on=feeds_on
                 )
@@ -252,16 +256,24 @@ class EmonPy(EmonFeedsApi):
                 input_id = int(inputs_on.get('id'))
                 key = f"input_{input_id}"
                 result[key] = {}
+
+                result['nb_added_feeds'] += nb_added
+                result[key]['input_feeds'] = nb_added
                 # Set Input description
-                result[key]['fields'] = self.update_input_fields(
+                nb_updated = self.update_input_fields(
                     input_id=input_id,
                     current=inputs_on.get('description'),
                     description=item.get('description')
                 )
+                result['nb_updated_inputs'] += nb_updated
+                result[key]['input_fields'] = nb_updated
                 # Set input Process list
-                result[key]['process'] = self.update_input_process_list(
+                nb_updated = self.update_input_process_list(
                     input_id=input_id,
                     current_processes=inputs_on.get('processList'),
                     new_processes=processes
                 )
+                result['nb_updated_inputs'] += nb_updated
+                result[key]['input_process'] = nb_updated
+        return result
         return result
