@@ -5,7 +5,9 @@
 [![codecov](https://codecov.io/gh/vemonitor/emon_tools/graph/badge.svg?token=M7VgGzkApi)](https://codecov.io/gh/vemonitor/emon_tools)
 [![Downloads](https://static.pepy.tech/badge/emon_tools)](https://pepy.tech/project/emon_tools)
 
-`emon-tools` is a Python library that provides tools and APIs for interacting with [EmonCMS](https://emoncms.org/) and processing time-series data. It is designed to simplify data retrieval, analysis, and validation, making it easier to work with energy monitoring data.
+`emon-tools` is a Python library that provides a streamlined API interface for seamless interactions with [EmonCMS](https://emoncms.org/), along with tools designed to analyze and visualize PhpFina files.
+
+Explore the project Wiki for detailed documentation and guides: [emon_tools Wiki](https://github.com/vemonitor/emon_tools/wiki).
 
 ## Table of Contents
 
@@ -135,21 +137,31 @@ PlotData.plot(data=ts)
 
 ### 2. emon_api
 
-The `emon_api` module is Emoncms python api module, used to interract with an EmonCMS instance via its JSON API.
+The `emon_api` module is Emoncms python api interface, used to easy interract with an EmonCMS instance via its JSON API.
 
 #### Features
 
-- Communicate with EmonCMS using RESTful JSON APIs.
-- Retrieve and manage feeds, inputs, and other data structures.
+- **Streamlined Interface**: A user-friendly Python API for EmonCMS.
+- **RESTful Communication**: Perform seamless data exchanges with EmonCMS through JSON APIs.
+- **Data Management**: Retrieve and manage feeds, inputs, and other EmonCMS structures with ease.
 
 #### Usage Example
 
 ```python
-
-
+from emon_tools.emon_api import EmonFeedsApi
+cli = EmonApi(
+    url="http://127.0.0.1:8080",
+    api_key="MyAPIKey123"
+)
+# Get current inputs and feeds on Emoncms server
+inputs = cli.list_inputs()
+print("Inputs: ", inputs)
+feeds = cli.list_feeds()
+print("Feeds: ", feeds)
 ```
 
 - **Wiki**: See `emon_api` module [wiki](https://github.com/vemonitor/emon_tools/wiki/emon_api) section.
+- **Examples**: Explore [api_bulk_structure](https://github.com/vemonitor/emon_tools/blob/main/examples/emon_api.py) for input and feed supervision, as well as posting bulk dummy data.
 
 ## Running Tests
 
