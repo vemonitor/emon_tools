@@ -80,7 +80,7 @@ class TestEmonRequest:
             MOCK_RESPONSE_SUCCESS if status_code == 200 else MOCK_RESPONSE_FAIL
         )
         with patch(
-                "emon_tools.api_utils.Utils.compute_response",
+                "emon_tools.emon_api_core.EmonRequestCore.compute_response",
                 return_value={
                     SUCCESS_KEY: expected_success,
                     MESSAGE_KEY: expected_message}
@@ -135,9 +135,9 @@ class TestEmonRequest:
         """Test handling of request timeouts."""
         with patch("requests.get", side_effect=requests.exceptions.Timeout):
             result = emon_request.execute_request(
-                path="/feed/list.json", msg="test timeout")
+                path="/feed/list.json", msg="test_timeout")
             assert not result["success"]
-            assert result["message"] == "Request timeout."
+            assert result["message"] == "Request timeout: test_timeout."
 
     def test_execute_request_connection_error(self, emon_request):
         """Test handling of connection errors."""
@@ -279,6 +279,25 @@ class TestEmonInputsApi:
                     msg="Add input data point",
                     request_type=RequestType.GET
                 )
+
+    def test_input_bulk(self, emon_inputs_api):
+        """Test posting input data."""
+        with patch.object(
+                emon_inputs_api,
+                "execute_request",
+                return_value=MOCK_RESPONSE_SUCCESS) as mock_request:
+
+            result = emon_inputs_api.input_bulk(
+                data=[[1, "test_node", {"temp": 21.2}, {"humidity": 54}]])
+            assert result == MOCK_RESPONSE_SUCCESS
+            mock_request.assert_called_once_with(
+                path='/input/bulk',
+                params={},
+                data={
+                    'data': '[[1, "test_node", {"temp": 21.2}, {"humidity": 54}]]'},
+                msg="input_bulk",
+                request_type=RequestType.POST
+            )
 
 
 class TestEmonFeedsApi:

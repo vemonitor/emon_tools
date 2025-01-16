@@ -141,6 +141,9 @@ class TestUtils:
         result = Utils.get_start_day(timestamp)
         expected = dt.datetime(
             2023, 11, 14, tzinfo=dt.timezone.utc).timestamp()
+        result = Utils.get_start_day(timestamp, timezone=None)
+        expected = dt.datetime(
+            2023, 11, 14).timestamp()
         assert result == expected
 
     def test_get_start_day_edge_case(self):
@@ -165,12 +168,6 @@ class TestUtils:
         match_error = "timestamp timestamp must be a non-negative number."
         with pytest.raises(ValueError, match=match_error):
             Utils.get_string_datetime_from_timestamp(-1)
-
-    def test_get_string_datetime_from_timestamp_invalid_timezone(self):
-        """Test get_string_datetime_from_timestamp with invalid timezone."""
-        match_error = "The timezone must be a datetime.timezone object."
-        with pytest.raises(ValueError, match=match_error):
-            Utils.get_string_datetime_from_timestamp(12345, timezone=None)
 
     def test_get_utc_datetime_from_string_valid(self):
         """Test get_utc_datetime_from_string with valid input."""

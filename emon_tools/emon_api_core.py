@@ -29,9 +29,11 @@ Security and validation:
 from enum import Enum
 import logging
 from typing import Any, Optional, Dict, Union
-from urllib.parse import quote
-
+from urllib.parse import quote_plus, urljoin
+import simplejson as sj
 from emon_tools.api_utils import Utils as Ut
+from emon_tools.api_utils import MESSAGE_KEY
+from emon_tools.api_utils import SUCCESS_KEY
 
 logging.basicConfig()
 
@@ -169,7 +171,7 @@ class EmonProcessList(Enum):
 class EmonHelper:
     """Emon api helper methods"""
     @staticmethod
-    def sanitize_url(url: str) -> str:
+    def validate_url(url: str) -> str:
         """
         Ensure the URL is valid and properly formatted.
 
@@ -182,7 +184,7 @@ class EmonHelper:
         Raises:
             ValueError: If the URL is empty or improperly formatted.
         """
-        if not isinstance(url, str) or not url.strip():
+        if not Ut.is_str(url, not_empty=True):
             raise TypeError("URL must be a non-empty string.")
         if not (url.startswith("http://") or url.startswith("https://")):
             raise ValueError("URL must start with 'http://' or 'https://'.")
@@ -354,7 +356,7 @@ class EmonHelper:
 
     @staticmethod
     def get_input_filters_from_structure(
-        structure_item: list
+        structure_item: dict
     ) -> tuple[dict, dict]:
         """Get filter from inputs structure"""
         result = None
@@ -475,7 +477,88 @@ class EmonHelper:
         return []
 
 
-class EmonInputs:
+class EmonRequestCore:
+    """EmonRequest common helper"""
+    @staticmethod
+    def compute_response(
+        response: Union[dict, list, str, None]
+    ) -> tuple[bool, Union[str, list, dict]]:
+        """
+        Computes and interprets the response from Emoncms.
+
+        :param result: The response from Emoncms.
+        :return: A tuple of success status and message.
+        """
+        result = {SUCCESS_KEY: False, MESSAGE_KEY: "Invalid response"}
+        is_dict = isinstance(response, dict)
+        is_json = is_dict\
+            and SUCCESS_KEY in response\
+            and MESSAGE_KEY in response
+        if is_json:
+            result[SUCCESS_KEY] = bool(response[SUCCESS_KEY])
+            extra = Ut.filter_dict_by_keys(
+                input_data=response,
+                filter_data=[SUCCESS_KEY],
+                filter_in=False
+            )
+            if Ut.is_dict(extra, not_empty=True):
+                result[SUCCESS_KEY] = bool(response[SUCCESS_KEY])
+                del result[MESSAGE_KEY]
+                result.update(extra)
+
+        elif is_dict and SUCCESS_KEY in response and len(response) == 1:
+            result[SUCCESS_KEY] = bool(response[SUCCESS_KEY])
+            result[MESSAGE_KEY] = ''
+
+        elif isinstance(response, (list, dict, str, int, float)):
+            result[SUCCESS_KEY] = True
+            result[MESSAGE_KEY] = response
+        return result
+
+    @staticmethod
+    def encode_url_path(
+        url: str,
+        path: str,
+        msg: str
+    ) -> str:
+        """Encode request params"""
+        EmonHelper.validate_url(url)
+        if not Ut.is_str(path, not_empty=True):
+            raise ValueError(
+                f"Request error: {msg}. "
+                "Url Path must be a non-empty string."
+                )
+
+        # Encode unsafe characters in the path.
+        path = quote_plus(path.lstrip('/'), safe="/")
+        # Safely join the base URL and path.
+        return urljoin(url, path)
+
+    @staticmethod
+    def encode_params(
+        params: Optional[Dict[str, Any]] = None,
+        unquote_keys: Optional[list[str]] = None
+    ) -> Dict[str, Any]:
+        """Encode request params"""
+        encoded_params = {}
+
+        if not Ut.is_list(unquote_keys):
+            unquote_keys = []
+
+        if Ut.is_dict(params, not_empty=True):
+            for key, value in params.items():
+                is_not_object = isinstance(value, (float, str))\
+                    and key not in unquote_keys
+                if is_not_object:
+                    encoded_params[key] = quote_plus(str(value), safe="-")
+                elif isinstance(value, (list, dict)):
+                    encoded_params[key] = sj.dumps(value)
+                else:
+                    encoded_params[key] = value
+        return encoded_params
+
+
+class EmonInputsCore:
     """Emon Inputs Api"""
     @staticmethod
     def prep_list_inputs(
@@ -493,7 +576,7 @@ class EmonInputs:
             Optional[List[Dict[str, Any]]]: A list of input dictionaries
             or None if retrieval fails.
         """
-        path = f"/input/get/{quote(node)}" if node else "/input/get"
+        path = f"/input/get/{quote_plus(node)}" if node else "/input/get"
         return path, None
 
     @staticmethod
@@ -540,7 +623,7 @@ class EmonInputs:
         """
         if not node or not name:
             raise ValueError("Node and name must be non-empty strings.")
-        path = f"/input/get/{quote(node)}/{quote(name)}"
+        path = f"/input/get/{quote_plus(node)}/{quote_plus(name)}"
         return path, None
 
     @staticmethod
@@ -555,7 +638,7 @@ class EmonInputs:
         """
         _ = Ut.validate_integer(input_id, 'Input Id', positive=True)
         if not Ut.is_dict(fields, not_empty=True):
-            raise ValueError("Invalid data to post inputs.")
+            raise ValueError("Invalid fields to post inputs.")
         params = {
             "inputid": input_id,
             "fields": fields
@@ -610,8 +693,45 @@ class EmonInputs:
 
         return "/input/post", params
 
+    @staticmethod
+    def prep_input_bulk(
+        data: list,
+        timestamp: Optional[int] = None,
+        sentat: Optional[int] = None,
+        offset: Optional[int] = None,
+    ) -> tuple[str, Optional[Dict[str, Any]], Optional[Dict[str, Any]]]:
+        """
+        Add inputs data points to input node as bulk.
+        """
+        if not Ut.is_list(data, not_empty=True):
+            raise ValueError("Invalid data to post inputs.")
+        params = {}
+        if timestamp is not None:
+            Ut.validate_timestamp(
+                timestamp, "inputBulkTime")
+            params.update({"time": timestamp})
+        if sentat is not None:
+            Ut.validate_integer(
+                sentat, "inputBulkSentat")
+            params.update({"sentat": sentat})
+        if offset is not None:
+            Ut.validate_integer(
+                offset, "inputBulkOffset")
+            params.update({"offset": offset})
 
-class EmonFeeds:
+        if len(params) > 1:
+            raise ValueError(
+                "You must chose an unique format "
+                "from (timestamp, sentat or offset)."
+                )
+        data = {
+            "data": sj.dumps(data)
+        }
+
+        return "/input/bulk", params, data
+
+
+class EmonFeedsCore:
     """Emon Feeds Api"""
     @staticmethod
     def prep_list_feeds() -> tuple[str, Optional[Dict[str, Any]]]:

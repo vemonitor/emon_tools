@@ -24,17 +24,16 @@ Security and validation:
 import logging
 from dataclasses import dataclass
 from typing import Any, Optional, TypeVar, List, Dict, Union
-from urllib.parse import quote, quote_plus, urljoin
 import simplejson as sjson
 import requests
-from emon_tools.api_utils import Utils as Ut
 from emon_tools.api_utils import HTTP_STATUS
 from emon_tools.api_utils import MESSAGE_KEY
 from emon_tools.api_utils import SUCCESS_KEY
 from emon_tools.emon_api_core import InputGetType
 from emon_tools.emon_api_core import RequestType
-from emon_tools.emon_api_core import EmonInputs
-from emon_tools.emon_api_core import EmonFeeds
+from emon_tools.emon_api_core import EmonRequestCore
+from emon_tools.emon_api_core import EmonInputsCore
+from emon_tools.emon_api_core import EmonFeedsCore
 from emon_tools.emon_api_core import EmonHelper
 
 logging.basicConfig()
@@ -65,8 +64,8 @@ class EmonRequest:
     logger = logging.getLogger(__name__)
 
     def __post_init__(self):
-        """Validate and sanitize initialization parameters."""
-        self.url = EmonHelper.sanitize_url(self.url)
+        """Validate initialization parameters."""
+        self.url = EmonHelper.validate_url(self.url)
         self.api_key = EmonHelper.validate_api_key(self.api_key)
 
     def compute_response(
@@ -77,7 +76,7 @@ class EmonRequest:
         """Compute request response"""
         result = {SUCCESS_KEY: False, MESSAGE_KEY: None}
         if response.status_code in [200, 201]:
-            if response.headers.get('Content-Type') == 'text/plain':
+            if 'text/plain' in response.headers.get('Content-Type'):
                 response_data = response.text
                 if '"' in response_data:
                     response_data = sjson.loads(response_data)
@@ -88,8 +87,8 @@ class EmonRequest:
                 msg,
                 response_data
             )
-            result = Ut.compute_response(
-                response_data
+            result = EmonRequestCore.compute_response(
+                response=response_data
             )
         else:
             error_msg = (
@@ -121,16 +120,8 @@ class EmonRequest:
         Raises:
             ValueError: If the path is invalid or empty.
         """
-        if not path or not isinstance(path, str):
-            raise ValueError(
-                f"request error: {msg}. "
-                "Path must be a non-empty string."
-                )
-
-        # Encode unsafe characters in the path.
-        path = quote(path.lstrip('/'), safe="/")
-        # Safely join the base URL and path.
-        full_url = urljoin(self.url, path)
+        full_url = EmonRequestCore.encode_url_path(
+            url=self.url, path=path, msg=msg)
 
         if params is None:
             params = {}
@@ -138,18 +129,7 @@ class EmonRequest:
         params["apikey"] = self.api_key
 
         # Validate and encode all parameters
-        encoded_params = {}
-        keys_unquote = []
-        for key, value in params.items():
-            is_not_object = isinstance(value, (float, str))\
-                and key not in keys_unquote
-            if is_not_object:
-                encoded_params[key] = quote_plus(str(value), safe="-")
-            elif request_type == RequestType.GET\
-                    and isinstance(value, (list, dict)):
-                encoded_params[key] = sjson.dumps(value)
-            else:
-                encoded_params[key] = value
+        encoded_params = EmonRequestCore.encode_params(params)
 
         result = {SUCCESS_KEY: False, MESSAGE_KEY: None}
         self.logger.debug(
@@ -183,11 +163,11 @@ class EmonRequest:
                 msg=msg
             )
         except requests.exceptions.ConnectionError as err:
-            error_msg = f"Connection error: {err}"
+            error_msg = f"Connection error: {msg} - {err}"
             result[MESSAGE_KEY] = error_msg
             self.logger.error(error_msg)
         except requests.exceptions.Timeout:
-            error_msg = "Request timeout."
+            error_msg = f"Request timeout: {msg}."
             result[MESSAGE_KEY] = error_msg
             self.logger.error(error_msg)
 
@@ -217,7 +197,7 @@ class EmonInputsApi(EmonRequest):
             Optional[List[Dict[str, Any]]]: A list of input dictionaries
             or None if retrieval fails.
         """
-        path, _ = EmonInputs.prep_list_inputs(
+        path, _ = EmonInputsCore.prep_list_inputs(
             node=node
         )
         return self.execute_request(
@@ -244,7 +224,7 @@ class EmonInputsApi(EmonRequest):
             Optional[List[Dict[str, Any]]]: A list of input dictionaries
             or None if retrieval fails.
         """
-        path, _ = EmonInputs.prep_list_inputs_fields(
+        path, _ = EmonInputsCore.prep_list_inputs_fields(
             get_type=get_type
         )
         return self.execute_request(
@@ -269,7 +249,7 @@ class EmonInputsApi(EmonRequest):
                 A dictionary of input details
                 or None if the input does not exist.
         """
-        path, _ = EmonInputs.prep_input_fields(
+        path, _ = EmonInputsCore.prep_input_fields(
             node=node,
             name=name
         )
@@ -287,7 +267,7 @@ class EmonInputsApi(EmonRequest):
         On error return a dict as:
         - {"success": false, "message": "Invalid fields"}
         """
-        path, params = EmonInputs.prep_set_input_fields(
+        path, params = EmonInputsCore.prep_set_input_fields(
             input_id=input_id,
             fields=fields
         )
@@ -307,7 +287,7 @@ class EmonInputsApi(EmonRequest):
         On error return a dict as:
         - {"success": false, "message": "Invalid fields"}
         """
-        path, query_data = EmonInputs.prep_set_input_process_list(
+        path, query_data = EmonInputsCore.prep_set_input_process_list(
             input_id=input_id,
             process_list=process_list
         )
@@ -328,7 +308,7 @@ class EmonInputsApi(EmonRequest):
         On error return a dict as:
         - {"success": false, "message": "Invalid fields"}
         """
-        path, params = EmonInputs.prep_post_inputs(
+        path, params = EmonInputsCore.prep_post_inputs(
             node=node,
             data=data
         )
@@ -338,6 +318,33 @@ class EmonInputsApi(EmonRequest):
             msg="Add input data point",
             request_type=RequestType.GET
         )
+
+    def input_bulk(
+        self,
+        data: list,
+        timestamp: Optional[int] = None,
+        sentat: Optional[int] = None,
+        offset: Optional[int] = None,
+    ) -> bool:
+        """
+        On error return a dict as:
+        - {"success": false, "message": "Invalid fields"}
+        """
+        path, params, data_post = EmonInputsCore.prep_input_bulk(
+            data=data,
+            timestamp=timestamp,
+            sentat=sentat,
+            offset=offset
+        )
+        response = self.execute_request(
+            path=path,
+            params=params,
+            data=data_post,
+            msg="input_bulk",
+            request_type=RequestType.POST
+        )
+        response['nb_points'] = len(data)
+        return response
 
 
 @dataclass
@@ -356,7 +363,7 @@ class EmonFeedsApi(EmonInputsApi):
             Optional[List[Dict[str, Any]]]: A list of feed dictionaries
             or None if retrieval fails.
         """
-        path, _ = EmonFeeds.prep_list_feeds()
+        path, _ = EmonFeedsCore.prep_list_feeds()
         return self.execute_request(
             path=path,
             msg="get list feeds"
@@ -376,7 +383,7 @@ class EmonFeedsApi(EmonInputsApi):
             Optional[Dict[str, Any]]:
                 A dictionary of feed fields or None if the feed does not exist.
         """
-        path, params = EmonFeeds.prep_feed_fields(
+        path, params = EmonFeedsCore.prep_feed_fields(
             feed_id=feed_id
         )
         return self.execute_request(
@@ -399,7 +406,7 @@ class EmonFeedsApi(EmonInputsApi):
             Optional[Dict[str, Any]]: A dictionary of metadata
                 or None if the feed does not exist.
         """
-        path, params = EmonFeeds.prep_feed_meta(
+        path, params = EmonFeedsCore.prep_feed_meta(
             feed_id=feed_id
         )
         return self.execute_request(
@@ -423,7 +430,7 @@ class EmonFeedsApi(EmonInputsApi):
                 A dictionary containing the last time and value
                 or None if the feed does not exist.
         """
-        path, params = EmonFeeds.prep_last_value_feed(
+        path, params = EmonFeedsCore.prep_last_value_feed(
             feed_id=feed_id
         )
         return self.execute_request(
@@ -456,7 +463,7 @@ class EmonFeedsApi(EmonInputsApi):
                 A dictionary of input details
                 or None if the input does not exist.
         """
-        path, params = EmonFeeds.prep_fetch_feed_data(
+        path, params = EmonFeedsCore.prep_fetch_feed_data(
             feed_id=feed_id,
             start=start,
             end=end,
@@ -496,7 +503,7 @@ class EmonFeedsApi(EmonInputsApi):
         [see valid engines here](https://github.com/emoncms/emoncms/blob/master/Lib/enum.php#L40)
 
         :Example :
-            - > await create_feed( name"tmp" ) => 1
+            - > create_feed( name"tmp" ) => 1
             - > UType.is_str(value="tmp", not_null=True) => True
             - > UType.is_str( 0 ) => False
         :param name: Name of the new Feed
@@ -505,7 +512,7 @@ class EmonFeedsApi(EmonInputsApi):
         :param options: Dict of options
         :return: True if the given value is a str instance, otherwise False.
         """
-        path, params = EmonFeeds.prep_create_feed(
+        path, params = EmonFeedsCore.prep_create_feed(
             name=name,
             tag=tag,
             engine=engine,
@@ -528,7 +535,7 @@ class EmonFeedsApi(EmonInputsApi):
         On error return a dict as:
         - {"success": false, "message": "Invalid fields"}
         """
-        path, params = EmonFeeds.prep_update_feed(
+        path, params = EmonFeedsCore.prep_update_feed(
             feed_id=feed_id,
             fields=fields
         )
@@ -547,7 +554,7 @@ class EmonFeedsApi(EmonInputsApi):
         On error return a dict as:
         - {"success": false, "message": "Invalid fields"}
         """
-        path, params = EmonFeeds.prep_delete_feed(
+        path, params = EmonFeedsCore.prep_delete_feed(
             feed_id=feed_id
         )
         return self.execute_request(
@@ -567,7 +574,7 @@ class EmonFeedsApi(EmonInputsApi):
         On error return a dict as:
         - {"success": false, "message": "Invalid fields"}
         """
-        path, params = EmonFeeds.prep_add_data_point(
+        path, params = EmonFeedsCore.prep_add_data_point(
             feed_id=feed_id,
             time=time,
             value=value
@@ -588,7 +595,7 @@ class EmonFeedsApi(EmonInputsApi):
         On error return a dict as:
         - {"success": false, "message": "Invalid fields"}
         """
-        path, params = EmonFeeds.prep_add_data_points(
+        path, params = EmonFeedsCore.prep_add_data_points(
             feed_id=feed_id,
             data=data
         )
@@ -608,7 +615,7 @@ class EmonFeedsApi(EmonInputsApi):
         On error return a dict as:
         - {"success": false, "message": "Invalid fields"}
         """
-        path, params = EmonFeeds.prep_delete_data_point(
+        path, params = EmonFeedsCore.prep_delete_data_point(
             feed_id=feed_id,
             time=time
         )
@@ -629,7 +636,7 @@ class EmonFeedsApi(EmonInputsApi):
         On error return a dict as:
         - {"success": false, "message": "Invalid fields"}
         """
-        path, params = EmonFeeds.prep_add_feed_process_list(
+        path, params = EmonFeedsCore.prep_add_feed_process_list(
             feed_id=feed_id,
             process_id=process_id,
             process=process

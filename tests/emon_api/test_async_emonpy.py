@@ -8,11 +8,11 @@ This module tests the functionality of the AsyncEmonPy class, ensuring:
 
 Test coverage is designed to achieve 100% coverage with appropriate mocks.
 """
-from unittest.mock import AsyncMock, patch
+from unittest.mock import AsyncMock
 import pytest
-from emon_tools.emon_api_core import EmonHelper
 from emon_tools.async_emonpy import AsyncEmonPy
-from emon_tools.api_utils import SUCCESS_KEY, MESSAGE_KEY
+from emon_tools.api_utils import SUCCESS_KEY
+from tests.emon_api.emonpy_test_data import EmonpyDataTest as dtest
 
 
 @pytest.mark.asyncio
@@ -22,32 +22,31 @@ class TestAsyncEmonPy:
     @pytest.fixture
     def api(self):
         """Fixture to create an instance of AsyncEmonPy."""
-        return AsyncEmonPy(url="http://test-url", api_key="123")
+        emon = AsyncEmonPy(url="http://test-url", api_key="123")
+        emon.async_list_inputs_fields = AsyncMock()
+        emon.async_list_feeds = AsyncMock()
+        emon.async_create_feed = AsyncMock()
+        emon.async_post_inputs = AsyncMock()
+        emon.async_set_input_fields = AsyncMock()
+        emon.async_set_input_process_list = AsyncMock()
+        return emon
+
+    def test_init(self):
+        """Test initialization of EmonPy."""
+        emon = AsyncEmonPy(url="http://example.com", api_key="123")
+        assert emon.api_key == "123"
+        assert emon.url == "http://example.com"
 
     @pytest.mark.parametrize(
-        "inputs_response, feeds_response, expected_inputs, expected_feeds",
-        [
-            (
-                {SUCCESS_KEY: True, MESSAGE_KEY: "Inputs data"},
-                {SUCCESS_KEY: True, MESSAGE_KEY: "Feeds data"},
-                "Inputs data",
-                "Feeds data",
-            ),
-            (
-                {SUCCESS_KEY: False},
-                {SUCCESS_KEY: True, MESSAGE_KEY: "Feeds data"},
-                None,
-                None,
-            ),
-        ],
+        "inputs_response, feeds_response, expected_result",
+        dtest.GET_STRUCTURE_PARAMS
     )
     async def test_get_structure(
         self,
         api,
         inputs_response,
         feeds_response,
-        expected_inputs,
-        expected_feeds
+        expected_result
     ):
         """
         Test the get_structure method.
@@ -55,219 +54,235 @@ class TestAsyncEmonPy:
         This method validates the behavior
         of get_structure under various API response conditions.
         """
-        api.async_list_inputs_fields = AsyncMock(return_value=inputs_response)
-        api.async_list_feeds = AsyncMock(return_value=feeds_response)
+        api.async_list_inputs_fields.return_value = inputs_response
+        api.async_list_feeds.return_value = feeds_response
 
-        inputs, feeds = await api.get_structure()
+        result = await api.get_structure()
 
-        assert inputs == expected_inputs
-        assert feeds == expected_feeds
+        assert result == expected_result
 
     @pytest.mark.parametrize(
-        (
-            "feeds, feed_responses, expected_result, "
-            "raises_exception, exception_message"),
-        [
-            (
-                [{"name": "feed1", "tag": "tag1"}],
-                [{SUCCESS_KEY: True, MESSAGE_KEY: {"feedid": "1"}}],
-                [[1, 1]],
-                False,
-                None,
-            ),
-            (
-                [{"name": "feed1", "tag": "tag1"}],
-                [{SUCCESS_KEY: False}],
-                None,
-                True,
-                (
-                    "Fatal error: "
-                    "Unable to set feed structure node tag1 - name feed1"),
-            ),
-        ],
+        "feeds, create_feed_results, expected_processes",
+        dtest.CREATE_INPUT_FEEDS_PARAMS,
     )
     async def test_create_input_feeds(
         self,
         api,
         feeds,
-        feed_responses,
-        expected_result,
-        raises_exception,
-        exception_message,
+        create_feed_results,
+        expected_processes
     ):
         """
         Test the create_input_feeds method.
 
         This method validates successful creation and error handling for feeds.
         """
-        api.async_create_feed = AsyncMock(side_effect=feed_responses)
+        api.async_create_feed.side_effect = create_feed_results
 
-        if raises_exception:
-            with pytest.raises(ValueError, match=exception_message):
-                await api.create_input_feeds(feeds=feeds)
-        else:
-            result = await api.create_input_feeds(feeds=feeds)
-            assert result == expected_result
+        _, result = await api.create_input_feeds(feeds=feeds)
+        assert result == expected_processes
+
+    async def test_create_input_feeds_invalid(
+        self,
+        api
+    ):
+        """Test the create_input_feeds method."""
+        api.async_create_feed.side_effect = [
+            {"message": "Error", SUCCESS_KEY: False}
+        ]
+
+        with pytest.raises(
+                ValueError,
+                match="Fatal error: Unable to set feed structure.*"):
+            await api.create_input_feeds(
+                feeds=[{"name": "feed1", "tag": "tag1"}])
+
+    @pytest.mark.parametrize(
+        "inputs, post_inputs_responses, expected_count",
+        dtest.CREATE_INPUTS_PARAMS
+    )
+    async def test_create_inputs(
+        self,
+        api,
+        inputs,
+        post_inputs_responses,
+        expected_count
+    ):
+        """Test the create_inputs method."""
+        api.async_post_inputs.side_effect = post_inputs_responses
+
+        result = await api.create_inputs(inputs=inputs)
+        assert result == expected_count
+
+    async def test_create_inputs_invalid(
+        self,
+        api
+    ):
+        """Test the create_input_feeds method."""
+        api.async_post_inputs.side_effect = [
+            {"message": "Error", SUCCESS_KEY: False}
+        ]
+
+        with pytest.raises(
+                ValueError,
+                match="Fatal error: Unable to set inputs structure.*"):
+            await api.create_inputs(
+                inputs=[{"nodeid": "node1", "name": "input1"}])
+
+    @pytest.mark.parametrize(
+        "structure, inputs, expected_count",
+        dtest.INIT_INPUTS_STRUCTURE_PARAMS
+    )
+    async def test_init_inputs_structure(
+        self,
+        api,
+        structure,
+        inputs,
+        expected_count
+    ):
+        """Test the init_inputs_structure method."""
+        api.list_inputs_fields = AsyncMock(return_value=inputs)
+        api.create_inputs = AsyncMock(return_value=expected_count)
+        result = await api.init_inputs_structure(structure=structure)
+        assert result == expected_count
+
+    @pytest.mark.parametrize(
+        "input_item, feeds_on, expected_created, expected_process",
+        dtest.ADD_INPUT_FEEDS_STRUCTURE_PARAMS
+    )
+    async def test_add_input_feeds_structure(
+        self,
+        api,
+        input_item,
+        feeds_on,
+        expected_created,
+        expected_process
+    ):
+        """Test the init_inputs_structure method."""
+        api.create_input_feeds = AsyncMock(return_value=expected_created)
+        _, result = await api.add_input_feeds_structure(
+            input_item=input_item,
+            feeds_on=feeds_on)
+        assert result == expected_process
 
     @pytest.mark.parametrize(
         (
-            "structure, inputs, feeds, init_inputs_result, "
-            "add_inputs_result, inputs_on, raises_exception, exception_message"
+            "input_id, current, description, "
+            "set_input_fields_response, expected_result"
         ),
-        [
-            # Case 1: Successful structure creation
-            (
-                [
-                    {
-                        "nodeid": "node1", "name": "input1",
-                        "description": "desc1", "feeds": []
-                    }
-                ],
-                [
-                    {
-                        "id": 1, "nodeid": "node1", "name": "input1",
-                        "description": "desc1", "processList": ""
-                    }
-                ],
-                [],  # Feeds
-                1,  # init_inputs_structure result
-                [{"id": 1}],  # add_input_feeds_structure result
-                [
-                    {
-                        "id": 1, "nodeid": "node1", "name": "input1",
-                        "description": "desc1"
-                    }
-                ],  # inputs_on
-                False,  # No exception expected
-                None,
-            ),
-            # Case 2: Structure creation fails, raising a ValueError
-            (
-                [
-                    {
-                        "nodeid": "node1", "name": "input1",
-                        "description": "desc1", "feeds": []
-                    }
-                ],
-                [],  # Inputs are not successfully added
-                [],  # Feeds
-                1,  # init_inputs_structure result
-                [],  # add_input_feeds_structure returns no inputs
-                [],  # inputs_on
-                True,  # Exception expected
-                "Fatal Error, inputs was not added to server.",
-            ),
-        ],
+        dtest.UPDATE_INPUT_FIELDS_PARAMS
+    )
+    async def test_update_input_fields(
+        self,
+        api,
+        input_id,
+        current,
+        description,
+        set_input_fields_response,
+        expected_result
+    ):
+        """Test the update_input_fields method."""
+        api.async_set_input_fields.return_value = set_input_fields_response
+
+        result = await api.update_input_fields(
+            input_id=input_id, current=current, description=description
+        )
+        assert result == expected_result
+
+    @pytest.mark.parametrize(
+        (
+            "input_id, current_processes, new_processes, "
+            "set_process_list_response, expected_result"
+        ),
+        dtest.UPDATE_INPUT_PROCESS_LIST_PARAMS
+    )
+    async def test_update_input_process_list(
+        self,
+        api,
+        input_id,
+        current_processes,
+        new_processes,
+        set_process_list_response,
+        expected_result,
+    ):
+        """Test the update_input_process_list method."""
+        api.async_set_input_process_list.return_value = set_process_list_response
+
+        result = await api.update_input_process_list(
+            input_id=input_id,
+            current_processes=current_processes,
+            new_processes=new_processes
+        )
+        assert result == expected_result
+
+    @pytest.mark.parametrize(
+        (
+            "structure, get_structure_return, "
+            "raises_error, expected_result"
+        ),
+        dtest.CREATE_STRUCTURE_PARAMS
     )
     async def test_create_structure(
         self,
         api,
         structure,
-        inputs,
-        feeds,
-        init_inputs_result,
-        add_inputs_result,
-        inputs_on,
-        raises_exception,
-        exception_message,
+        get_structure_return,
+        raises_error,
+        expected_result,
     ):
-        """
-        Test the create_structure method.
+        """Test the create_structure method."""
+        api.init_inputs_structure = AsyncMock(
+            return_value=len(structure))
+        api.get_structure = AsyncMock(
+            return_value=get_structure_return)
+        api.add_input_feeds_structure = AsyncMock(
+            return_value=(0, [])
+        )
+        api.update_input_fields = AsyncMock(return_value=0)
+        api.update_input_process_list = AsyncMock(return_value=0)
 
-        Ensures that the method correctly handles both success
-        and failure cases for creating structures with the EmonCMS API.
-        """
-        with patch(
-                "emon_tools.emon_api_core.EmonHelper.get_existant_structure",
-                return_value=(inputs_on, feeds)):
-            # Mock dependencies
-            api.init_inputs_structure = AsyncMock(
-                return_value=init_inputs_result)
-            api.get_structure = AsyncMock(
-                return_value=(inputs, feeds))
+        if raises_error is True:
             api.add_input_feeds_structure = AsyncMock(
-                return_value=add_inputs_result)
-            api.set_input_fields = AsyncMock(return_value=None)
-            api.set_input_process_list = AsyncMock(return_value=None)
-
-            if raises_exception:
-                with pytest.raises(ValueError, match=exception_message):
-                    await api.create_structure(structure=structure)
-            else:
-                result = await api.create_structure(structure=structure)
-                expected_result = {
-                    "init_inputs": init_inputs_result,
-                    "input_1": {"fields": None, "process": None},
-                }
-                assert result == expected_result
-
-            # Validate that mocked methods
-            # are called with appropriate arguments
-            api.init_inputs_structure.assert_awaited_once_with(
-                structure=structure)
-            api.get_structure.assert_awaited_once()
-            if not raises_exception:
-                api.add_input_feeds_structure.assert_awaited()
-
-    @pytest.mark.parametrize(
-        "input_id, current, description, expected_result",
-        [
-            (1, "current_desc", "new_desc", "success_response"),
-            (1, "current_desc", "current_desc", None),
-        ],
-    )
-    async def test_set_input_fields(
-        self, api, input_id, current, description, expected_result
-    ):
-        """
-        Test the set_input_fields method.
-
-        This method ensures fields are updated only when necessary.
-        """
-        api.async_set_input_fields = AsyncMock(return_value="success_response")
-
-        result = await api.set_input_fields(
-            input_id=input_id, current=current, description=description
-        )
-
-        assert result == expected_result
-
-    @pytest.mark.parametrize(
-        "input_id, current_processes, new_processes, expected_result",
-        [
-            (1, "", [[1, 1]], "success_response"),  # Update required
-            (1, "1:1", [[1, 1]], []),            # No update needed
-        ],
-    )
-    async def test_set_input_process_list(
-        self, api, input_id, current_processes, new_processes, expected_result
-    ):
-        """
-        Test the set_input_process_list method.
-
-        Ensures the process list is updated only when necessary.
-        """
-        # Mock the async method to simulate API behavior
-        api.async_set_input_process_list = AsyncMock(
-            return_value="success_response")
-
-        # Call the method under test
-        result = await api.set_input_process_list(
-            input_id=input_id,
-            current_processes=current_processes,
-            new_processes=new_processes,
-        )
-
-        # Validate the result matches expectations
-        assert result == expected_result
-
-        # Ensure async_set_input_process_list
-        # is only called when update is needed
-        if expected_result:
-            api.async_set_input_process_list.assert_awaited_once_with(
-                input_id=input_id,
-                process_list=",".join(
-                    EmonHelper.format_process_list(new_processes)),
+                side_effect=ValueError(
+                    "Fatal Error, inputs was not added to server."
+                )
             )
+            with pytest.raises(
+                    ValueError,
+                    match="Fatal Error, inputs was not added to server."):
+                await api.create_structure(structure=structure)
         else:
-            api.async_set_input_process_list.assert_not_awaited()
+            result = await api.create_structure(
+                structure=structure
+            )
+            assert result == expected_result
+
+    @pytest.mark.parametrize(
+        (
+            "structure, get_structure_return, "
+            "raises_error, expected_result"
+        ),
+        dtest.GET_EXTENDED_STRUCTURE_PARAMS
+    )
+    async def test_get_extended_structure(
+        self,
+        api,
+        structure,
+        get_structure_return,
+        raises_error,
+        expected_result,
+    ):
+        """Test the create_structure method."""
+        api.get_structure = AsyncMock(
+            return_value=get_structure_return)
+
+        if raises_error is True:
+            with pytest.raises(
+                    ValueError,
+                    match="Fatal Error, inputs was not added to server."):
+                await api.get_extended_structure(structure=structure)
+        else:
+            result = await api.get_extended_structure(
+                structure=structure
+            )
+            assert result == expected_result

@@ -1,9 +1,9 @@
-"""Test Suite for EmonPy class with 100% coverage."""
+"""Test Suite for EmonPy class."""
 from unittest.mock import MagicMock
 import pytest
-from emon_tools.api_utils import SUCCESS_KEY, MESSAGE_KEY
-from emon_tools.emon_api_core import EmonProcessList
+from emon_tools.api_utils import SUCCESS_KEY
 from emon_tools.emonpy import EmonPy
+from tests.emon_api.emonpy_test_data import EmonpyDataTest as dtest
 
 
 class TestEmonPy:
@@ -28,53 +28,26 @@ class TestEmonPy:
         assert emon.url == "http://example.com"
 
     @pytest.mark.parametrize(
-        "inputs_response, feeds_response, expected",
-        [
-            (
-                {SUCCESS_KEY: True, MESSAGE_KEY: [{"nodeid": "test_node"}]},
-                {
-                    SUCCESS_KEY: True,
-                    MESSAGE_KEY: [{"id": 1, "name": "test_feed"}]},
-                ([{"nodeid": "test_node"}], [{"id": 1, "name": "test_feed"}]),
-            ),
-            (
-                {SUCCESS_KEY: False},
-                {
-                    SUCCESS_KEY: True,
-                    MESSAGE_KEY: [{"id": 1, "name": "test_feed"}]},
-                (None, None),
-            ),
-        ],
+        "inputs_response, feeds_response, expected_result",
+        dtest.GET_STRUCTURE_PARAMS
     )
     def test_get_structure(
         self,
         api,
         inputs_response,
         feeds_response,
-        expected
+        expected_result
     ):
         """Test the get_structure method."""
         api.list_inputs_fields.return_value = inputs_response
         api.list_feeds.return_value = feeds_response
 
         result = api.get_structure()
-        assert result == expected
+        assert result == expected_result
 
     @pytest.mark.parametrize(
         "feeds, create_feed_results, expected_processes",
-        [
-            (
-                [{"name": "feed1", "tag": "tag1"}],
-                [{"message": {"feedid": "1"}, SUCCESS_KEY: True}],
-                [[1, 1]],
-            ),
-            (
-                [{"name": "feed1", "tag": "tag1", "process": "1:1"}],
-                [{"message": {"feedid": "1"}, SUCCESS_KEY: True}],
-                [[1, 1]],
-            ),
-            ([], [], []),
-        ],
+        dtest.CREATE_INPUT_FEEDS_PARAMS,
     )
     def test_create_input_feeds(
         self,
@@ -86,7 +59,7 @@ class TestEmonPy:
         """Test the create_input_feeds method."""
         api.create_feed.side_effect = create_feed_results
 
-        result = api.create_input_feeds(feeds=feeds)
+        _, result = api.create_input_feeds(feeds=feeds)
         assert result == expected_processes
 
     def test_create_input_feeds_invalid(
@@ -105,14 +78,7 @@ class TestEmonPy:
 
     @pytest.mark.parametrize(
         "inputs, post_inputs_responses, expected_count",
-        [
-            (
-                [{"nodeid": "node1", "name": "input1"}],
-                [{"message": {}, SUCCESS_KEY: True}],
-                1,
-            ),
-            ([], [], 0),
-        ],
+        dtest.CREATE_INPUTS_PARAMS
     )
     def test_create_inputs(
         self,
@@ -143,41 +109,7 @@ class TestEmonPy:
 
     @pytest.mark.parametrize(
         "structure, inputs, expected_count",
-        [
-            (
-                [
-                    {"nodeid": "node2", "name": "input1"},
-                    {"nodeid": "node2", "name": "input2"}
-                ],
-                {
-                    SUCCESS_KEY: True,
-                    MESSAGE_KEY: [
-                        {"nodeid": "node1", "name": "input1"},
-                        {"nodeid": "node1", "name": "input2"},
-                        {"nodeid": "node1", "name": "input3"},
-                        {"nodeid": "node2", "name": "input1"}
-                    ]
-                },
-                1
-            ),
-            (
-                [
-                    {"nodeid": "node3", "name": "input1"},
-                    {"nodeid": "node3", "name": "input2"}
-                ],
-                {
-                    SUCCESS_KEY: True,
-                    MESSAGE_KEY: [
-                        {"nodeid": "node1", "name": "input1"},
-                        {"nodeid": "node1", "name": "input2"},
-                        {"nodeid": "node1", "name": "input3"},
-                        {"nodeid": "node2", "name": "input1"}
-                    ]
-                },
-                1
-            ),
-            ([], [], 0),
-        ],
+        dtest.INIT_INPUTS_STRUCTURE_PARAMS
     )
     def test_init_inputs_structure(
         self,
@@ -194,65 +126,7 @@ class TestEmonPy:
 
     @pytest.mark.parametrize(
         "input_item, feeds_on, expected_created, expected_process",
-        [
-            (
-                {
-                    'name': 'I1', 'nodeid': 'emon_tools_ex1',
-                    'description': 'Managed Input',
-                    'feeds': [
-                        {
-                            'name': 'I1', 'tag': 'emon_tools_ex1',
-                            'process': EmonProcessList.LOG_TO_FEED,
-                            'engine': 5,
-                            'options': {'interval': 1}
-                        },
-                        {
-                            'name': 'I2', 'tag': 'emon_tools_ex1',
-                            'process': EmonProcessList.LOG_TO_FEED,
-                            'engine': 5,
-                            'options': {'interval': 10}
-                        }
-                    ]
-                },
-                [
-                    {
-                        'id': '158', 'userid': '1',
-                        'name': 'I1', 'tag': 'emon_tools_ex1',
-                        'public': '', 'size': '0',
-                        'engine': '5', 'unit': '',
-                        'time': None, 'value': None,
-                        'start_time': 0, 'end_time': 0,
-                        'interval': 5
-                    }
-                ],
-                [[1, 159]],
-                [[1, 158], [1, 159]]
-            ),
-            (
-                {
-                    'name': 'I1', 'nodeid': 'emon_tools_ex1',
-                    'description': 'Managed Input',
-                    'feeds': [
-                        {
-                            'name': 'I1', 'tag': 'emon_tools_ex1',
-                            'process': EmonProcessList.LOG_TO_FEED,
-                            'engine': 5,
-                            'options': {'interval': 1}
-                        },
-                        {
-                            'name': 'I2', 'tag': 'emon_tools_ex1',
-                            'process': EmonProcessList.LOG_TO_FEED,
-                            'engine': 5,
-                            'options': {'interval': 10}
-                        }
-                    ]
-                },
-                [],
-                [[1, 158], [1, 159]],
-                [[1, 158], [1, 159]]
-            ),
-            ({}, [], [], []),
-        ],
+        dtest.ADD_INPUT_FEEDS_STRUCTURE_PARAMS
     )
     def test_add_input_feeds_structure(
         self,
@@ -264,7 +138,7 @@ class TestEmonPy:
     ):
         """Test the init_inputs_structure method."""
         api.create_input_feeds = MagicMock(return_value=expected_created)
-        result = api.add_input_feeds_structure(
+        _, result = api.add_input_feeds_structure(
             input_item=input_item,
             feeds_on=feeds_on)
         assert result == expected_process
@@ -274,13 +148,7 @@ class TestEmonPy:
             "input_id, current, description, "
             "set_input_fields_response, expected_result"
         ),
-        [
-            (
-                1, "old_description", "new_description",
-                {SUCCESS_KEY: True, MESSAGE_KEY: "Field updated"}, 1),
-            (
-                1, "same_description", "same_description", None, 0),
-        ],
+        dtest.UPDATE_INPUT_FIELDS_PARAMS
     )
     def test_update_input_fields(
         self,
@@ -302,18 +170,9 @@ class TestEmonPy:
     @pytest.mark.parametrize(
         (
             "input_id, current_processes, new_processes, "
-            "set_input_process_list_response, expected_result"
+            "set_process_list_response, expected_result"
         ),
-        [
-            (
-                1,
-                "1:5,1:6,1:7",
-                [[1, 4]],
-                {SUCCESS_KEY: True, MESSAGE_KEY: "Input processlist updated"},
-                1,
-            ),
-            (1, "1:2,1:6,1:7", [[1, 2]], None, 0),
-        ],
+        dtest.UPDATE_INPUT_PROCESS_LIST_PARAMS
     )
     def test_update_input_process_list(
         self,
@@ -321,11 +180,11 @@ class TestEmonPy:
         input_id,
         current_processes,
         new_processes,
-        set_input_process_list_response,
+        set_process_list_response,
         expected_result,
     ):
         """Test the update_input_process_list method."""
-        api.set_input_process_list.return_value = set_input_process_list_response
+        api.set_input_process_list.return_value = set_process_list_response
 
         result = api.update_input_process_list(
             input_id=input_id,
@@ -339,39 +198,7 @@ class TestEmonPy:
             "structure, get_structure_return, "
             "raises_error, expected_result"
         ),
-        [
-            (
-                [
-                    {"nodeid": "n1", "name": "a1", "feeds": [
-                        {"name": "f1", "tag": "n1"}
-                    ]},
-                    {"nodeid": "n1", "name": "a2", "feeds": [
-                        {"name": "f2", "tag": "n1"}
-                    ]}
-                ],
-                (
-                    [
-                        {"id": "1", "name": "a1", "nodeid": "n1", "processList": "1:1"},
-                        {"id": "2", "name": "a2", "nodeid": "n1", "processList": "1:2"},
-                        {"id": "3", "name": "a3", "nodeid": "n1", "processList": "1:3"},
-                    ],
-                    [
-                        {"id": "1", "name": "f1", "tag": "n1"},
-                        {"id": "2", "name": "f2", "tag": "n1"},
-                        {"id": "3", "name": "f3", "tag": "n1"},
-                        {"id": "4", "name": "f4", "tag": "n1"},
-                    ]
-                ),
-                False,  # Expecting a ValueError
-                {'init_inputs': 2, 'input_1': {'fields': 0, 'process': 0}, 'input_2': {'fields': 0, 'process': 0}},
-            ),
-            (
-                [{"nodeid": "node1", "name": "input1"}],
-                ([], []),
-                True,
-                None,
-            ),
-        ],
+        dtest.CREATE_STRUCTURE_PARAMS
     )
     def test_create_structure(
         self,
@@ -387,7 +214,7 @@ class TestEmonPy:
         api.get_structure = MagicMock(
             return_value=get_structure_return)
         api.add_input_feeds_structure = MagicMock(
-            return_value=[]
+            return_value=(0, [])
         )
         api.update_input_fields = MagicMock(return_value=0)
         api.update_input_process_list = MagicMock(return_value=0)
@@ -404,6 +231,36 @@ class TestEmonPy:
                 api.create_structure(structure=structure)
         else:
             result = api.create_structure(
+                structure=structure
+            )
+            assert result == expected_result
+
+    @pytest.mark.parametrize(
+        (
+            "structure, get_structure_return, "
+            "raises_error, expected_result"
+        ),
+        dtest.GET_EXTENDED_STRUCTURE_PARAMS
+    )
+    def test_get_extended_structure(
+        self,
+        api,
+        structure,
+        get_structure_return,
+        raises_error,
+        expected_result,
+    ):
+        """Test the create_structure method."""
+        api.get_structure = MagicMock(
+            return_value=get_structure_return)
+
+        if raises_error is True:
+            with pytest.raises(
+                    ValueError,
+                    match="Fatal Error, inputs was not added to server."):
+                api.get_extended_structure(structure=structure)
+        else:
+            result = api.get_extended_structure(
                 structure=structure
             )
             assert result == expected_result
