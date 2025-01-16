@@ -522,7 +522,7 @@ class EmonRequestCore:
         msg: str
     ) -> str:
         """Encode request params"""
-        if not isinstance(path, str):
+        if not isinstance(path, str) or len(path.strip()) == 0:
             raise ValueError(
                 f"request error: {msg}. "
                 "Url Path must be a non-empty string."
