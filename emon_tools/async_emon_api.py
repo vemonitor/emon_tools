@@ -367,6 +367,33 @@ class AsyncEmonInputs(AsyncEmonRequest):
             request_type=RequestType.GET
         )
 
+    def async_input_bulk(
+        self,
+        data: list,
+        timestamp: Optional[int] = None,
+        sentat: Optional[int] = None,
+        offset: Optional[int] = None,
+    ) -> bool:
+        """
+        On error return a dict as:
+        - {"success": false, "message": "Invalid fields"}
+        """
+        path, params, data_post = EmonInputs.prep_input_bulk(
+            data=data,
+            timestamp=timestamp,
+            sentat=sentat,
+            offset=offset
+        )
+        response = self.async_request(
+            path=path,
+            params=params,
+            data=data_post,
+            msg="input_bulk",
+            request_type=RequestType.POST
+        )
+        response['nb_points'] = len(data)
+        return response
+
 
 @dataclass
 class AsyncEmonFeeds(AsyncEmonInputs):
