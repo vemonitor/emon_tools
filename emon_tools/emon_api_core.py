@@ -515,6 +515,47 @@ class EmonRequestCore:
             result[MESSAGE_KEY] = response
         return result
 
+    @staticmethod
+    def encode_url_path(
+        url: str,
+        path: str,
+        msg: str
+    ) -> str:
+        """Encode request params"""
+        if not isinstance(path, str):
+            raise ValueError(
+                f"request error: {msg}. "
+                "Url Path must be a non-empty string."
+                )
+
+        # Encode unsafe characters in the path.
+        path = quote_plus(path.lstrip('/'), safe="/")
+        # Safely join the base URL and path.
+        return urljoin(url, path)
+
+    @staticmethod
+    def encode_params(
+        params: Optional[Dict[str, Any]] = None,
+        unquote_keys: Optional[list[str]] = None
+    ) -> Dict[str, Any]:
+        """Encode request params"""
+        encoded_params = {}
+
+        if not Ut.is_list(unquote_keys):
+            unquote_keys = []
+
+        if Ut.is_dict(params, not_empty=True):
+            for key, value in params.items():
+                is_not_object = isinstance(value, (float, str))\
+                    and key not in unquote_keys
+                if is_not_object:
+                    encoded_params[key] = quote_plus(str(value), safe="-")
+                elif isinstance(value, (list, dict)):
+                    encoded_params[key] = sj.dumps(value)
+                else:
+                    encoded_params[key] = value
+        return encoded_params
+
 
 class EmonInputs:
     """Emon Inputs Api"""
