@@ -8,13 +8,13 @@ from emon_tools.emon_api_core import RequestType
 from emon_tools.async_emon_api import AsyncEmonRequest
 from emon_tools.async_emon_api import AsyncEmonInputs
 from emon_tools.async_emon_api import AsyncEmonFeeds
+from tests.emon_api.emon_api_data_test import EmonApiDataTest as dtest
 
 API_KEY = "12345"
 VALID_URL = "http://localhost:8080"
 INVALID_URL = "http://localhost:9999"
 INVALID_API_KEY = ""
 
-MOCK_UUID = "abcd1234-5678-90ef-ghij-klmnopqrstuv"
 MOCK_FEEDS = [
     {
         "id": "1",
@@ -224,6 +224,19 @@ class TestAsyncEmonInputs:
             )
 
     @pytest.mark.asyncio
+    async def test_async_list_inputs_extended_fields(self, emon_inputs):
+        """Test listing inputs."""
+        with patch.object(
+                emon_inputs, "async_request", new=AsyncMock()) as mock_request:
+            mock_request.return_value = MOCK_INPUT_LIST_FIELDS
+            inputs = await emon_inputs.async_list_inputs_fields(
+                get_type=InputGetType.EXTENDED
+            )
+            assert inputs == MOCK_INPUT_LIST_FIELDS
+            mock_request.assert_called_once_with(
+                "/input/list", msg='get list inputs fields')
+
+    @pytest.mark.asyncio
     async def test_async_get_input_fields(self, emon_inputs):
         """Test retrieving specific input fields."""
         with patch.object(
@@ -292,6 +305,26 @@ class TestAsyncEmonInputs:
                 params={"node": "test_node", "fulljson": {"key": 123}},
                 msg="Add input data point",
                 request_type=RequestType.GET,
+            )
+
+    @pytest.mark.asyncio
+    async def test_input_bulk(self, emon_inputs):
+        """Test posting input data."""
+        with patch.object(
+                emon_inputs,
+                "async_request",
+                return_value=dtest.MOCK_RESPONSE_SUCCESS) as mock_request:
+
+            result = await emon_inputs.async_input_bulk(
+                data=[[1, "test_node", {"temp": 21.2}, {"humidity": 54}]])
+            assert result == dtest.MOCK_RESPONSE_SUCCESS
+            mock_request.assert_called_once_with(
+                path='/input/bulk',
+                params={},
+                data={
+                    'data': '[[1, "test_node", {"temp": 21.2}, {"humidity": 54}]]'},
+                msg="input_bulk",
+                request_type=RequestType.POST
             )
 
 
@@ -402,50 +435,156 @@ class TestAsyncEmonFeeds:
                 msg='get last feed value')
 
     @pytest.mark.asyncio
-    async def test_async_list_inputs(self, emon_feeds):
-        """Test listing inputs."""
+    async def test_get_fetch_feed_data(self, emon_feeds):
+        """Test fetching feed data."""
         with patch.object(
-                emon_feeds, "async_request", new=AsyncMock()) as mock_request:
-            mock_request.return_value = MOCK_INPUT_LIST
-            inputs = await emon_feeds.async_list_inputs()
-            assert inputs == MOCK_INPUT_LIST
-            mock_request.assert_called_once_with(
-                "/input/get", msg='get list inputs')
-
-    @pytest.mark.asyncio
-    async def test_async_list_inputs_process_fields(self, emon_feeds):
-        """Test listing inputs."""
-        with patch.object(
-                emon_feeds, "async_request", new=AsyncMock()) as mock_request:
-            mock_request.return_value = MOCK_INPUT_LIST_PROCESS
-            inputs = await emon_feeds.async_list_inputs_fields(
-                get_type=InputGetType.PROCESS_LIST
+                emon_feeds,
+                "async_request",
+                return_value=dtest.MOCK_RESPONSE_SUCCESS) as mock_request:
+            result = await emon_feeds.async_get_fetch_feed_data(
+                feed_id=123,
+                start=1609459200,
+                end=1609462800,
+                interval=10,
+                average=True,
+                time_format="unix",
+                skip_missing=False,
+                limi_interval=False,
+                delta=False
             )
-            assert inputs == MOCK_INPUT_LIST_PROCESS
+            assert result == dtest.MOCK_RESPONSE_SUCCESS
             mock_request.assert_called_once_with(
-                "/input/getinputs", msg='get list inputs fields')
-
-    @pytest.mark.asyncio
-    async def test_async_list_inputs_extended_fields(self, emon_feeds):
-        """Test listing inputs."""
-        with patch.object(
-                emon_feeds, "async_request", new=AsyncMock()) as mock_request:
-            mock_request.return_value = MOCK_INPUT_LIST_FIELDS
-            inputs = await emon_feeds.async_list_inputs_fields(
-                get_type=InputGetType.EXTENDED
+                "/feed/data.json",
+                params={
+                    "id": 123,
+                    "start": 1609459200,
+                    "end": 1609462800,
+                    "interval": 10,
+                    "average": 1,
+                    "time_format": "unix",
+                    "skip_missing": 0,
+                    "limit_interval": 0,
+                    "delta": 0,
+                },
+                msg="fetch data points"
             )
-            assert inputs == MOCK_INPUT_LIST_FIELDS
-            mock_request.assert_called_once_with(
-                "/input/list", msg='get list inputs fields')
 
     @pytest.mark.asyncio
-    async def test_async_get_input_fields(self, emon_feeds):
-        """Test retrieving input fields."""
+    async def test_create_feed(self, emon_feeds):
+        """Test creating a feed."""
         with patch.object(
-                emon_feeds, "async_request", new=AsyncMock()) as mock_request:
-            mock_request.return_value = MOCK_INPUT_DETAILS
-            input_details = await emon_feeds.async_get_input_fields(
-                "test", "V")
-            assert input_details == MOCK_INPUT_DETAILS
+                emon_feeds,
+                "async_request",
+                return_value=dtest.MOCK_RESPONSE_SUCCESS) as mock_request:
+            result = await emon_feeds.async_create_feed(
+                name="test_feed",
+                tag="test_tag",
+                engine=1,
+                options={"type": "float"})
+            assert result == dtest.MOCK_RESPONSE_SUCCESS
             mock_request.assert_called_once_with(
-                "/input/get/test/V", msg='get list inputs fields')
+                path='/feed/create.json',
+                params={
+                    "name": "test_feed",
+                    "tag": "test_tag",
+                    "engine": 1, "options": {"type": "float"}},
+                msg="create feed"
+            )
+
+    @pytest.mark.asyncio
+    async def test_update_feed(self, emon_feeds):
+        """Test updating a feed."""
+        with patch.object(
+                emon_feeds,
+                "async_request",
+                return_value=dtest.MOCK_RESPONSE_SUCCESS) as mock_request:
+            result = await emon_feeds.async_update_feed(
+                feed_id=123, fields={"key": "value"})
+            assert result == dtest.MOCK_RESPONSE_SUCCESS
+            mock_request.assert_called_once_with(
+                path='/feed/set.json',
+                params={"feed_id": 123, "fields": {"key": "value"}},
+                msg="update feed fields"
+            )
+
+# ------------------------------------------------------------------------
+    @pytest.mark.asyncio
+    async def test_delete_feed(self, emon_feeds):
+        """Test deleting a feed."""
+        with patch.object(
+                emon_feeds,
+                "async_request",
+                return_value=dtest.MOCK_RESPONSE_SUCCESS) as mock_request:
+            result = await emon_feeds.async_delete_feed(feed_id=123)
+            assert result == dtest.MOCK_RESPONSE_SUCCESS
+            mock_request.assert_called_once_with(
+                path='/feed/delete.json',
+                params={"id": 123},
+                msg="delete feed"
+            )
+
+    @pytest.mark.asyncio
+    async def test_add_data_point(self, emon_feeds):
+        """Test adding a data point to a feed."""
+        with patch.object(
+                emon_feeds,
+                "async_request",
+                return_value=dtest.MOCK_RESPONSE_SUCCESS) as mock_request:
+            result = await emon_feeds.async_add_data_point(
+                feed_id=123, time=1609459200, value=42.0)
+            assert result == dtest.MOCK_RESPONSE_SUCCESS
+            mock_request.assert_called_once_with(
+                path='/feed/insert.json',
+                params={"feed_id": 123, "time": 1609459200, "value": 42.0},
+                msg="add feed data point"
+            )
+
+    @pytest.mark.asyncio
+    async def test_add_data_points(self, emon_feeds):
+        """Test adding multiple data points to a feed."""
+        with patch.object(
+                emon_feeds,
+                "async_request",
+                return_value=dtest.MOCK_RESPONSE_SUCCESS) as mock_request:
+            result = await emon_feeds.async_add_data_points(
+                feed_id=123, data=[[1609459200, 42.0], [1609459260, 43.0]])
+            assert result == dtest.MOCK_RESPONSE_SUCCESS
+            mock_request.assert_called_once_with(
+                path='/feed/insert.json',
+                params={
+                    "feed_id": 123,
+                    "data": [[1609459200, 42.0], [1609459260, 43.0]]},
+                msg="add feed data points"
+            )
+
+    @pytest.mark.asyncio
+    async def test_delete_data_point(self, emon_feeds):
+        """Test deleting a data point from a feed."""
+        with patch.object(
+                emon_feeds,
+                "async_request",
+                return_value=dtest.MOCK_RESPONSE_SUCCESS) as mock_request:
+            result = await emon_feeds.async_delete_data_point(
+                feed_id=123, time=1609459200)
+            assert result == dtest.MOCK_RESPONSE_SUCCESS
+            mock_request.assert_called_once_with(
+                path='/feed/deletedatapoint.json',
+                params={"feed_id": 123, "time": 1609459200},
+                msg="delete feed data point"
+            )
+
+    @pytest.mark.asyncio
+    async def test_add_feed_process_list(self, emon_feeds):
+        """Test adding a process list to a feed."""
+        with patch.object(
+                emon_feeds,
+                "async_request",
+                return_value=dtest.MOCK_RESPONSE_SUCCESS) as mock_request:
+            result = await emon_feeds.async_add_feed_process_list(
+                feed_id=123, process_id=1, process=2)
+            assert result == dtest.MOCK_RESPONSE_SUCCESS
+            mock_request.assert_called_once_with(
+                path="/feed/process/set.json",
+                params={"feed_id": 123, "processlist": '2:1'},
+                msg="add_feed_process_list"
+            )

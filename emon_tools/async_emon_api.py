@@ -367,7 +367,7 @@ class AsyncEmonInputs(AsyncEmonRequest):
             request_type=RequestType.GET
         )
 
-    def async_input_bulk(
+    async def async_input_bulk(
         self,
         data: list,
         timestamp: Optional[int] = None,
@@ -384,7 +384,7 @@ class AsyncEmonInputs(AsyncEmonRequest):
             sentat=sentat,
             offset=offset
         )
-        response = self.async_request(
+        response = await self.async_request(
             path=path,
             params=params,
             data=data_post,
