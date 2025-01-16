@@ -135,9 +135,9 @@ class TestEmonRequest:
         """Test handling of request timeouts."""
         with patch("requests.get", side_effect=requests.exceptions.Timeout):
             result = emon_request.execute_request(
-                path="/feed/list.json", msg="test timeout")
+                path="/feed/list.json", msg="test_timeout")
             assert not result["success"]
-            assert result["message"] == "Request timeout."
+            assert result["message"] == "Request timeout: test_timeout."
 
     def test_execute_request_connection_error(self, emon_request):
         """Test handling of connection errors."""
