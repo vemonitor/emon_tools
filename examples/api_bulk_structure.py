@@ -1,7 +1,13 @@
 """
 Emoncms API example.
 
-Create EmonCms Inputs Feeds structure if not exist.
+Inputs Feeds structure supervision.
+Create or Update Emoncms Inputs Feeds structure,
+based on structured dictionary.
+
+Input bulk post data example.
+Send 5 * 60 dummy data points at 1s interval,
+to supervised inputs.
 """
 import os
 import time
