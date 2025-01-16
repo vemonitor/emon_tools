@@ -692,6 +692,31 @@ class EmonInputs:
 
         return "/input/post", params
 
+    @staticmethod
+    def prep_input_bulk(
+        data: list,
+        timestamp: Optional[int] = None,
+        sentat: Optional[int] = None,
+        offset: Optional[int] = None,
+    ) -> tuple[str, Optional[Dict[str, Any]], Optional[Dict[str, Any]]]:
+        """
+        Add inputs data points to input node as bulk.
+        """
+        if not Ut.is_list(data, not_empty=True):
+            raise ValueError("Invalid data to post inputs.")
+        params = {}
+        if isinstance(timestamp, (int, float)):
+            params.update({"time": timestamp})
+        elif isinstance(sentat, int):
+            params.update({"sentat": sentat})
+        elif isinstance(offset, int):
+            params.update({"offset": offset})
+        data = {
+            "data": sj.dumps(data)
+        }
+
+        return "/input/bulk", params, data
+
 
 class EmonFeeds:
     """Emon Feeds Api"""
