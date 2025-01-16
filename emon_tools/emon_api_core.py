@@ -184,7 +184,7 @@ class EmonHelper:
         Raises:
             ValueError: If the URL is empty or improperly formatted.
         """
-        if Ut.is_str(url, not_empty=True):
+        if not Ut.is_str(url, not_empty=True):
             raise TypeError("URL must be a non-empty string.")
         if not (url.startswith("http://") or url.startswith("https://")):
             raise ValueError("URL must start with 'http://' or 'https://'.")
@@ -523,7 +523,7 @@ class EmonRequestCore:
     ) -> str:
         """Encode request params"""
         EmonHelper.validate_url(url)
-        if Ut.is_str(path, not_empty=True):
+        if not Ut.is_str(path, not_empty=True):
             raise ValueError(
                 f"Request error: {msg}. "
                 "Url Path must be a non-empty string."
