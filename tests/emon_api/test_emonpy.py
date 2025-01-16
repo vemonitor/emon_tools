@@ -341,7 +341,7 @@ class TestEmonPy:
         ),
         [
             (
-                [
+                [  # structure
                     {"nodeid": "n1", "name": "a1", "feeds": [
                         {"name": "f1", "tag": "n1"}
                     ]},
@@ -349,7 +349,7 @@ class TestEmonPy:
                         {"name": "f2", "tag": "n1"}
                     ]}
                 ],
-                (
+                (  # get_structure_return
                     [
                         {
                             "id": "1", "name": "a1", "nodeid": "n1",
@@ -372,7 +372,7 @@ class TestEmonPy:
                     ]
                 ),
                 False,  # Expecting a ValueError
-                {
+                {  # expected_result
                     'nb_updated_inputs': 0,
                     'nb_added_inputs': 2,
                     'nb_added_feeds': 0,
@@ -383,10 +383,12 @@ class TestEmonPy:
                 },
             ),
             (
-                [{"nodeid": "node1", "name": "input1"}],
-                ([], []),
-                True,
-                None,
+                [  # structure
+                    {"nodeid": "node1", "name": "input1"}
+                ],
+                ([], []),  # get_structure_return
+                True,  # Expecting a ValueError
+                None,  # expected_result
             ),
         ],
     )
@@ -421,6 +423,90 @@ class TestEmonPy:
                 api.create_structure(structure=structure)
         else:
             result = api.create_structure(
+                structure=structure
+            )
+            assert result == expected_result
+
+    @pytest.mark.parametrize(
+        (
+            "structure, get_structure_return, "
+            "raises_error, expected_result"
+        ),
+        [
+            (
+                [  # structure
+                    {"nodeid": "n1", "name": "a1", "feeds": [
+                        {"name": "f1", "tag": "n1"}
+                    ]},
+                    {"nodeid": "n1", "name": "a2", "feeds": [
+                        {"name": "f2", "tag": "n1"}
+                    ]}
+                ],
+                (  # get_structure_return
+                    [
+                        {
+                            "id": "1", "name": "a1", "nodeid": "n1",
+                            "processList": "1:1"
+                        },
+                        {
+                            "id": "2", "name": "a2", "nodeid": "n1",
+                            "processList": "1:2"
+                        },
+                        {
+                            "id": "3", "name": "a3", "nodeid": "n1",
+                            "processList": "1:3"
+                        },
+                    ],
+                    [
+                        {"id": "1", "name": "f1", "tag": "n1"},
+                        {"id": "2", "name": "f2", "tag": "n1"},
+                        {"id": "3", "name": "f3", "tag": "n1"},
+                        {"id": "4", "name": "f4", "tag": "n1"},
+                    ]
+                ),
+                False,  # Expecting a ValueError
+                [  # expected_result
+                    {
+                        "id": "1", "name": "a1", "nodeid": "n1",
+                        "processList": "1:1", "feeds": [{
+                            "id": "1", "name": "f1", "tag": "n1"}]
+                    },
+                    {
+                        "id": "2", "name": "a2", "nodeid": "n1",
+                        "processList": "1:2", "feeds": [{
+                            "id": "2", "name": "f2", "tag": "n1"}]
+                    }
+                ],
+            ),
+            (
+                [  # structure
+                    {"nodeid": "node1", "name": "input1"}
+                ],
+                ([], []),  # get_structure_return
+                False,  # Expecting a ValueError
+                [],  # expected_result
+            ),
+        ],
+    )
+    def test_get_extended_structure(
+        self,
+        api,
+        structure,
+        get_structure_return,
+        raises_error,
+        expected_result,
+    ):
+        """Test the create_structure method."""
+        api.get_structure = MagicMock(
+            return_value=get_structure_return)
+
+        if raises_error is True:
+            with pytest.raises(
+                    ValueError,
+                    match="Fatal Error, inputs was not added to server."):
+                api.get_extended_structure(structure=structure)
+        else:
+            result = api.get_extended_structure(
                 structure=structure
             )
             assert result == expected_result

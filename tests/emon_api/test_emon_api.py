@@ -280,6 +280,25 @@ class TestEmonInputsApi:
                     request_type=RequestType.GET
                 )
 
+    def test_input_bulk(self, emon_inputs_api):
+        """Test posting input data."""
+        with patch.object(
+                emon_inputs_api,
+                "execute_request",
+                return_value=MOCK_RESPONSE_SUCCESS) as mock_request:
+
+            result = emon_inputs_api.input_bulk(
+                data=[[1, "test_node", {"temp": 21.2}, {"humidity": 54}]])
+            assert result == MOCK_RESPONSE_SUCCESS
+            mock_request.assert_called_once_with(
+                path='/input/bulk',
+                params={},
+                data={
+                    'data': '[[1, "test_node", {"temp": 21.2}, {"humidity": 54}]]'},
+                msg="input_bulk",
+                request_type=RequestType.POST
+            )
+
 
 class TestEmonFeedsApi:
     """Unit test class for EmonFeedsApi."""
