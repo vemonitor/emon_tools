@@ -356,7 +356,7 @@ class EmonHelper:
 
     @staticmethod
     def get_input_filters_from_structure(
-        structure_item: list
+        structure_item: dict
     ) -> tuple[dict, dict]:
         """Get filter from inputs structure"""
         result = None
