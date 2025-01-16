@@ -376,8 +376,10 @@ class TestEmonPy:
                     'nb_updated_inputs': 0,
                     'nb_added_inputs': 2,
                     'nb_added_feeds': 0,
-                    'input_1': {'input_feeds': 0, 'input_fields': 0, 'input_process': 0},
-                    'input_2': {'input_feeds': 0, 'input_fields': 0, 'input_process': 0}
+                    'input_1': {
+                        'input_feeds': 0, 'input_fields': 0, 'input_process': 0},
+                    'input_2': {
+                        'input_feeds': 0, 'input_fields': 0, 'input_process': 0}
                 },
             ),
             (
