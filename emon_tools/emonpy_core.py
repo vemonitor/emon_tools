@@ -16,8 +16,8 @@ logging.basicConfig()
 class EmonPyCore(EmonApiCore):
     """
     Helper methods for interacting with EmonCMS data.
-    This class provides static methods to manage filters, processes, and input-feed 
-    relationships in a structured and efficient manner.
+    This class provides static methods to manage filters, processes,
+    and input-feed relationships in a structured and efficient manner.
     """
 
     @staticmethod
@@ -73,10 +73,12 @@ class EmonPyCore(EmonApiCore):
         Convert a string representation of process lists to a set of tuples.
 
         Args:
-            process_list (str): Comma-separated string of processes in the format 'int:int'.
+            process_list (str):
+                Comma-separated string of processes in the format 'int:int'.
 
         Returns:
-            set[tuple[str, int]]: Set of tuples containing process names and feed IDs.
+            set[tuple[str, int]]:
+                Set of tuples containing process names and feed IDs.
 
         Raises:
             ValueError: If the process_list string is malformed.
@@ -100,7 +102,8 @@ class EmonPyCore(EmonApiCore):
         Format a string process list into a set of formatted process strings.
 
         Args:
-            process_list (str): Comma-separated string of processes in the format 'int:int'.
+            process_list (str): Comma-separated string
+            of processes in the format 'int:int'.
 
         Returns:
             set[str]: Set of formatted process strings.
@@ -140,10 +143,13 @@ class EmonPyCore(EmonApiCore):
         Format a list of process tuples into a set of formatted strings.
 
         Args:
-            process_list (list[tuple[int, int]]): List of tuples containing process and feed IDs.
+            process_list (list[tuple[int, int]]):
+                List of tuples containing process and feed IDs.
 
         Returns:
-            set[str]: Set of formatted process strings in the format 'process_name:feed_id'.
+            set[str]:
+                Set of formatted process strings
+                in the format 'process_name:feed_id'.
         """
         result = set()
         if Ut.is_list(process_list, not_empty=True):
@@ -221,14 +227,16 @@ class EmonPyCore(EmonApiCore):
         filters: dict
     ) -> tuple[dict, dict]:
         """
-        Clean and organize filter structure by categorizing items and simplifying lists.
+        Clean and organize filter structure by categorizing items
+        and simplifying lists.
 
         Args:
             filters (dict): Dictionary containing filter structures.
 
         Returns:
-            Optional[dict]: A cleaned dictionary with organized and sorted filters,
-            or None if the input structure is invalid.
+            Optional[dict]:
+                A cleaned dictionary with organized and sorted filters,
+                or None if the input structure is invalid.
         """
         result = None
         if EmonPyCore.is_filters_structure(filters):
