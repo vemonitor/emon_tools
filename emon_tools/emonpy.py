@@ -1,4 +1,5 @@
 """Emon api runner"""
+from typing import Optional
 from emon_tools.emon_api_core import InputGetType
 from emon_tools.emonpy_core import EmonPyCore
 from emon_tools.emon_api import EmonFeedsApi
@@ -309,3 +310,60 @@ class EmonPy(EmonFeedsApi):
                         inputs_on
                     )
         return result
+
+    def get_extended_inputs_by_filters(
+        self,
+        input_filter: dict,
+        feed_filter: dict
+    ):
+        """Get extended structure."""
+        inputs, feeds = self.get_structure()
+        if Ut.is_dict(input_filter, not_empty=True):
+            # filter inputs
+            inputs_on = Ut.filter_list_of_dicts(
+                input_data=inputs,
+                filter_data=input_filter
+            )
+            if len(inputs_on) == 0:
+                return [], []
+            inputs_feeds = EmonPyCore.get_feeds_from_inputs_list(
+                input_data=inputs_on,
+                feed_data=feeds
+            )
+            return EmonPy.get_structure_by_filtered_feeds(
+                inputs=inputs_on,
+                feeds=inputs_feeds,
+                feed_filter=feed_filter
+            )
+
+        if Ut.is_dict(feed_filter, not_empty=True):
+            return EmonPy.get_structure_by_filtered_feeds(
+                inputs=inputs_on,
+                feeds=inputs_feeds,
+                feed_filter=feed_filter
+            )
+        return inputs, feeds
+
+    @staticmethod
+    def get_structure_by_filtered_feeds(
+        inputs: list[dict],
+        feeds: list[dict],
+        feed_filter: Optional[dict] = None
+    ):
+        """Get emoncms Inputs Feeds structure"""
+        if Ut.is_dict(feed_filter, not_empty=True)\
+                and Ut.is_list(feeds, not_empty=True):
+            feeds_on = Ut.filter_list_of_dicts(
+                input_data=feeds,
+                filter_data=feed_filter
+            )
+            ids = [x.get('id') for x in feeds_on]
+            inputs_on = [
+                item
+                for item in inputs
+                if len(item['process_list']) > 0
+                for process_list in item['process_list']
+                if len(process_list) == 2 and process_list[1] in ids
+            ]
+            return inputs_on, feeds_on
+        return inputs, feeds
