@@ -18,10 +18,21 @@ class EmonPy(EmonFeedsApi):
             InputGetType.EXTENDED
         )
         feeds = self.list_feeds()
-        if Ut.is_request_success(inputs)\
-                and Ut.is_request_success(feeds):
-            return inputs.get(MESSAGE_KEY), feeds.get(MESSAGE_KEY)
-        return None, None
+        if Ut.is_request_success(inputs):
+            inputs = EmonPyCore.format_list_of_dicts(
+                inputs.get(MESSAGE_KEY))
+            EmonPyCore.append_inputs_process_list(
+                input_data=inputs)
+        else:
+            inputs = None
+
+        if Ut.is_request_success(feeds):
+            feeds = EmonPyCore.format_list_of_dicts(
+                    feeds.get(MESSAGE_KEY))
+        else:
+            feeds = None
+
+        return inputs, feeds
 
     def create_input_feeds(
         self,
