@@ -7,20 +7,81 @@ from emon_tools.emon_api_core import EmonProcessList
 
 class EmonpyDataTest:
     """EmonPy data test common helper"""
+    MOCK_INPUTS = [
+        {
+            'id': 266, 'nodeid': 'emon_tools_ex1', 'name': 'I3',
+            'description': 'Managed Input', 'processList': '1:172',
+            'time': 1737155100, 'value': 38, 'process_list': [(1, 172)]
+        },
+        {
+            'id': 267, 'nodeid': 'emon_tools_ex1', 'name': 'I1',
+            'description': 'Managed Input', 'processList': '1:170',
+            'time': 1737155100, 'value': 5, 'process_list': [(1, 170)]
+        },
+        {
+            'id': 268, 'nodeid': 'emon_tools_ex1', 'name': 'I2',
+            'description': 'Managed Input', 'processList': '1:171',
+            'time': 1737155100, 'value': 23, 'process_list': [(1, 171)]
+        }
+    ]
+
+    MOCK_FEEDS = [
+        {
+            'id': 172, 'userid': 1, 'name': 'F3', 'tag': 'emon_tools_ex1',
+            'public': '', 'size': 0, 'engine': 5, 'unit': '',
+            'processList': '', 'value': 38, 'time': 1737155100,
+            'start_time': 1736895600, 'end_time': 1737155100, 'interval': 1
+        },
+        {
+            'id': 170, 'userid': 1, 'name': 'I1', 'tag': 'emon_tools_ex1',
+            'public': '', 'size': 0, 'engine': 5, 'unit': '',
+            'processList': '', 'value': 5, 'time': 1737155100,
+            'start_time': 1736895600, 'end_time': 1737155100, 'interval': 1
+        },
+        {
+            'id': 171, 'userid': 1, 'name': 'F2A', 'tag': 'emon_tools_ex1_f1',
+            'public': '', 'size': 0, 'engine': 5, 'unit': '',
+            'processList': '', 'value': 23, 'time': 1737155100,
+            'start_time': 1736895600, 'end_time': 1737155100, 'interval': 1
+        }
+    ]
+
     GET_STRUCTURE_PARAMS = [
         (
             # inputs_response
-            {SUCCESS_KEY: True, MESSAGE_KEY: [{"nodeid": "test_node"}]},
+            {SUCCESS_KEY: True, MESSAGE_KEY: MOCK_INPUTS},
             # feeds_response
-            {SUCCESS_KEY: True, MESSAGE_KEY: [{"id": 1, "name": "test_feed"}]},
+            {SUCCESS_KEY: True, MESSAGE_KEY: MOCK_FEEDS},
             # expected_result
-            ([{"nodeid": "test_node"}], [{"id": 1, "name": "test_feed"}]),
+            (MOCK_INPUTS, MOCK_FEEDS),
         ),
         (
             # inputs_response
             {SUCCESS_KEY: False},
             # feeds_response
-            {SUCCESS_KEY: True, MESSAGE_KEY: [{"id": 1, "name": "test_feed"}]},
+            {
+                SUCCESS_KEY: True,
+                MESSAGE_KEY: [{"id": "1", "name": "test_feed"}]
+            },
+            # expected_result
+            (None, [{"id": 1, "name": "test_feed"}]),
+        ),
+        (
+            # inputs_response
+            {
+                SUCCESS_KEY: True,
+                MESSAGE_KEY: [{"id": "1", "name": "test_feed"}]
+            },
+            # feeds_response
+            {SUCCESS_KEY: False},
+            # expected_result
+            ([{"id": 1, "name": "test_feed", "process_list": []}], None),
+        ),
+        (
+            # inputs_response
+            {SUCCESS_KEY: False},
+            # feeds_response
+            {SUCCESS_KEY: False},
             # expected_result
             (None, None),
         ),
