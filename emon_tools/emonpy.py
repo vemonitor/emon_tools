@@ -1,6 +1,6 @@
 """Emon api runner"""
 from emon_tools.emon_api_core import InputGetType
-from emon_tools.emon_api_core import EmonHelper
+from emon_tools.emonpy_core import EmonPyCore
 from emon_tools.emon_api import EmonFeedsApi
 from emon_tools.api_utils import Utils as Ut
 from emon_tools.api_utils import SUCCESS_KEY
@@ -101,7 +101,7 @@ class EmonPy(EmonFeedsApi):
         """Initialyze inputs structure from EmonCms API."""
         result = 0
         if Ut.is_list(structure, not_empty=True):
-            filter_inputs = EmonHelper.get_inputs_filters_from_structure(
+            filter_inputs = EmonPyCore.get_inputs_filters_from_structure(
                 structure=structure
             )
             inputs = self.list_inputs_fields(
@@ -113,7 +113,7 @@ class EmonPy(EmonFeedsApi):
                 filter_in=True
             )
             if Ut.is_list(inputs_on, not_empty=True):
-                inputs_filter = EmonHelper.get_inputs_filters_from_structure(
+                inputs_filter = EmonPyCore.get_inputs_filters_from_structure(
                     structure=inputs_on
                 )
                 inputs_out = Ut.filter_list_of_dicts(
@@ -195,12 +195,12 @@ class EmonPy(EmonFeedsApi):
     ) -> int:
         """Initialyze inputs structure from EmonCms API."""
         result = 0
-        process_list = EmonHelper.format_process_list(new_processes)
+        process_list = EmonPyCore.format_process_list(new_processes)
 
         nb_process = len(process_list)
         nb_current = 0
         if Ut.is_str(current_processes) and nb_process > 0:
-            currents = EmonHelper.format_string_process_list(current_processes)
+            currents = EmonPyCore.format_string_process_list(current_processes)
             if Ut.is_set(currents, not_empty=True):
                 nb_current = len(currents)
                 process_list = process_list.union(currents)
@@ -235,7 +235,7 @@ class EmonPy(EmonFeedsApi):
             inputs, feeds = self.get_structure()
 
             for item in structure:
-                inputs_on, feeds_on = EmonHelper.get_existant_structure(
+                inputs_on, feeds_on = EmonPyCore.get_existant_structure(
                     input_item=item,
                     inputs=inputs,
                     feeds=feeds
@@ -286,7 +286,7 @@ class EmonPy(EmonFeedsApi):
         if Ut.is_list(structure, not_empty=True):
             inputs, feeds = self.get_structure()
             for item in structure:
-                inputs_on, feeds_on = EmonHelper.get_existant_structure(
+                inputs_on, feeds_on = EmonPyCore.get_existant_structure(
                     input_item=item,
                     inputs=inputs,
                     feeds=feeds
