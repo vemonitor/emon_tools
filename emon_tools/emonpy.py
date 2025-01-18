@@ -25,7 +25,7 @@ class EmonPy(EmonFeedsApi):
 
     def create_input_feeds(
         self,
-        feeds=list
+        feeds: list
     ):
         """Create input feeds structure"""
         nb_added, processes = 0, []
@@ -62,7 +62,7 @@ class EmonPy(EmonFeedsApi):
 
     def create_inputs(
         self,
-        inputs=list
+        inputs: list
     ) -> int:
         """Create input feeds structure"""
         result = 0
@@ -219,7 +219,7 @@ class EmonPy(EmonFeedsApi):
 
     def create_structure(
         self,
-        structure=list
+        structure: list
     ):
         """Create inputs feeds structure from EmonCms API."""
         result = None
@@ -279,7 +279,7 @@ class EmonPy(EmonFeedsApi):
 
     def get_extended_structure(
         self,
-        structure=list
+        structure: list
     ):
         """Get extended structure."""
         result = []
