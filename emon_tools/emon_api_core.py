@@ -168,7 +168,7 @@ class EmonProcessList(Enum):
         return result
 
 
-class EmonHelper:
+class EmonApiCore:
     """Emon api helper methods"""
     @staticmethod
     def validate_url(url: str) -> str:
