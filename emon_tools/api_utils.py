@@ -221,21 +221,23 @@ class Utils(Ut):
         return result
 
     @staticmethod
-    def split_process(process: Union[str, None]) -> Optional[tuple]:
+    def split_process(
+        process: Union[str, None]
+    ) -> tuple[Optional[int], Optional[int]]:
         """
         Splits a process string into a tuple of integers.
 
         :param process: The process string.
         :return: A tuple of integers, or None if invalid.
         """
-        result = None
+        result = (None, None)
         if isinstance(process, str) and ':' in process:
             parts = process.split(':')
             if len(parts) == 2:
                 proc, feed_id = map(
                     lambda x: int(x) if x.isdigit() else 0, parts)
                 if proc > 0 and feed_id > 0:
-                    result = proc, feed_id
+                    result = (proc, feed_id)
         return result
 
     @staticmethod
