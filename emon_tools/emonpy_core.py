@@ -829,12 +829,10 @@ class EmonPyCore(EmonApiCore):
                     ids.append(feed_id)
 
             if len(ids) > 0:
-                feeds = Ut.filter_list_of_dicts(
+                result = Ut.filter_list_of_dicts(
                     feed_data,
                     filter_data={'id': ids}
                 )
-                if len(feeds) == 1:
-                    result = feeds[0]
         return result
 
     @staticmethod
