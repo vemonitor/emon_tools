@@ -1,4 +1,5 @@
 """Emon api runner"""
+from typing import Optional
 from emon_tools.emon_api_core import InputGetType
 from emon_tools.emonpy_core import EmonPyCore
 from emon_tools.async_emon_api import AsyncEmonFeeds
@@ -12,26 +13,44 @@ class AsyncEmonPy(AsyncEmonFeeds):
     def __init__(self, url: str, api_key: str):
         AsyncEmonFeeds.__init__(self, url, api_key)
 
-    async def get_structure(self):
+    async def get_inputs(
+        self,
+        input_filter: Optional[dict] = None
+    ):
         """Get emoncms Inputs Feeds structure"""
         inputs = await self.async_list_inputs_fields(
             InputGetType.EXTENDED
         )
-        feeds = await self.async_list_feeds()
-        if Ut.is_request_success(inputs):
-            inputs = EmonPyCore.format_list_of_dicts(
-                inputs.get(MESSAGE_KEY))
-            EmonPyCore.append_inputs_process_list(
-                input_data=inputs)
-        else:
-            inputs = None
+        return EmonPyCore.filter_inputs_list(
+            inputs=inputs,
+            input_filter=input_filter
+        )
 
-        if Ut.is_request_success(feeds):
-            feeds = EmonPyCore.format_list_of_dicts(
-                    feeds.get(MESSAGE_KEY))
-        else:
-            feeds = None
-        return inputs, feeds
+    async def get_feeds(
+        self,
+        feed_filter: Optional[dict] = None
+    ):
+        """Get emoncms Inputs Feeds structure"""
+        feeds = await self.async_list_feeds()
+        return EmonPyCore.filter_feeds_list(
+            feeds=feeds,
+            feed_filter=feed_filter
+        )
+
+    async def get_structure(
+        self,
+        input_filter: Optional[dict] = None,
+        feed_filter: Optional[dict] = None
+    ):
+        """Get emoncms Inputs Feeds structure"""
+        inputs = await self.get_inputs(input_filter=input_filter)
+        feeds = await self.get_feeds(feed_filter=feed_filter)
+        return EmonPyCore.filter_inputs_feeds(
+            inputs=inputs,
+            feeds=feeds,
+            input_filter=input_filter,
+            feed_filter=feed_filter
+        )
 
     async def create_input_feeds(
         self,
@@ -39,35 +58,24 @@ class AsyncEmonPy(AsyncEmonFeeds):
     ):
         """Create input feeds structure"""
         nb_added, processes = 0, []
-        if Ut.is_list(feeds, not_empty=True):
-            for feed in feeds:
-                if Ut.is_dict(feed, not_empty=True):
-                    if "process" in feed:
-                        new_feed = await self.async_create_feed(
-                            **Ut.filter_dict_by_keys(
-                                input_data=feed,
-                                filter_data=['process'],
-                                filter_in=False
-                            )
-                        )
-                    else:
-                        new_feed = await self.async_create_feed(
-                            **feed
-                        )
-                    if new_feed.get(SUCCESS_KEY) is False:
-                        raise ValueError(
-                            "Fatal error: "
-                            "Unable to set feed structure "
-                            f"node {feed.get('tag')} - name {feed.get('name')}"
-                        )
-                    response = new_feed.get('message')
-                    feed_id = Ut.validate_integer(
-                        int(response.get('feedid')),
-                        "Feed id",
-                        positive=True
-                    )
-                    nb_added += 1
-                    processes.append([1, feed_id])
+        for feed in EmonPyCore.iter_feeds_to_add(feeds):
+            new_feed = await self.async_create_feed(
+                **feed
+            )
+            if new_feed.get(SUCCESS_KEY) is False:
+                raise ValueError(
+                    "Fatal error: "
+                    "Unable to set feed structure "
+                    f"node {feed.get('tag')} - name {feed.get('name')}"
+                )
+            response = new_feed.get('message')
+            feed_id = Ut.validate_integer(
+                int(response.get('feedid')),
+                "Feed id",
+                positive=True
+            )
+            nb_added += 1
+            processes.append([1, feed_id])
         return nb_added, processes
 
     async def create_inputs(
@@ -76,31 +84,18 @@ class AsyncEmonPy(AsyncEmonFeeds):
     ) -> int:
         """Create input feeds structure"""
         result = 0
-        if Ut.is_list(inputs, not_empty=True):
-            inputs_tmp = {}
-            for item in inputs:
-                node = item.get('nodeid')
-                if node not in inputs_tmp:
-                    inputs_tmp[node] = set()
-                inputs_tmp[node].add((item.get('name'), 0))
-
-            if Ut.is_dict(inputs_tmp, not_empty=True):
-                for node, items in inputs_tmp.items():
-                    data = {
-                        tmp[0]: tmp[1]
-                        for tmp in items
-                    }
-                    new_inputs = await self.async_post_inputs(
-                        node=node,
-                        data=data
-                    )
-                    if new_inputs.get(SUCCESS_KEY) is False:
-                        raise ValueError(
-                            "Fatal error: "
-                            "Unable to set inputs structure "
-                            f"node {node} - names {items}"
-                        )
-                    result += len(items)
+        for node, items, data in EmonPyCore.iter_inputs_to_add(inputs):
+            new_inputs = await self.async_post_inputs(
+                node=node,
+                data=data
+            )
+            if new_inputs.get(SUCCESS_KEY) is False:
+                raise ValueError(
+                    "Fatal error: "
+                    "Unable to set inputs structure "
+                    f"node {node} - names {items}"
+                )
+            result += len(items)
 
         return result
 
@@ -114,22 +109,18 @@ class AsyncEmonPy(AsyncEmonFeeds):
             filter_inputs = EmonPyCore.get_inputs_filters_from_structure(
                 structure=structure
             )
-            inputs = await self.async_list_inputs_fields(
-                InputGetType.EXTENDED
+            inputs = await self.get_inputs(
+                input_filter=filter_inputs
             )
             inputs_on = Ut.filter_list_of_dicts(
-                inputs.get(MESSAGE_KEY),
+                inputs,
                 filter_data=filter_inputs,
                 filter_in=True
             )
             if Ut.is_list(inputs_on, not_empty=True):
-                inputs_filter = EmonPyCore.get_inputs_filters_from_structure(
-                    structure=inputs_on
-                )
-                inputs_out = Ut.filter_list_of_dicts(
-                    input_data=structure,
-                    filter_data=inputs_filter,
-                    filter_in=False
+                inputs_out = EmonPyCore.init_inputs_structure(
+                    structure=structure,
+                    inputs=inputs
                 )
                 if Ut.is_list(inputs_out, not_empty=True):
                     result = await self.create_inputs(
@@ -151,17 +142,10 @@ class AsyncEmonPy(AsyncEmonFeeds):
         if Ut.is_dict(input_item, not_empty=True):
 
             if Ut.is_list(feeds_on, not_empty=True):
-                feeds_out = []
-                for feed in input_item.get('feeds'):
-
-                    for existant_feed in feeds_on:
-                        is_new = feed.get('name') != existant_feed.get('name')\
-                            or feed.get('tag') != existant_feed.get('tag')
-                        if is_new:
-                            feeds_out.append(feed)
-                        else:
-                            processes.append([1, int(existant_feed.get('id'))])
-
+                feeds_out, processes = EmonPyCore.get_feeds_to_add(
+                    input_item=input_item,
+                    feeds_on=feeds_on
+                )
                 if Ut.is_list(feeds_out, not_empty=True):
                     nb_added, new_processes = await self.create_input_feeds(
                         feeds=feeds_out
@@ -205,19 +189,12 @@ class AsyncEmonPy(AsyncEmonFeeds):
     ) -> int:
         """Initialyze inputs structure from EmonCms API."""
         result = 0
-        process_list = EmonPyCore.format_process_list(new_processes)
+        process_list = EmonPyCore.prepare_input_process_list(
+            current_processes=current_processes,
+            new_processes=new_processes
+        )
 
-        nb_process = len(process_list)
-        nb_current = 0
-        if Ut.is_str(current_processes) and nb_process > 0:
-            currents = EmonPyCore.format_string_process_list(current_processes)
-            if Ut.is_set(currents, not_empty=True):
-                nb_current = len(currents)
-                process_list = process_list.union(currents)
-
-        if nb_process > 0\
-                and nb_current != nb_process:
-            process_list = ','.join(process_list)
+        if Ut.is_str(process_list, not_empty=True):
             response = await self.async_set_input_process_list(
                 input_id=input_id,
                 process_list=process_list
@@ -232,17 +209,22 @@ class AsyncEmonPy(AsyncEmonFeeds):
         structure: list
     ):
         """Create inputs feeds structure from EmonCms API."""
-        result = None
+        result = {
+            'nb_updated_inputs': 0,
+            'nb_added_inputs': 0,
+            'nb_added_feeds': 0
+        }
         if Ut.is_list(structure, not_empty=True):
-            result = {
-                'nb_updated_inputs': 0,
-                'nb_added_inputs': 0,
-                'nb_added_feeds': 0
-            }
+            filters = EmonPyCore.get_filters_from_structure(
+                structure=structure
+            )
+            inputs, feeds = await self.get_structure(
+                input_filter=filters.filter_inputs,
+                feed_filter=filters.filter_feeds
+            )
             result['nb_added_inputs'] = await self.init_inputs_structure(
                 structure=structure
             )
-            inputs, feeds = await self.get_structure()
 
             for item in structure:
                 inputs_on, feeds_on = EmonPyCore.get_existant_structure(
@@ -294,7 +276,13 @@ class AsyncEmonPy(AsyncEmonFeeds):
         """Get extended structure."""
         result = []
         if Ut.is_list(structure, not_empty=True):
-            inputs, feeds = await self.get_structure()
+            filters = EmonPyCore.get_filters_from_structure(
+                structure=structure
+            )
+            inputs, feeds = await self.get_structure(
+                input_filter=filters.filter_inputs,
+                feed_filter=filters.filter_feeds
+            )
             for item in structure:
                 inputs_on, feeds_on = EmonPyCore.get_existant_structure(
                     input_item=item,
