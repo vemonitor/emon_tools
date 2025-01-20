@@ -13,27 +13,44 @@ class EmonPy(EmonFeedsApi):
     def __init__(self, url: str, api_key: str):
         EmonFeedsApi.__init__(self, url, api_key)
 
-    def get_structure(self):
-        """Get emoncms Inputs Feeds structure"""
+    def get_inputs(
+        self,
+        input_filter: Optional[dict] = None
+    ):
+        """Get emoncms Inputs list"""
         inputs = self.list_inputs_fields(
             InputGetType.EXTENDED
         )
+        return EmonPyCore.filter_inputs_list(
+            inputs=inputs,
+            input_filter=input_filter
+        )
+
+    def get_feeds(
+        self,
+        feed_filter: Optional[dict] = None
+    ):
+        """Get emoncms Inputs Feeds structure"""
         feeds = self.list_feeds()
-        if Ut.is_request_success(inputs):
-            inputs = EmonPyCore.format_list_of_dicts(
-                inputs.get(MESSAGE_KEY))
-            EmonPyCore.append_inputs_process_list(
-                input_data=inputs)
-        else:
-            inputs = None
+        return EmonPyCore.filter_feeds_list(
+            feeds=feeds,
+            feed_filter=feed_filter
+        )
 
-        if Ut.is_request_success(feeds):
-            feeds = EmonPyCore.format_list_of_dicts(
-                    feeds.get(MESSAGE_KEY))
-        else:
-            feeds = None
-
-        return inputs, feeds
+    def get_structure(
+        self,
+        input_filter: Optional[dict] = None,
+        feed_filter: Optional[dict] = None
+    ):
+        """Get emoncms Inputs Feeds structure"""
+        inputs = self.get_inputs(input_filter=input_filter)
+        feeds = self.get_feeds(feed_filter=feed_filter)
+        return EmonPyCore.filter_inputs_feeds(
+            inputs=inputs,
+            feeds=feeds,
+            input_filter=input_filter,
+            feed_filter=feed_filter
+        )
 
     def create_input_feeds(
         self,
