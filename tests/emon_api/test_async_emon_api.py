@@ -3,11 +3,11 @@ from unittest.mock import AsyncMock, patch
 from aiohttp import web, ClientSession
 from aiohttp.client_exceptions import ClientError
 import pytest
-from emon_tools.emon_api_core import InputGetType
-from emon_tools.emon_api_core import RequestType
-from emon_tools.async_emon_api import AsyncEmonRequest
-from emon_tools.async_emon_api import AsyncEmonInputs
-from emon_tools.async_emon_api import AsyncEmonFeeds
+from emon_tools.emon_api.emon_api_core import InputGetType
+from emon_tools.emon_api.emon_api_core import RequestType
+from emon_tools.emon_api.async_emon_api import AsyncEmonRequest
+from emon_tools.emon_api.async_emon_api import AsyncEmonInputs
+from emon_tools.emon_api.async_emon_api import AsyncEmonFeeds
 from tests.emon_api.emon_api_data_test import EmonApiDataTest as dtest
 
 API_KEY = "12345"

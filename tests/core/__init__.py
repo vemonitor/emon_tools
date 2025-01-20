@@ -1,0 +1,1 @@
+"""emon-tools.core tests"""

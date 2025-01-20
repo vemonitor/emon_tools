@@ -31,9 +31,9 @@ import logging
 from typing import Any, Optional, Dict, Union
 from urllib.parse import quote_plus, urljoin
 import simplejson as sj
-from emon_tools.api_utils import Utils as Ut
-from emon_tools.api_utils import MESSAGE_KEY
-from emon_tools.api_utils import SUCCESS_KEY
+from emon_tools.emon_api.api_utils import Utils as Ut
+from emon_tools.emon_api.api_utils import MESSAGE_KEY
+from emon_tools.emon_api.api_utils import SUCCESS_KEY
 
 logging.basicConfig()
 

@@ -7,10 +7,10 @@ designed to sort, filter, arrange, and format EmonCMS Inputs and Feeds data.
 import logging
 from typing import Optional
 from typing import Union
-from emon_tools.api_utils import MESSAGE_KEY
-from emon_tools.api_utils import Utils as Ut
-from emon_tools.emon_api_core import EmonProcessList
-from emon_tools.emon_api_core import EmonApiCore
+from emon_tools.emon_api.api_utils import MESSAGE_KEY
+from emon_tools.emon_api.api_utils import Utils as Ut
+from emon_tools.emon_api.emon_api_core import EmonProcessList
+from emon_tools.emon_api.emon_api_core import EmonApiCore
 
 logging.basicConfig()
 

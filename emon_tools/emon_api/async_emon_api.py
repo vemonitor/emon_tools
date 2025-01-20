@@ -1,7 +1,7 @@
 """
 Emoncms Client for interacting with feed, input, and user data.
 
-This module provides an synchronous client
+This module provides an asynchronous client
 to communicate with an Emoncms server,
 allowing users to retrieve feeds, inputs,
 and other related data through the Emoncms API.
@@ -15,34 +15,42 @@ Emoncms API behavior:
     - `/feed/basket.json` if the route is invalid.
   - The route `/feed/list.json` always returns an array of JSON objects,
     which can be empty if no feeds exist.
+- For the `user` module:
+  - A non-existing JSON route responds with `false`,
+    which is not a JSON object.
+  - This behavior can result in a `TypeError`
+    when accessing keys in the response.
 
 Security and validation:
 - Parameters such as `url`, `path`, and query parameters are validated
   and sanitized to prevent injection attacks.
 - The API key is validated to ensure it is alphanumeric and secure.
 """
+import asyncio
 import logging
-from dataclasses import dataclass
-from typing import Any, Optional, TypeVar, List, Dict, Union
+from dataclasses import dataclass, field
+from typing import Any, Optional, TypeVar
+from typing import List, Dict, Union
 import simplejson as sjson
-import requests
-from emon_tools.api_utils import HTTP_STATUS
-from emon_tools.api_utils import MESSAGE_KEY
-from emon_tools.api_utils import SUCCESS_KEY
-from emon_tools.emon_api_core import InputGetType
-from emon_tools.emon_api_core import RequestType
-from emon_tools.emon_api_core import EmonRequestCore
-from emon_tools.emon_api_core import EmonInputsCore
-from emon_tools.emon_api_core import EmonFeedsCore
-from emon_tools.emon_api_core import EmonApiCore
+
+from aiohttp import ClientError, ClientSession
+from emon_tools.emon_api.api_utils import HTTP_STATUS
+from emon_tools.emon_api.api_utils import MESSAGE_KEY
+from emon_tools.emon_api.api_utils import SUCCESS_KEY
+from emon_tools.emon_api.emon_api_core import InputGetType
+from emon_tools.emon_api.emon_api_core import RequestType
+from emon_tools.emon_api.emon_api_core import EmonRequestCore
+from emon_tools.emon_api.emon_api_core import EmonInputsCore
+from emon_tools.emon_api.emon_api_core import EmonFeedsCore
+from emon_tools.emon_api.emon_api_core import EmonApiCore
 
 logging.basicConfig()
 
-Self = TypeVar("Self", bound="EmonRequest")
+Self = TypeVar("Self", bound="AsyncEmonRequest")
 
 
 @dataclass
-class EmonRequest:
+class AsyncEmonRequest:
     """
     Base class for interacting with the Emoncms API.
 
@@ -61,6 +69,8 @@ class EmonRequest:
     url: str
     api_key: str
     request_timeout: int = 20
+    _session: Optional[ClientSession] = field(default=None, init=False)
+    _close_session: bool = field(default=False, init=False)
     logger = logging.getLogger(__name__)
 
     def __post_init__(self):
@@ -68,41 +78,55 @@ class EmonRequest:
         self.url = EmonApiCore.validate_url(self.url)
         self.api_key = EmonApiCore.validate_api_key(self.api_key)
 
-    def compute_response(
+    @property
+    def session(self) -> ClientSession:
+        """
+        Get or create an aiohttp ClientSession.
+
+        Returns:
+            ClientSession: The active session for making HTTP requests.
+        """
+        if self._session is None:
+            self._session = ClientSession()
+            self._close_session = True
+        return self._session
+
+    async def async_response(
         self,
         response,
         msg: str = None
     ) -> Dict[str, Any]:
         """Compute request response"""
         result = {SUCCESS_KEY: False, MESSAGE_KEY: None}
-        if response.status_code in [200, 201]:
-            if 'text/plain' in response.headers.get('Content-Type'):
-                response_data = response.text
+        if response.status in [200, 201]:
+            if response.content_type == 'text/plain':
+                response_data = await response.text()
                 if '"' in response_data:
                     response_data = sjson.loads(response_data)
             else:
-                response_data = response.json()
+                response_data = await response.json()
             self.logger.debug(
                 "Response %s json: %s",
                 msg,
                 response_data
             )
             result = EmonRequestCore.compute_response(
-                response=response_data
+                response_data
             )
         else:
             error_msg = (
-                f"HTTP {msg} {response.status_code}: "
-                f"{HTTP_STATUS.get(response.status_code, 'Unknown error')}")
+                f"HTTP {msg} {response.status}: "
+                f"{HTTP_STATUS.get(response.status, 'Unknown error')}")
             result[MESSAGE_KEY] = error_msg
             self.logger.error(error_msg)
         return result
 
-    def execute_request(
+    async def async_request(
         self,
         path: str,
         params: Optional[Dict[str, Any]] = None,
         data: Optional[Dict[str, Any]] = None,
+        json: Optional[Dict[str, Any]] = None,
         msg: str = None,
         request_type: RequestType = RequestType.GET
     ) -> Dict[str, Any]:
@@ -130,6 +154,10 @@ class EmonRequest:
 
         # Validate and encode all parameters
         encoded_params = EmonRequestCore.encode_params(params)
+        encoded_json = None
+
+        if json is not None:
+            encoded_json = sjson.dumps(json)
 
         result = {SUCCESS_KEY: False, MESSAGE_KEY: None}
         self.logger.debug(
@@ -142,46 +170,65 @@ class EmonRequest:
             'charset': 'UTF-8'
         }
         try:
-            response = None
             if request_type == RequestType.GET:
-                response = requests.get(
+                async with self.session.get(
                     full_url,
-                    params=encoded_params,
-                    headers=headers,
-                    timeout=self.request_timeout)
-
-            elif request_type == RequestType.POST:
-                response = requests.post(
-                    full_url,
+                    timeout=self.request_timeout,
                     params=encoded_params,
                     data=data,
-                    headers=headers,
-                    timeout=self.request_timeout)
+                    headers=headers
+                ) as response:
+                    result = await self.async_response(
+                        response=response,
+                        msg=msg
+                    )
 
-            result = self.compute_response(
-                response=response,
-                msg=msg
-            )
-        except requests.exceptions.ConnectionError as err:
-            error_msg = f"Connection error: {msg} - {err}"
+            if request_type == RequestType.POST:
+                async with self.session.post(
+                    full_url,
+                    timeout=self.request_timeout,
+                    params=encoded_params,
+                    data=data,
+                    json=encoded_json,
+                    headers=headers
+                ) as response:
+                    result = await self.async_response(
+                        response=response,
+                        msg=msg
+                    )
+        except ClientError as err:
+            error_msg = f"Client error: {msg} - {err}"
             result[MESSAGE_KEY] = error_msg
             self.logger.error(error_msg)
-        except requests.exceptions.Timeout:
+        except asyncio.TimeoutError:
             error_msg = f"Request timeout: {msg}."
             result[MESSAGE_KEY] = error_msg
             self.logger.error(error_msg)
 
         return result
 
+    async def close(self) -> None:
+        """Close the ClientSession if it was created internally."""
+        if self._session and self._close_session:
+            await self._session.close()
+
+    async def __aenter__(self) -> Self:
+        """Enter an asynchronous context manager."""
+        return self
+
+    async def __aexit__(self, *_exc_info: Any) -> None:
+        """Exit an asynchronous context manager and close the session."""
+        await self.close()
+
 
 @dataclass
-class EmonInputsApi(EmonRequest):
+class AsyncEmonInputs(AsyncEmonRequest):
     """
     Extended client for interacting with specific Emoncms endpoints.
 
     Provides additional methods for fetching inputs.
     """
-    def list_inputs(
+    async def async_list_inputs(
         self,
         node: Optional[str] = None
     ) -> Optional[List[Dict[str, Any]]]:
@@ -200,12 +247,12 @@ class EmonInputsApi(EmonRequest):
         path, _ = EmonInputsCore.prep_list_inputs(
             node=node
         )
-        return self.execute_request(
+        return await self.async_request(
             path,
             msg="get list inputs"
         )
 
-    def list_inputs_fields(
+    async def async_list_inputs_fields(
         self,
         get_type: InputGetType = InputGetType.PROCESS_LIST
     ) -> Optional[List[Dict[str, Any]]]:
@@ -227,12 +274,12 @@ class EmonInputsApi(EmonRequest):
         path, _ = EmonInputsCore.prep_list_inputs_fields(
             get_type=get_type
         )
-        return self.execute_request(
+        return await self.async_request(
             path,
             msg="get list inputs fields"
         )
 
-    def get_input_fields(
+    async def async_get_input_fields(
         self,
         node: str,
         name: str
@@ -253,12 +300,12 @@ class EmonInputsApi(EmonRequest):
             node=node,
             name=name
         )
-        return self.execute_request(
+        return await self.async_request(
             path,
             msg="get list inputs fields"
         )
 
-    def set_input_fields(
+    async def async_set_input_fields(
         self,
         input_id: int,
         fields: dict
@@ -271,14 +318,14 @@ class EmonInputsApi(EmonRequest):
             input_id=input_id,
             fields=fields
         )
-        return self.execute_request(
+        return await self.async_request(
             path=path,
             params=params,
             msg="Set input fields",
             request_type=RequestType.GET
         )
 
-    def set_input_process_list(
+    async def async_set_input_process_list(
         self,
         input_id: int,
         process_list: str
@@ -291,15 +338,16 @@ class EmonInputsApi(EmonRequest):
             input_id=input_id,
             process_list=process_list
         )
-        return self.execute_request(
+        return await self.async_request(
             path=path,
             params=query_data.get('params'),
             data=query_data.get('data'),
+            json=query_data.get('json'),
             msg="Set input process list",
             request_type=RequestType.POST
         )
 
-    def post_inputs(
+    async def async_post_inputs(
         self,
         node: str,
         data: dict
@@ -312,14 +360,14 @@ class EmonInputsApi(EmonRequest):
             node=node,
             data=data
         )
-        return self.execute_request(
+        return await self.async_request(
             path=path,
             params=params,
             msg="Add input data point",
             request_type=RequestType.GET
         )
 
-    def input_bulk(
+    async def async_input_bulk(
         self,
         data: list,
         timestamp: Optional[int] = None,
@@ -336,7 +384,7 @@ class EmonInputsApi(EmonRequest):
             sentat=sentat,
             offset=offset
         )
-        response = self.execute_request(
+        response = await self.async_request(
             path=path,
             params=params,
             data=data_post,
@@ -348,14 +396,14 @@ class EmonInputsApi(EmonRequest):
 
 
 @dataclass
-class EmonFeedsApi(EmonInputsApi):
+class AsyncEmonFeeds(AsyncEmonInputs):
     """
     Extended client for interacting with specific Emoncms endpoints.
 
     Provides additional methods for fetching feeds.
     """
 
-    def list_feeds(self) -> Optional[List[Dict[str, Any]]]:
+    async def async_list_feeds(self) -> Optional[List[Dict[str, Any]]]:
         """
         Retrieve the list of feeds.
 
@@ -364,12 +412,12 @@ class EmonFeedsApi(EmonInputsApi):
             or None if retrieval fails.
         """
         path, _ = EmonFeedsCore.prep_list_feeds()
-        return self.execute_request(
+        return await self.async_request(
             path=path,
             msg="get list feeds"
         )
 
-    def get_feed_fields(
+    async def async_get_feed_fields(
         self,
         feed_id: int
     ) -> Optional[Dict[str, Any]]:
@@ -386,13 +434,13 @@ class EmonFeedsApi(EmonInputsApi):
         path, params = EmonFeedsCore.prep_feed_fields(
             feed_id=feed_id
         )
-        return self.execute_request(
+        return await self.async_request(
             path=path,
             params=params,
             msg="get feed fields"
         )
 
-    def get_feed_meta(
+    async def async_get_feed_meta(
         self,
         feed_id: int
     ) -> Optional[Dict[str, Any]]:
@@ -409,13 +457,13 @@ class EmonFeedsApi(EmonInputsApi):
         path, params = EmonFeedsCore.prep_feed_meta(
             feed_id=feed_id
         )
-        return self.execute_request(
+        return await self.async_request(
             path,
             params=params,
             msg="get feed meta"
         )
 
-    def get_last_value_feed(
+    async def async_get_last_value_feed(
         self,
         feed_id: int
     ) -> Optional[Dict[str, Any]]:
@@ -433,13 +481,13 @@ class EmonFeedsApi(EmonInputsApi):
         path, params = EmonFeedsCore.prep_last_value_feed(
             feed_id=feed_id
         )
-        return self.execute_request(
+        return await self.async_request(
             path,
             params=params,
             msg="get last feed value"
         )
 
-    def get_fetch_feed_data(
+    async def async_get_fetch_feed_data(
         self,
         feed_id: int,
         start: int,
@@ -474,13 +522,13 @@ class EmonFeedsApi(EmonInputsApi):
             limi_interval=limi_interval,
             delta=delta
         )
-        return self.execute_request(
+        return await self.async_request(
             path,
             params=params,
             msg="fetch data points"
         )
 
-    def create_feed(
+    async def async_create_feed(
         self,
         name: str,
         tag: str,
@@ -503,7 +551,7 @@ class EmonFeedsApi(EmonInputsApi):
         [see valid engines here](https://github.com/emoncms/emoncms/blob/master/Lib/enum.php#L40)
 
         :Example :
-            - > create_feed( name"tmp" ) => 1
+            - > await async_create_feed( name"tmp" ) => 1
             - > UType.is_str(value="tmp", not_null=True) => True
             - > UType.is_str( 0 ) => False
         :param name: Name of the new Feed
@@ -518,14 +566,13 @@ class EmonFeedsApi(EmonInputsApi):
             engine=engine,
             options=options
         )
-        return self.execute_request(
+        return await self.async_request(
             path=path,
             params=params,
-            msg="create feed",
-            request_type=RequestType.GET
+            msg="create feed"
         )
 
-    def update_feed(
+    async def async_update_feed(
         self,
         feed_id: int,
         fields: dict
@@ -539,13 +586,13 @@ class EmonFeedsApi(EmonInputsApi):
             feed_id=feed_id,
             fields=fields
         )
-        return self.execute_request(
+        return await self.async_request(
             path=path,
             params=params,
             msg="update feed fields"
         )
 
-    def delete_feed(
+    async def async_delete_feed(
         self,
         feed_id: int
     ) -> Optional[dict[str, Any]]:
@@ -557,13 +604,13 @@ class EmonFeedsApi(EmonInputsApi):
         path, params = EmonFeedsCore.prep_delete_feed(
             feed_id=feed_id
         )
-        return self.execute_request(
+        return await self.async_request(
             path=path,
             params=params,
             msg="delete feed"
         )
 
-    def add_data_point(
+    async def async_add_data_point(
         self,
         feed_id: int,
         time: int,
@@ -579,13 +626,13 @@ class EmonFeedsApi(EmonInputsApi):
             time=time,
             value=value
         )
-        return self.execute_request(
+        return await self.async_request(
             path=path,
             params=params,
             msg="add feed data point"
         )
 
-    def add_data_points(
+    async def async_add_data_points(
         self,
         feed_id: int,
         data: list[list[int, Union[int, float]]]
@@ -599,13 +646,13 @@ class EmonFeedsApi(EmonInputsApi):
             feed_id=feed_id,
             data=data
         )
-        return self.execute_request(
+        return await self.async_request(
             path=path,
             params=params,
             msg="add feed data points"
         )
 
-    def delete_data_point(
+    async def async_delete_data_point(
         self,
         feed_id: int,
         time: int
@@ -619,13 +666,13 @@ class EmonFeedsApi(EmonInputsApi):
             feed_id=feed_id,
             time=time
         )
-        return self.execute_request(
+        return await self.async_request(
             path=path,
             params=params,
             msg="delete feed data point"
         )
 
-    def add_feed_process_list(
+    async def async_add_feed_process_list(
         self,
         feed_id: int,
         process_id: int,
@@ -641,7 +688,7 @@ class EmonFeedsApi(EmonInputsApi):
             process_id=process_id,
             process=process
         )
-        return self.execute_request(
+        return await self.async_request(
             path=path,
             params=params,
             msg="add_feed_process_list"

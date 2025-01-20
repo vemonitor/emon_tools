@@ -2,7 +2,7 @@
 from unittest.mock import patch
 import datetime as dt
 import pytest
-from emon_tools.utils import Utils
+from emon_tools.core.utils import Utils
 
 
 class TestUtils:
@@ -139,7 +139,7 @@ class TestUtils:
         with pytest.raises(ValueError, match=match_error):
             Utils.validate_timestamp(value, "test_field")
 
-    @patch("emon_tools.utils.dt.datetime")
+    @patch("emon_tools.core.utils.dt.datetime")
     def test_validate_timestamp_conversion_error(self, mock_datetime):
         """
         Test validate_timestamp raises ValueError

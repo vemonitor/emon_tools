@@ -8,8 +8,8 @@ from typing import Union
 import logging
 import math
 import numpy as np
-from emon_tools.fina_utils import Utils
-from emon_tools.fina_reader import FinaReader
+from emon_tools.emon_fina.fina_utils import Utils
+from emon_tools.emon_fina.fina_reader import FinaReader
 
 
 logging.basicConfig()

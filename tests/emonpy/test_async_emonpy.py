@@ -10,8 +10,8 @@ Test coverage is designed to achieve 100% coverage with appropriate mocks.
 """
 from unittest.mock import AsyncMock
 import pytest
-from emon_tools.async_emonpy import AsyncEmonPy
-from emon_tools.api_utils import SUCCESS_KEY
+from emon_tools.emonpy.async_emonpy import AsyncEmonPy
+from emon_tools.emon_api.api_utils import SUCCESS_KEY
 from tests.emonpy.emonpy_test_data import EmonpyDataTest as dtest
 
 

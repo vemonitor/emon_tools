@@ -6,8 +6,8 @@ from struct import pack
 import datetime as dt
 import numpy as np
 import pytest
-from emon_tools.emon_fina import FinaData
-from emon_tools.fina_utils import Utils
+from emon_tools.emon_fina.emon_fina import FinaData
+from emon_tools.emon_fina.fina_utils import Utils
 
 
 class TestFinaData:
@@ -32,8 +32,8 @@ class TestFinaData:
     @patch("builtins.open",
            new_callable=mock_open,
            read_data=pack("<2I", 10, 1575981140))
-    @patch("emon_tools.fina_reader.isfile", return_value=True)
-    @patch("emon_tools.fina_reader.getsize", return_value=400)
+    @patch("emon_tools.emon_fina.fina_reader.isfile", return_value=True)
+    @patch("emon_tools.emon_fina.fina_reader.getsize", return_value=400)
     def fdt(self,
             mock_open_file,
             mock_isfile,
@@ -51,8 +51,8 @@ class TestFinaData:
     @patch("builtins.open",
            new_callable=mock_open,
            read_data=pack("<2I", 10, 1575981140))
-    @patch("emon_tools.fina_reader.isfile", return_value=True)
-    @patch("emon_tools.fina_reader.getsize", return_value=400)
+    @patch("emon_tools.emon_fina.fina_reader.isfile", return_value=True)
+    @patch("emon_tools.emon_fina.fina_reader.getsize", return_value=400)
     def test_initialization_valid(self,
                                   mock_open_file,
                                   mock_isfile,
@@ -84,9 +84,9 @@ class TestFinaData:
     @patch("builtins.open",
            new_callable=mock_open,
            read_data=pack("<f", 42.0) * 10)
-    @patch("emon_tools.fina_reader.isfile", return_value=True)
-    @patch("emon_tools.fina_reader.getsize", return_value=400)
-    @patch("emon_tools.fina_reader.mmap.mmap", autospec=True)
+    @patch("emon_tools.emon_fina.fina_reader.isfile", return_value=True)
+    @patch("emon_tools.emon_fina.fina_reader.getsize", return_value=400)
+    @patch("emon_tools.emon_fina.fina_reader.mmap.mmap", autospec=True)
     def test_read_direct_values_no_remaining(
         self,
         mock_mmap,
@@ -123,9 +123,9 @@ class TestFinaData:
     @patch("builtins.open",
            new_callable=mock_open,
            read_data=pack("<f", 42.0) * 10)
-    @patch("emon_tools.fina_reader.isfile", return_value=True)
-    @patch("emon_tools.fina_reader.getsize", return_value=400)
-    @patch("emon_tools.fina_reader.mmap.mmap", autospec=True)
+    @patch("emon_tools.emon_fina.fina_reader.isfile", return_value=True)
+    @patch("emon_tools.emon_fina.fina_reader.getsize", return_value=400)
+    @patch("emon_tools.emon_fina.fina_reader.mmap.mmap", autospec=True)
     def test_read_averaged_values_empty_values(
         self,
         mock_mmap,
@@ -161,9 +161,9 @@ class TestFinaData:
     @patch("builtins.open",
            new_callable=mock_open,
            read_data=pack("<f", 42.0) * 10)
-    @patch("emon_tools.fina_reader.isfile", return_value=True)
-    @patch("emon_tools.fina_reader.getsize", return_value=400)
-    @patch("emon_tools.fina_reader.mmap.mmap", autospec=True)
+    @patch("emon_tools.emon_fina.fina_reader.isfile", return_value=True)
+    @patch("emon_tools.emon_fina.fina_reader.getsize", return_value=400)
+    @patch("emon_tools.emon_fina.fina_reader.mmap.mmap", autospec=True)
     def test_read_averaged_values_no_remaining(
         self,
         mock_mmap,
@@ -199,9 +199,9 @@ class TestFinaData:
     @patch("builtins.open",
            new_callable=mock_open,
            read_data=pack("<f", 42.0) * 10)
-    @patch("emon_tools.fina_reader.isfile", return_value=True)
-    @patch("emon_tools.fina_reader.getsize", return_value=400)
-    @patch("emon_tools.fina_reader.mmap.mmap", autospec=True)
+    @patch("emon_tools.emon_fina.fina_reader.isfile", return_value=True)
+    @patch("emon_tools.emon_fina.fina_reader.getsize", return_value=400)
+    @patch("emon_tools.emon_fina.fina_reader.mmap.mmap", autospec=True)
     def test_read_averaged_values_nan_fallback(
         self,
         mock_mmap,
@@ -290,9 +290,9 @@ class TestFinaData:
     @patch("builtins.open",
            new_callable=mock_open,
            read_data=pack("<f", 42.0) * 10)
-    @patch("emon_tools.fina_reader.isfile", return_value=True)
-    @patch("emon_tools.fina_reader.getsize", return_value=400)
-    @patch("emon_tools.fina_reader.mmap.mmap", autospec=True)
+    @patch("emon_tools.emon_fina.fina_reader.isfile", return_value=True)
+    @patch("emon_tools.emon_fina.fina_reader.getsize", return_value=400)
+    @patch("emon_tools.emon_fina.fina_reader.mmap.mmap", autospec=True)
     def test_read_fina_values(
         self,
         mock_mmap,
@@ -345,9 +345,9 @@ class TestFinaData:
     @patch("builtins.open",
            new_callable=mock_open,
            read_data=pack("<f", 42.0) * 10)
-    @patch("emon_tools.fina_reader.isfile", return_value=True)
-    @patch("emon_tools.fina_reader.getsize", return_value=400)
-    @patch("emon_tools.fina_reader.mmap.mmap", autospec=True)
+    @patch("emon_tools.emon_fina.fina_reader.isfile", return_value=True)
+    @patch("emon_tools.emon_fina.fina_reader.getsize", return_value=400)
+    @patch("emon_tools.emon_fina.fina_reader.mmap.mmap", autospec=True)
     def test_get_fina_values(
         self,
         mock_mmap,
@@ -400,9 +400,9 @@ class TestFinaData:
     @patch("builtins.open",
            new_callable=mock_open,
            read_data=pack("<f", 42.0) * 10)
-    @patch("emon_tools.fina_reader.isfile", return_value=True)
-    @patch("emon_tools.fina_reader.getsize", return_value=400)
-    @patch("emon_tools.fina_reader.mmap.mmap", autospec=True)
+    @patch("emon_tools.emon_fina.fina_reader.isfile", return_value=True)
+    @patch("emon_tools.emon_fina.fina_reader.getsize", return_value=400)
+    @patch("emon_tools.emon_fina.fina_reader.mmap.mmap", autospec=True)
     def test_get_fina_time_series(
         self,
         mock_mmap,
@@ -456,9 +456,9 @@ class TestFinaData:
     @patch("builtins.open",
            new_callable=mock_open,
            read_data=pack("<f", 42.0) * 10)
-    @patch("emon_tools.fina_reader.isfile", return_value=True)
-    @patch("emon_tools.fina_reader.getsize", return_value=400)
-    @patch("emon_tools.fina_reader.mmap.mmap", autospec=True)
+    @patch("emon_tools.emon_fina.fina_reader.isfile", return_value=True)
+    @patch("emon_tools.emon_fina.fina_reader.getsize", return_value=400)
+    @patch("emon_tools.emon_fina.fina_reader.mmap.mmap", autospec=True)
     def test_get_fina_values_by_date(
         self,
         mock_mmap,
@@ -521,9 +521,9 @@ class TestFinaData:
     @patch("builtins.open",
            new_callable=mock_open,
            read_data=pack("<f", 42.0) * 10)
-    @patch("emon_tools.fina_reader.isfile", return_value=True)
-    @patch("emon_tools.fina_reader.getsize", return_value=400)
-    @patch("emon_tools.fina_reader.mmap.mmap", autospec=True)
+    @patch("emon_tools.emon_fina.fina_reader.isfile", return_value=True)
+    @patch("emon_tools.emon_fina.fina_reader.getsize", return_value=400)
+    @patch("emon_tools.emon_fina.fina_reader.mmap.mmap", autospec=True)
     def test_get_fina_time_series_by_date(
         self,
         mock_mmap,

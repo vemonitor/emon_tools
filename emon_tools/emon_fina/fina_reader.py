@@ -14,7 +14,7 @@ import math
 import datetime as dt
 import numpy as np
 
-from emon_tools.fina_utils import Utils
+from emon_tools.emon_fina.fina_utils import Utils
 
 logging.basicConfig()
 et_logger = logging.getLogger(__name__)

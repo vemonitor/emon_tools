@@ -4,7 +4,7 @@ from enum import Enum
 from typing import Optional
 from typing import Union
 import numpy as np
-from emon_tools.utils import Utils as Ut
+from emon_tools.core.utils import Utils as Ut
 
 
 class FillNanMethod(Enum):

@@ -1,8 +1,8 @@
 """Tests for the EmonRequest class using async"""
 import pytest
-from emon_tools.emonpy_core import EmonPyCore
-from emon_tools.emonpy_core import EmonFilters
-from emon_tools.emonpy_core import EmonFilterItem
+from emon_tools.emonpy.emonpy_core import EmonPyCore
+from emon_tools.emonpy.emonpy_core import EmonFilters
+from emon_tools.emonpy.emonpy_core import EmonFilterItem
 
 
 class TestEmonPyCore:

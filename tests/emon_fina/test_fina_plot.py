@@ -11,9 +11,9 @@ from unittest.mock import patch
 import numpy as np
 import pandas as pd
 import pytest
-from emon_tools.fina_time_series import FinaDataFrame
-from emon_tools.fina_plot import PlotData
-from emon_tools.fina_plot import PlotStats
+from emon_tools.emon_fina.fina_time_series import FinaDataFrame
+from emon_tools.emon_fina.fina_plot import PlotData
+from emon_tools.emon_fina.fina_plot import PlotStats
 
 
 class TestPlotData:
@@ -41,7 +41,7 @@ class TestPlotData:
         values = np.array([1.5, 2.3, 3.7])  # Example values
         return FinaDataFrame.set_data_frame(times, values)
 
-    @patch("emon_tools.fina_plot.plt.show")
+    @patch("emon_tools.emon_fina.fina_plot.plt.show")
     def test_plot_with_pandas(self, mock_show, sample_data_frame):
         """
         Test the plot method when pandas and matplotlib are available.
@@ -49,7 +49,7 @@ class TestPlotData:
         PlotData.plot(sample_data_frame)
         mock_show.assert_called_once()
 
-    @patch("emon_tools.fina_plot.plt.show")
+    @patch("emon_tools.emon_fina.fina_plot.plt.show")
     def test_plot_without_pandas(self, mock_show, sample_data):
         """
         Test the plot method when only matplotlib is available.
@@ -118,7 +118,7 @@ class TestPlotStats:
         })
         return df.set_index(pd.to_datetime(df['time'], unit='s', utc=True))
 
-    @patch("emon_tools.fina_plot.plt.show")
+    @patch("emon_tools.emon_fina.fina_plot.plt.show")
     def test_plot_values_with_pandas(self, mock_show, sample_df_values):
         """
         Test the plot method when pandas and matplotlib are available.
@@ -126,7 +126,7 @@ class TestPlotStats:
         PlotStats.plot_values(sample_df_values)
         mock_show.assert_called_once()
 
-    @patch("emon_tools.fina_plot.plt.show")
+    @patch("emon_tools.emon_fina.fina_plot.plt.show")
     def test_plot_values_without_pandas(self, mock_show, sample_data_values):
         """
         Test the plot method when only matplotlib is available.
@@ -134,7 +134,7 @@ class TestPlotStats:
         PlotStats.plot_values(sample_data_values)
         mock_show.assert_called_once()
 
-    @patch("emon_tools.fina_plot.plt.show")
+    @patch("emon_tools.emon_fina.fina_plot.plt.show")
     def test_plot_integrity_with_pandas(
         self,
         mock_show,
@@ -146,7 +146,7 @@ class TestPlotStats:
         PlotStats.plot_integrity(sample_data_integrity)
         mock_show.assert_called_once()
 
-    @patch("emon_tools.fina_plot.plt.show")
+    @patch("emon_tools.emon_fina.fina_plot.plt.show")
     def test_plot_integrity_without_pandas(
         self,
         mock_show,

@@ -1,8 +1,8 @@
 """
 emonpy common helper
 """
-from emon_tools.api_utils import SUCCESS_KEY, MESSAGE_KEY
-from emon_tools.emon_api_core import EmonProcessList
+from emon_tools.emon_api.api_utils import SUCCESS_KEY, MESSAGE_KEY
+from emon_tools.emon_api.emon_api_core import EmonProcessList
 
 
 class EmonpyDataTest:

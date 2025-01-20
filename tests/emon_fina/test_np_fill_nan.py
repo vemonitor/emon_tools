@@ -1,7 +1,7 @@
 """NpFillNan Unit Tests"""
 import numpy as np
-from emon_tools.fina_utils import FillNanMethod
-from emon_tools.fina_utils import NpFillNan
+from emon_tools.emon_fina.fina_utils import FillNanMethod
+from emon_tools.emon_fina.fina_utils import NpFillNan
 
 
 # Unit tests

@@ -5,10 +5,10 @@ from unittest.mock import MagicMock
 from datetime import datetime, timezone
 import numpy as np
 import pytest
-from emon_tools.emon_fina import StatsType
-from emon_tools.emon_fina import FinaStats
-from emon_tools.fina_reader import MetaData
-from emon_tools.fina_utils import Utils
+from emon_tools.emon_fina.emon_fina import StatsType
+from emon_tools.emon_fina.emon_fina import FinaStats
+from emon_tools.emon_fina.fina_reader import MetaData
+from emon_tools.emon_fina.fina_utils import Utils
 
 
 class TestFinaStats:
@@ -42,7 +42,7 @@ class TestFinaStats:
         """Fixture to create a FinaStats instance with a mocked FinaReader."""
         monkeypatch = pytest.MonkeyPatch()
         monkeypatch.setattr(
-            "emon_tools.emon_fina.FinaReader",
+            "emon_tools.emon_fina.emon_fina.FinaReader",
             lambda *args,
             **kwargs: mock_reader
         )

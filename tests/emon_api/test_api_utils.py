@@ -1,6 +1,6 @@
 """Tests for emon_tools.api_utils module."""
 import pytest
-from emon_tools.api_utils import Utils
+from emon_tools.emon_api.api_utils import Utils
 
 
 class TestApiUtils:

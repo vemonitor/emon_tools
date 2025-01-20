@@ -18,11 +18,11 @@ import random
 from typing import Optional
 from dotenv import load_dotenv
 from emon_tools.__init__ import __version__
-from emon_tools.emon_api_core import EmonEngines
-from emon_tools.emon_api_core import EmonProcessList
-from emon_tools.api_utils import Utils as Ut
-from emon_tools.fina_utils import Utils as Fut
-from emon_tools.emonpy import EmonPy
+from emon_tools.emon_api.emon_api_core import EmonEngines
+from emon_tools.emon_api.emon_api_core import EmonProcessList
+from emon_tools.emon_api.api_utils import Utils as Ut
+from emon_tools.emon_fina.fina_utils import Utils as Fut
+from emon_tools.emonpy.emonpy import EmonPy
 
 SEAPARATOR = '-' * 20
 
@@ -154,7 +154,8 @@ class DataBulk:
         print(
             "Look  in your Emoncms instance at: \n"
             f"{self.cli.url}/graph/{extended[0]['feeds'][0]['id']} \n"
-            f"Dummy data was writed from {start_date} to {end_date}."
+            f"Dummy data was writed from {start_date} to {end_date}.\n"
+            f"({perf[0]['start_time']} -> {perf[-1]['end_time']})"
         )
         print(SEAPARATOR)
         print(perf)
@@ -271,7 +272,7 @@ def get_actions(parsed: Optional[argparse.Namespace]):
 
 if __name__ == "__main__":
     options = None
-    sys.argv.append('--ast')
+    sys.argv.append('--all')
     if len(sys.argv) > 1:
         options = parse_args(sys.argv[1:])
     options = get_actions(options)

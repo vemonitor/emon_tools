@@ -1,7 +1,7 @@
 """
 emonpy common helper
 """
-from emon_tools.api_utils import SUCCESS_KEY, MESSAGE_KEY
+from emon_tools.emon_api.api_utils import SUCCESS_KEY, MESSAGE_KEY
 
 
 class EmonApiDataTest:

@@ -37,10 +37,10 @@ from typing import List
 from typing import Union
 import numpy as np
 import pandas as pd
-from emon_tools.emon_fina import Utils
-from emon_tools.emon_fina import FinaData
-from emon_tools.emon_fina import FinaStats
-from emon_tools.emon_fina import StatsType
+from emon_tools.emon_fina.emon_fina import Utils
+from emon_tools.emon_fina.emon_fina import FinaData
+from emon_tools.emon_fina.emon_fina import FinaStats
+from emon_tools.emon_fina.emon_fina import StatsType
 
 
 class FinaDataFrame(FinaData):
