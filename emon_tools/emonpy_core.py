@@ -868,7 +868,7 @@ class EmonPyCore(EmonApiCore):
                     feed_data=feed_data
                 )
                 if len(input_feeds) > 0:
-                    result.append(input_feeds)
+                    result += input_feeds
         return result
 
     @staticmethod
