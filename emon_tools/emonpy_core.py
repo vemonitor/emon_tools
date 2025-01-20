@@ -21,6 +21,339 @@ class EmonPyCore(EmonApiCore):
     """
 
     @staticmethod
+    def filter_inputs_list(
+        inputs: list,
+        input_filter: Optional[dict] = None
+    ) -> tuple[dict, dict]:
+        """
+        Formats and filters the list of EmonCMS inputs.
+
+        This method processes a list of input dictionaries by formatting them
+        and applying an optional filter. It also appends additional process
+        list data if applicable.
+
+        Args:
+            inputs (list): A list of input dictionaries wrapped in a dictionary
+                containing a key defined by `MESSAGE_KEY`.
+            input_filter (Optional[dict]): A dictionary with filter criteria to
+                apply to the inputs. If not provided or empty, no filtering is
+                applied.
+
+        Returns:
+            tuple[dict, dict]:
+                - A list of formatted and filtered inputs (if successful).
+                - `None` if the input request is not successful.
+
+        Notes:
+            - Inputs are validated using `Ut.is_request_success`.
+            - Numeric fields are formatted using
+            `EmonPyCore.format_list_of_dicts`.
+            - Filtering is applied using `Ut.filter_list_of_dicts` if a valid
+            filter is provided.
+            - Process list data is appended to inputs using
+            `EmonPyCore.append_inputs_process_list`.
+
+        Example:
+            >>> inputs = {
+            ...     "success": True,
+            ...     "message": [
+            ...         {"id": 1, "name": "Input1", "value": 10.5},
+            ...         {"id": 2, "name": "Input2", "value": 20.0}
+            ...     ]
+            ... }
+            >>> input_filter = {"name": "Input1"}
+            >>> result = EmonPyCore.filter_inputs_list(inputs, input_filter)
+            >>> print(result)
+            [{'id': 1, 'name': 'Input1', 'value': 10.5}]
+        """
+        if Ut.is_request_success(inputs):
+            # Format numeric fields
+            inputs = EmonPyCore.format_list_of_dicts(
+                inputs.get(MESSAGE_KEY))
+            # filter inputs values
+            if Ut.is_dict(input_filter, not_empty=True):
+                inputs = Ut.filter_list_of_dicts(
+                    input_data=inputs,
+                    filter_data=input_filter
+                )
+            # unpack processList data
+            EmonPyCore.append_inputs_process_list(
+                input_data=inputs)
+        else:
+            inputs = None
+        return inputs
+
+    @staticmethod
+    def filter_feeds_list(
+        feeds: list,
+        feed_filter: Optional[dict] = None
+    ) -> tuple[dict, dict]:
+        """
+        Formats and filters the list of EmonCMS feeds.
+
+        This method processes a list of feed dictionaries by formatting them
+        and applying an optional filter. It also appends additional process
+        list data if applicable.
+
+        Args:
+            feeds (list): A list of feed dictionaries wrapped in a dictionary
+                containing a key defined by `MESSAGE_KEY`.
+            feed_filter (Optional[dict]): A dictionary with filter criteria to
+                apply to the feeds. If not provided or empty, no filtering is
+                applied.
+
+        Returns:
+            tuple[dict, dict]:
+                - A list of formatted and filtered feeds (if successful).
+                - `None` if the feed request is not successful.
+
+        Notes:
+            - Feeds are validated using `Ut.is_request_success`.
+            - Numeric fields are formatted using
+            `EmonPyCore.format_list_of_dicts`.
+            - Filtering is applied using `Ut.filter_list_of_dicts` if a valid
+            filter is provided.
+            - Process list data is appended to feeds using
+            `EmonPyCore.append_inputs_process_list`.
+
+        Example:
+            >>> feeds = {
+            ...     "success": True,
+            ...     "message": [
+            ...         {"id": 1, "name": "Feed1", "value": 30.5},
+            ...         {"id": 2, "name": "Feed2", "value": 40.0}
+            ...     ]
+            ... }
+            >>> feed_filter = {"name": "Feed1"}
+            >>> result = EmonPyCore.filter_feeds_list(feeds, feed_filter)
+            >>> print(result)
+            [{'id': 1, 'name': 'Feed1', 'value': 30.5}]
+        """
+        if Ut.is_request_success(feeds):
+            # Format numeric fields
+            feeds = EmonPyCore.format_list_of_dicts(
+                feeds.get(MESSAGE_KEY))
+            # filter inputs values
+            if Ut.is_dict(feed_filter, not_empty=True):
+                feeds = Ut.filter_list_of_dicts(
+                    input_data=feeds,
+                    filter_data=feed_filter
+                )
+            # unpack processList data
+            EmonPyCore.append_inputs_process_list(
+                input_data=feeds)
+        else:
+            feeds = None
+        return feeds
+
+    @staticmethod
+    def filter_inputs_feeds(
+        inputs: list,
+        feeds: list,
+        input_filter: Optional[dict] = None,
+        feed_filter: Optional[dict] = None
+    ) -> tuple[dict, dict]:
+        """
+        Filters and formats EmonCMS inputs and feeds.
+
+        This method applies filtering to the inputs and feeds based on the
+        provided filters. If an input filter is provided, it filters the feeds
+        to match the inputs and then filters the inputs to match the feeds. If
+        only a feed filter is provided,
+        it filters the inputs to match the feeds.
+
+        Args:
+            inputs (list): A list of input dictionaries representing EmonCMS
+                inputs.
+            feeds (list):
+            A list of feed dictionaries representing EmonCMS feeds.
+            input_filter (Optional[dict]): A dictionary specifying filtering
+                criteria for the inputs.
+                If not provided or empty, no input-based filtering is applied.
+            feed_filter (Optional[dict]): A dictionary specifying filtering
+                criteria for the feeds. If not provided or empty, no feed-based
+                filtering is applied.
+
+        Returns:
+            tuple[dict, dict]:
+                - A tuple containing the filtered inputs and feeds.
+
+        Notes:
+            - If both `input_filter` and `feed_filter` are empty or None, no
+            filtering is applied.
+            - The method uses `EmonPyCore.filter_feeds_by_inputs` to filter
+            feeds based on inputs and `EmonPyCore.filter_inputs_by_feeds`
+            to filter inputs based on feeds.
+
+        Example:
+            >>> inputs = [
+            ...     {"id": 1, "name": "Input1", "value": 15.0},
+            ...     {"id": 2, "name": "Input2", "value": 25.0}
+            ... ]
+            >>> feeds = [
+            ...     {"id": 1, "name": "Feed1", "linked_input": 1},
+            ...     {"id": 2, "name": "Feed2", "linked_input": 2}
+            ... ]
+            >>> input_filter = {"name": "Input1"}
+            >>> filtered = EmonPyCore.filter_inputs_feeds(
+            ...     inputs, feeds, input_filter=input_filter)
+            >>> print(filtered)
+            ([{'id': 1, 'name': 'Input1', 'value': 15.0}],
+            [{'id': 1, 'name': 'Feed1', 'linked_input': 1}])
+        """
+        if Ut.is_dict(input_filter, not_empty=True):
+            feeds = EmonPyCore.filter_feeds_by_inputs(
+                input_data=inputs,
+                feed_data=feeds
+            )
+            inputs = EmonPyCore.filter_inputs_by_feeds(
+                inputs=inputs,
+                feeds=feeds
+            )
+
+        elif Ut.is_dict(feed_filter, not_empty=True):
+            inputs = EmonPyCore.filter_inputs_by_feeds(
+                inputs=inputs,
+                feeds=feeds
+            )
+        return inputs, feeds
+
+    @staticmethod
+    def iter_feeds_to_add(
+        feeds: list
+    ):
+        """
+        Iterates over a list of feeds, formatting them for addition.
+
+        This method validates and processes each feed in the provided list.
+        If a feed contains the key "process", it removes it before
+        yielding the feed.
+        Otherwise, the feed is yielded as is.
+
+        Args:
+            feeds (list): A list of feed dictionaries to process.
+
+        Yields:
+            dict: A feed dictionary formatted for addition.
+
+        Notes:
+            - Feeds are validated to ensure they are non-empty dictionaries.
+            - The "process" key, if present, is removed from the feed before it
+            is yielded.
+
+        Example:
+            >>> feeds = [
+            ...     {"id": 1, "name": "Feed1", "process": "some_process"},
+            ...     {"id": 2, "name": "Feed2"}
+            ... ]
+            >>> for feed in EmonPyCore.iter_feeds_to_add(feeds):
+            ...     print(feed)
+            {'id': 1, 'name': 'Feed1'}
+            {'id': 2, 'name': 'Feed2'}
+        """
+        if Ut.is_list(feeds, not_empty=True):
+            for feed in feeds:
+                if Ut.is_dict(feed, not_empty=True):
+                    if "process" in feed:
+                        yield Ut.filter_dict_by_keys(
+                            input_data=feed,
+                            filter_data=['process'],
+                            filter_in=False
+                        )
+                    else:
+                        yield feed
+
+    @staticmethod
+    def iter_inputs_to_add(
+        inputs: list
+    ):
+        """
+        Format and filter response inputs list
+        """
+        if Ut.is_list(inputs, not_empty=True):
+            inputs_tmp = {}
+            for item in inputs:
+                node = item.get('nodeid')
+                if node not in inputs_tmp:
+                    inputs_tmp[node] = set()
+                inputs_tmp[node].add((item.get('name'), 0))
+
+            if Ut.is_dict(inputs_tmp, not_empty=True):
+                for node, items in inputs_tmp.items():
+                    data = {
+                        tmp[0]: tmp[1]
+                        for tmp in items
+                    }
+                    yield node, items, data
+
+    @staticmethod
+    def init_inputs_structure(
+        structure: list,
+        inputs: list
+    ):
+        """
+        Format and filter response inputs list
+        """
+        inputs_out = None
+        if Ut.is_list(structure, not_empty=True)\
+                and Ut.is_list(inputs, not_empty=True):
+            inputs_filter = EmonPyCore.get_inputs_filters_from_structure(
+                structure=inputs
+            )
+            inputs_out = Ut.filter_list_of_dicts(
+                input_data=structure,
+                filter_data=inputs_filter,
+                filter_in=False
+            )
+        return inputs_out
+
+    @staticmethod
+    def get_feeds_to_add(
+        input_item: dict,
+        feeds_on: list
+    ):
+        """
+        Format and filter response inputs list
+        """
+        feeds_out, processes = [], []
+        if Ut.is_dict(input_item, not_empty=True)\
+                and Ut.is_list(feeds_on, not_empty=True):
+            feeds_out = []
+            for feed in input_item.get('feeds'):
+
+                for existant_feed in feeds_on:
+                    is_new = feed.get('name') != existant_feed.get('name')\
+                        or feed.get('tag') != existant_feed.get('tag')
+                    if is_new:
+                        feeds_out.append(feed)
+                    else:
+                        processes.append([1, int(existant_feed.get('id'))])
+        return feeds_out, processes
+
+    @staticmethod
+    def prepare_input_process_list(
+        current_processes: str,
+        new_processes: list
+    ):
+        """
+        Format and filter response inputs list
+        """
+        result = None
+        process_list = EmonPyCore.format_process_list(new_processes)
+
+        nb_process = len(process_list)
+        nb_current = 0
+        if Ut.is_str(current_processes) and nb_process > 0:
+            currents = EmonPyCore.format_string_process_list(current_processes)
+            if Ut.is_set(currents, not_empty=True):
+                nb_current = len(currents)
+                process_list = process_list.union(currents)
+        if nb_process > 0\
+                and nb_current != nb_process:
+            result = ','.join(process_list)
+        return result
+
+    @staticmethod
     def is_filters_structure(
         filters: dict
     ) -> tuple[dict, dict]:
