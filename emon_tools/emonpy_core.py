@@ -15,6 +15,141 @@ from emon_tools.emon_api_core import EmonApiCore
 logging.basicConfig()
 
 
+class EmonFilterItem:
+    """
+    A class for managing filter item structure for inputs and feeds.
+    """
+    def __init__(
+        self,
+        filter_item: Optional[dict] = None
+    ):
+        self._item: Optional[dict] = filter_item or {}
+
+    @property
+    def item(self) -> dict:
+        """
+        Get the filter item.
+
+        Returns:
+            dict: The current input filters.
+        """
+        return self._item
+
+    def add_filter(self, key: str, value: Union[str, int, float, bool]):
+        """
+        Add values to the filter item under a specified key.
+
+        Args:
+            key (str): The key for the input filter.
+            values (Union[str, int, float, bool]):
+                Values to add to the input filter.
+        """
+        if key not in self._item:
+            self._item[key] = set()
+        if isinstance(value, (str, int, float, bool)):
+            self._item[key].add(value)
+
+    def reset_filter(self):
+        """
+        Reset all input filters to an empty state.
+        """
+        self._item = {}
+
+
+class EmonFilters:
+    """
+    A class for managing filter structures for inputs and feeds.
+    """
+
+    def __init__(
+        self,
+        input_filters: Optional[dict] = None,
+        feed_filters: Optional[dict] = None,
+    ):
+        """
+        Initialize the EmonFilters object with input and feed filters.
+
+        Args:
+            input_filters (Optional[dict]): Initial input filter structure.
+            feed_filters (Optional[dict]): Initial feed filter structure.
+        """
+        self._filter_inputs = EmonFilterItem(input_filters)
+        self._filter_feeds = EmonFilterItem(feed_filters)
+
+    @property
+    def filter_inputs(self) -> dict:
+        """
+        Get the input filters.
+
+        Returns:
+            dict: The current input filters.
+        """
+        return self._filter_inputs.item
+
+    @property
+    def filter_feeds(self) -> dict:
+        """
+        Get the feed filters.
+
+        Returns:
+            dict: The current feed filters.
+        """
+        return self._filter_feeds.item
+
+    def add_input_filter(self, key: str, value: Union[str, int, float, bool]):
+        """
+        Add values to the input filters under a specified key.
+
+        Args:
+            key (str): The key for the input filter.
+            values (Union[str, int, float, bool]):
+                Values to add to the input filter.
+        """
+        self._filter_inputs.add_filter(
+            key=key,
+            value=value
+        )
+
+    def add_feed_filter(self, key: str, value: Union[str, int, float, bool]):
+        """
+        Add values to the feed filters under a specified key.
+
+        Args:
+            key (str): The key for the feed filter.
+            values (Union[str, int, float, bool]):
+                Values to add to the feed filter.
+        """
+        self._filter_inputs.add_filter(
+            key=key,
+            value=value
+        )
+
+    def reset_input_filters(self):
+        """
+        Reset all input filters to an empty state.
+        """
+        self._filter_inputs.reset_filter()
+
+    def reset_feed_filters(self):
+        """
+        Reset all feed filters to an empty state.
+        """
+        self._filter_feeds.reset_filter()
+
+    def get_combined_filters(self) -> tuple[dict, dict]:
+        """
+        Get the combined structure of input and feed filters.
+
+        Returns:
+            tuple[dict, dict]: A tuple containing input and feed filters.
+        """
+        return self._filter_inputs.item, self._filter_feeds.item
+
+    @staticmethod
+    def is_valid_filter(filter_item: dict):
+        """Test if filter_item is valid filter"""
+
+
 class EmonPyCore(EmonApiCore):
     """
     Helper methods for interacting with EmonCMS data.
