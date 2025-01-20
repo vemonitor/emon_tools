@@ -96,7 +96,7 @@ class TestEmonApiCore:
                     {"key1": "1", "desc": "32", "name": "a2", "nodeid": "n1"},
                 ],
                 [
-                    {"id": 1, "userid": '', "name": "a2", "nodeid": "n1"},
+                    {"id": 1, "userid": 0, "name": "a2", "nodeid": "n1"},
                     {"id": 1, "public": 0, "name": "a2", "nodeid": "n1"},
                     {"id": 1, "size": 32, "name": "a2", "nodeid": "n1"},
                     {"id": 1, "engine": 5, "name": "a2", "nodeid": "n1"},
