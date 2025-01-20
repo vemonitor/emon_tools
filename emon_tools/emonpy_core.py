@@ -119,7 +119,7 @@ class EmonFilters:
             values (Union[str, int, float, bool]):
                 Values to add to the feed filter.
         """
-        self._filter_inputs.add_filter(
+        self._filter_feeds.add_filter(
             key=key,
             value=value
         )
