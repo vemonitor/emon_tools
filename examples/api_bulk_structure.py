@@ -71,10 +71,10 @@ def get_emon_structure():
 
 class DataBulk:
     """Emoncms DataBulk example"""
-    def __init__(self, url: str, api_key: str):
+    def __init__(self, url: str, apikey: str):
         self.cli = EmonPy(
             url=url,
-            api_key=api_key
+            api_key=apikey
         )
 
     def init_structure(self, structure):
@@ -165,7 +165,7 @@ class DataBulk:
         """
         Get extended Inputs structure from Emoncms Api
         """
-        inputs, feeds = self.cli.get_extended_inputs_by_filters(
+        inputs, feeds = self.cli.get_structure(
             input_filter={
                 "nodeid": ["emon_tools_ex1"],
                 "name": ["I1", "I2", "I3"]
@@ -271,6 +271,7 @@ def get_actions(parsed: Optional[argparse.Namespace]):
 
 if __name__ == "__main__":
     options = None
+    sys.argv.append('--ast')
     if len(sys.argv) > 1:
         options = parse_args(sys.argv[1:])
     options = get_actions(options)
@@ -284,7 +285,7 @@ if __name__ == "__main__":
     api_key = os.getenv("API_KEY")
     emonpy = DataBulk(
         url=emon_url,
-        api_key=api_key)
+        apikey=api_key)
 
     print(
         "Search for particualar inputs feeds structure (--src): ",
