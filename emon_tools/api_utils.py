@@ -87,22 +87,38 @@ class Utils(Ut):
         return result
 
     @staticmethod
+    def clean_filter(filter_item: dict):
+        """Clean filter_item from empty values"""
+        result = None
+        if Ut.is_dict(filter_item, not_empty=True):
+            result = {
+                key: item
+                for key, item in filter_item.items()
+                if (Ut.is_list(item, not_empty=True)
+                    or Ut.is_set(item, not_empty=True)
+                    or Ut.is_str(item, not_empty=True)
+                    or isinstance(item, (int, float, bool)))
+            }
+        return result
+
+    @staticmethod
     def filter_list_of_dicts(
         input_data: list[dict],
-        filter_data: dict[str, Union[str, int, float, list]],
+        filter_data: dict[str, Union[set, list]],
         filter_in: bool = True
     ) -> list[dict]:
         """
         Extracts a specific items from input data list.
         """
         result = []
+        filter_data = Utils.clean_filter(filter_data)
         if Ut.is_list(input_data, not_empty=True)\
                 and Ut.is_dict(filter_data, not_empty=True):
             nb_filters = len(filter_data)
             for item in input_data:
                 valid = 0
                 for k, v in filter_data.items():
-                    if isinstance(v, list):
+                    if isinstance(v, (set, list)):
                         is_in = k in item and item[k] in v
                         if is_in:
                             valid += 1
@@ -111,6 +127,8 @@ class Utils(Ut):
                 if filter_in is True and valid == nb_filters\
                         or (not filter_in and valid != nb_filters):
                     result.append(item)
+        elif Ut.is_list(input_data, not_empty=True):
+            result = input_data.copy()
         return result
 
     @staticmethod
@@ -221,21 +239,23 @@ class Utils(Ut):
         return result
 
     @staticmethod
-    def split_process(process: Union[str, None]) -> Optional[tuple]:
+    def split_process(
+        process: Union[str, None]
+    ) -> tuple[Optional[int], Optional[int]]:
         """
         Splits a process string into a tuple of integers.
 
         :param process: The process string.
         :return: A tuple of integers, or None if invalid.
         """
-        result = None
+        result = (None, None)
         if isinstance(process, str) and ':' in process:
             parts = process.split(':')
             if len(parts) == 2:
                 proc, feed_id = map(
                     lambda x: int(x) if x.isdigit() else 0, parts)
                 if proc > 0 and feed_id > 0:
-                    result = proc, feed_id
+                    result = (proc, feed_id)
         return result
 
     @staticmethod

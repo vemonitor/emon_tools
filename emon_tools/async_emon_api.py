@@ -42,7 +42,7 @@ from emon_tools.emon_api_core import RequestType
 from emon_tools.emon_api_core import EmonRequestCore
 from emon_tools.emon_api_core import EmonInputsCore
 from emon_tools.emon_api_core import EmonFeedsCore
-from emon_tools.emon_api_core import EmonHelper
+from emon_tools.emon_api_core import EmonApiCore
 
 logging.basicConfig()
 
@@ -75,8 +75,8 @@ class AsyncEmonRequest:
 
     def __post_init__(self):
         """Validate initialization parameters."""
-        self.url = EmonHelper.validate_url(self.url)
-        self.api_key = EmonHelper.validate_api_key(self.api_key)
+        self.url = EmonApiCore.validate_url(self.url)
+        self.api_key = EmonApiCore.validate_api_key(self.api_key)
 
     @property
     def session(self) -> ClientSession:

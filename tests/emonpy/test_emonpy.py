@@ -3,7 +3,7 @@ from unittest.mock import MagicMock
 import pytest
 from emon_tools.api_utils import SUCCESS_KEY
 from emon_tools.emonpy import EmonPy
-from tests.emon_api.emonpy_test_data import EmonpyDataTest as dtest
+from tests.emonpy.emonpy_test_data import EmonpyDataTest as dtest
 
 
 class TestEmonPy:
@@ -26,6 +26,44 @@ class TestEmonPy:
         emon = EmonPy(url="http://example.com", api_key="123")
         assert emon.api_key == "123"
         assert emon.url == "http://example.com"
+
+    @pytest.mark.parametrize(
+        "inputs_response, input_filter, expected_result",
+        dtest.GET_INPUTS_PARAMS
+    )
+    def test_get_inputs(
+        self,
+        api,
+        inputs_response,
+        input_filter,
+        expected_result
+    ):
+        """Test the get_structure method."""
+        api.list_inputs_fields.return_value = inputs_response
+
+        result = api.get_inputs(
+           input_filter=input_filter
+        )
+        assert result == expected_result
+
+    @pytest.mark.parametrize(
+        "feeds_response, feed_filter, expected_result",
+        dtest.GET_FEEDS_PARAMS
+    )
+    def test_get_feeds(
+        self,
+        api,
+        feeds_response,
+        feed_filter,
+        expected_result
+    ):
+        """Test the get_structure method."""
+        api.list_feeds.return_value = feeds_response
+
+        result = api.get_feeds(
+           feed_filter=feed_filter
+        )
+        assert result == expected_result
 
     @pytest.mark.parametrize(
         "inputs_response, feeds_response, expected_result",

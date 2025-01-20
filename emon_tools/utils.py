@@ -9,6 +9,27 @@ class Utils:
     """Utility class providing validation and other methods."""
 
     @staticmethod
+    def str_to_int(text: str, default=0) -> bool:
+        """
+        Test if text is a string.
+
+        :Example :
+            >>> Utils.is_str(text='hello')
+            >>> True
+        :param text: str: Value to test.
+        :return: bool: True if value is valid string object.
+        """
+        result = default
+        if Utils.is_str(text):
+            try:
+                result = int(text)
+            except ValueError:
+                result = default
+        elif isinstance(text, int):
+            result = text
+        return result
+
+    @staticmethod
     def is_str(text: str, not_empty=False) -> bool:
         """
         Test if text is a string.

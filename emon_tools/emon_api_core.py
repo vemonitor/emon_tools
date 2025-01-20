@@ -168,7 +168,7 @@ class EmonProcessList(Enum):
         return result
 
 
-class EmonHelper:
+class EmonApiCore:
     """Emon api helper methods"""
     @staticmethod
     def validate_url(url: str) -> str:
@@ -211,183 +211,6 @@ class EmonHelper:
         return api_key
 
     @staticmethod
-    def is_filters_structure(
-        filters: dict
-    ) -> tuple[dict, dict]:
-        """Test if is valid filters structure"""
-        return Ut.is_dict(filters)\
-            and Ut.is_dict(filters.get('filter_inputs'))\
-            and Ut.is_set(filters["filter_inputs"].get('nodeid'))\
-            and Ut.is_set(filters["filter_inputs"].get('name'))\
-            and Ut.is_dict(filters.get('filter_feeds'))\
-            and Ut.is_set(filters["filter_feeds"].get('tag'))\
-            and Ut.is_set(filters["filter_feeds"].get('name'))
-
-    @staticmethod
-    def format_process_with_feed_id(
-        feed_id: int,
-        process_id: int = 1
-    ) -> tuple[dict, dict]:
-        """Test if is valid filters structure"""
-        Ut.validate_integer(feed_id, "Feed id", positive=True)
-        Ut.validate_integer(process_id, "Process id", positive=True)
-
-        name = EmonProcessList.get_name_by_id(process_id)
-        return [name, feed_id]
-
-    @staticmethod
-    def format_string_process_list(
-        process_list: str
-    ) -> tuple[dict, dict]:
-        """Test if is valid filters structure"""
-        result = set()
-        if Ut.is_str(process_list, not_empty=True):
-            process = Ut.get_comma_separated_values_to_list(process_list)
-            if Ut.is_list(process, not_empty=True):
-                process = [
-                    Ut.split_process(item)
-                    for item in process
-                ]
-                result = EmonHelper.format_process_list(
-                    process_list=process
-                )
-        return result
-
-    @staticmethod
-    def format_process_list(
-        process_list: list
-    ) -> tuple[dict, dict]:
-        """Test if is valid filters structure"""
-        result = set()
-        if Ut.is_list(process_list, not_empty=True):
-            for process in process_list:
-                if isinstance(process, (list, tuple))\
-                        and len(process) == 2:
-                    pid, fid = EmonHelper.format_process_with_feed_id(
-                        feed_id=process[1],
-                        process_id=process[0]
-                    )
-                    result.add(f"{pid}:{fid}")
-        return result
-
-    @staticmethod
-    def clean_filters_items(
-        filters: dict
-    ) -> tuple[dict, dict]:
-        """Clean structure filters"""
-        result = None
-        if Ut.is_dict(filters):
-            result = {}
-            for item_key, filter_item in filters.items():
-                nb_items = len(filter_item)
-                if nb_items > 1:
-                    result[item_key] = list(filter_item)
-                    result[item_key].sort()
-                elif nb_items == 1:
-                    result[item_key] = list(filter_item)[0]
-        return result
-
-    @staticmethod
-    def get_existant_structure(
-        input_item: dict,
-        inputs: list,
-        feeds: list
-    ):
-        """Initialyze inputs structure from EmonCms API."""
-        inputs_on, feeds_on = None, None
-        filters = EmonHelper.get_input_filters_from_structure(
-            structure_item=input_item
-        )
-        if Ut.is_dict(filters):
-            inputs_on = Ut.filter_list_of_dicts(
-                inputs,
-                filter_data=filters.get('filter_inputs'),
-                filter_in=True
-            )
-            feeds_on = Ut.filter_list_of_dicts(
-                feeds,
-                filter_data=filters.get('filter_feeds'),
-                filter_in=True
-            )
-        return inputs_on, feeds_on
-
-    @staticmethod
-    def clean_filters_structure(
-        filters: dict
-    ) -> tuple[dict, dict]:
-        """Clean structure filters"""
-        result = None
-        if EmonHelper.is_filters_structure(filters):
-            result = {}
-            for cat_key, filter_cat in filters.items():
-                for item_key, filter_item in filter_cat.items():
-                    nb_items = len(filter_item)
-                    if nb_items > 1:
-                        if not Ut.is_dict(result.get(cat_key)):
-                            result[cat_key] = {}
-                        result[cat_key][item_key] = list(filter_item)
-                        result[cat_key][item_key].sort()
-                    elif nb_items == 1:
-                        if not Ut.is_dict(result.get(cat_key)):
-                            result[cat_key] = {}
-                        result[cat_key][item_key] = list(filter_item)[0]
-        return result
-
-    @staticmethod
-    def get_inputs_filters_from_structure(
-        structure: list
-    ) -> dict:
-        """Get filter from inputs structure"""
-        result = None
-        if Ut.is_list(structure, not_empty=True):
-            result = {
-                "nodeid": set(),
-                "name": set()
-            }
-            for item in structure:
-                result["nodeid"].add(
-                    item.get("nodeid"))
-                result["name"].add(
-                    item.get("name"))
-            result = EmonHelper.clean_filters_items(
-                filters=result
-            )
-        return result
-
-    @staticmethod
-    def get_input_filters_from_structure(
-        structure_item: dict
-    ) -> tuple[dict, dict]:
-        """Get filter from inputs structure"""
-        result = None
-        if Ut.is_dict(structure_item, not_empty=True):
-            result = {
-                "filter_inputs": {
-                    "nodeid": set(),
-                    "name": set()
-                },
-                "filter_feeds": {
-                    "tag": set(),
-                    "name": set()
-                }
-            }
-            result["filter_inputs"]["nodeid"].add(
-                structure_item.get("nodeid"))
-            result["filter_inputs"]["name"].add(
-                structure_item.get("name"))
-            if Ut.is_list(structure_item.get("feeds"), not_empty=True):
-                for feed in structure_item.get("feeds"):
-                    result["filter_feeds"]["tag"].add(
-                        feed.get("tag"))
-                    result["filter_feeds"]["name"].add(
-                        feed.get("name"))
-
-            result = EmonHelper.clean_filters_structure(
-                filters=result
-            )
-        return result
-
-    @staticmethod
     def format_list_of_dicts(
         data: list[dict]
     ) -> list[dict]:
@@ -395,86 +218,16 @@ class EmonHelper:
         Extracts a specific items from input data list.
         """
         result = []
-        if isinstance(data, list) and len(data) > 0:
+        if Ut.is_list(data, not_empty=True):
             for item in data:
                 int_keys = [
                     'id', 'userid', 'public', 'size', 'engine', 'interval']
                 tmp = item.copy()
                 for k, v in item.items():
                     if k in int_keys:
-                        if isinstance(v, str) and len(v) > 0:
-                            tmp[k] = int(v)
+                        tmp[k] = Ut.str_to_int(v, 0)
                 result.append(tmp)
         return result
-
-    @staticmethod
-    def get_feeds_from_inputs_process(
-        input_data: list[dict],
-        feed_data: list[dict]
-    ) -> list[dict]:
-        """
-        Compute string inputs process list to list of tuples.
-        """
-        result = []
-        input_data = EmonHelper.format_list_of_dicts(input_data)
-        feed_data = EmonHelper.format_list_of_dicts(feed_data)
-        if Ut.is_list(input_data, not_empty=True)\
-                and Ut.is_list(feed_data, not_empty=True):
-            for item in input_data:
-                tmp = item.copy()
-                # compute process lists
-                tmp['processList'] = Ut.compute_input_list_processes(
-                    item.get('processList', '')
-                )
-                # get feed ids from process list
-                ids = []
-                for process in tmp.get('processList', []):
-                    feed_id = process[1]
-                    if isinstance(feed_id, int) and feed_id > 0:
-                        ids.append(feed_id)
-
-                if len(ids) > 0:
-                    feeds = Ut.filter_list_of_dicts(
-                        feed_data,
-                        filter_data={'id': ids}
-                    )
-                    if len(feeds) > 0:
-
-                        tmp['feeds'] = feeds
-                result.append(tmp)
-        return result
-
-    @staticmethod
-    def get_extended_structure(
-        inputs: list,
-        feeds: list,
-        filter_inputs: Optional[dict] = None,
-        filter_feeds: Optional[dict] = None,
-        filter_in: bool = True
-    ) -> list:
-        """Get extended inputs structure from EmonCms API."""
-        if Ut.is_list(inputs)\
-                and Ut.is_list(feeds):
-
-            if Ut.is_dict(filter_inputs):
-                inputs = Ut.filter_list_of_dicts(
-                    inputs,
-                    filter_data=filter_inputs,
-                    filter_in=filter_in
-                )
-
-            if Ut.is_dict(filter_feeds):
-                feeds = Ut.filter_list_of_dicts(
-                    feeds,
-                    filter_data=filter_feeds,
-                    filter_in=filter_in
-                )
-
-            return EmonHelper.get_feeds_from_inputs_process(
-                input_data=inputs,
-                feed_data=feeds
-            )
-        return []
 
 
 class EmonRequestCore:
@@ -522,7 +275,7 @@ class EmonRequestCore:
         msg: str
     ) -> str:
         """Encode request params"""
-        EmonHelper.validate_url(url)
+        EmonApiCore.validate_url(url)
         if not Ut.is_str(path, not_empty=True):
             raise ValueError(
                 f"Request error: {msg}. "

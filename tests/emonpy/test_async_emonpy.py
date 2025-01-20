@@ -12,7 +12,7 @@ from unittest.mock import AsyncMock
 import pytest
 from emon_tools.async_emonpy import AsyncEmonPy
 from emon_tools.api_utils import SUCCESS_KEY
-from tests.emon_api.emonpy_test_data import EmonpyDataTest as dtest
+from tests.emonpy.emonpy_test_data import EmonpyDataTest as dtest
 
 
 @pytest.mark.asyncio
