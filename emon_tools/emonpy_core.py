@@ -780,40 +780,34 @@ class EmonPyCore(EmonApiCore):
         return result
 
     @staticmethod
-    def get_feeds_from_inputs_process(
-        input_data: list[dict],
-        feed_data: list[dict]
-    ) -> list[dict]:
-        """
-        Compute string inputs process list to list of tuples.
-        """
-        result = []
-        input_data = EmonPyCore.format_list_of_dicts(input_data)
-        feed_data = EmonPyCore.format_list_of_dicts(feed_data)
-        if Ut.is_list(input_data, not_empty=True)\
-                and Ut.is_list(feed_data, not_empty=True):
-            for item in input_data:
-                tmp = item.copy()
-                # compute process lists
-                tmp['processList'] = Ut.compute_input_list_processes(
-                    item.get('processList', '')
-                )
-                # get feed ids from process list
-                ids = []
-                for process in tmp.get('processList', []):
-                    feed_id = process[1]
-                    if isinstance(feed_id, int) and feed_id > 0:
-                        ids.append(feed_id)
-
-                if len(ids) > 0:
-                    feeds = Ut.filter_list_of_dicts(
-                        feed_data,
-                        filter_data={'id': ids}
-                    )
-                    if len(feeds) > 0:
-
-                        tmp['feeds'] = feeds
-                result.append(tmp)
+    def get_filters_from_structure(
+        structure: list
+    ) -> tuple[dict, dict]:
+        """Get filter from inputs structure"""
+        result = None
+        if Ut.is_list(structure, not_empty=True):
+            result = EmonFilters()
+            for structure_item in structure:
+                if Ut.is_dict(structure_item, not_empty=True)\
+                        and Ut.is_valid_node(structure_item.get("nodeid"))\
+                        and Ut.is_valid_node(structure_item.get("name")):
+                    result.add_input_filter(
+                        key="nodeid",
+                        value=structure_item.get("nodeid"))
+                    result.add_input_filter(
+                        key="name",
+                        value=structure_item.get("name"))
+                    if Ut.is_list(structure_item.get("feeds"), not_empty=True):
+                        for feed in structure_item.get("feeds"):
+                            if Ut.is_dict(feed, not_empty=True)\
+                                    and Ut.is_valid_node(feed.get("tag"))\
+                                    and Ut.is_valid_node(feed.get("name")):
+                                result.add_feed_filter(
+                                    key="tag",
+                                    value=feed.get("tag"))
+                                result.add_feed_filter(
+                                    key="name",
+                                    value=feed.get("name"))
         return result
 
     @staticmethod
@@ -859,7 +853,7 @@ class EmonPyCore(EmonApiCore):
                 item['process_list'] = process_list
 
     @staticmethod
-    def get_feeds_from_inputs_list(
+    def filter_feeds_by_inputs(
         input_data: list[dict],
         feed_data: list[dict]
     ) -> list[dict]:
@@ -880,58 +874,21 @@ class EmonPyCore(EmonApiCore):
         return result
 
     @staticmethod
-    def get_inputs_from_feed_list(
-        input_data: list[dict],
-        feed_data: list[dict]
-    ) -> list[dict]:
-        """
-        Compute string inputs process list to list of tuples.
-        """
-        result = []
-        if Ut.is_list(input_data, not_empty=True)\
-                and Ut.is_list(feed_data, not_empty=True):
-            for item in input_data:
-                # compute process lists
-                process_list = Ut.compute_input_list_processes(
-                    item.get('processList', '')
-                )
-                # get feed ids from process list
-                feeds = EmonPyCore.get_feeds_from_input_item(
-                    process_list=process_list,
-                    feed_data=feed_data
-                )
-                if len(feeds) > 0:
-                    result.append(feeds)
-        return result
-
-    @staticmethod
-    def get_extended_structure(
-        inputs: list,
-        feeds: list,
-        filter_inputs: Optional[dict] = None,
-        filter_feeds: Optional[dict] = None,
-        filter_in: bool = True
-    ) -> list:
-        """Get extended inputs structure from EmonCms API."""
-        if Ut.is_list(inputs)\
-                and Ut.is_list(feeds):
-
-            if Ut.is_dict(filter_inputs):
-                inputs = Ut.filter_list_of_dicts(
-                    inputs,
-                    filter_data=filter_inputs,
-                    filter_in=filter_in
-                )
-
-            if Ut.is_dict(filter_feeds):
-                feeds = Ut.filter_list_of_dicts(
-                    feeds,
-                    filter_data=filter_feeds,
-                    filter_in=filter_in
-                )
-
-            return EmonPyCore.get_feeds_from_inputs_process(
-                input_data=inputs,
-                feed_data=feeds
-            )
-        return []
+    def filter_inputs_by_feeds(
+        inputs: list[dict],
+        feeds: list[dict]
+    ):
+        """Get emoncms Inputs Feeds structure"""
+        inputs_on = []
+        if Ut.is_list(inputs, not_empty=True)\
+                and Ut.is_list(feeds, not_empty=True):
+            ids = [x.get('id') for x in feeds]
+            inputs_on = [
+                item
+                for item in inputs
+                if len(item['process_list']) > 0
+                for process_list in item['process_list']
+                if len(process_list) == 2 and process_list[1] in ids
+            ]
+            return inputs_on
+        return inputs_on
