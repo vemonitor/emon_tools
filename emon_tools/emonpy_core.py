@@ -6,6 +6,8 @@ designed to sort, filter, arrange, and format EmonCMS Inputs and Feeds data.
 """
 import logging
 from typing import Optional
+from typing import Union
+from emon_tools.api_utils import MESSAGE_KEY
 from emon_tools.api_utils import Utils as Ut
 from emon_tools.emon_api_core import EmonProcessList
 from emon_tools.emon_api_core import EmonApiCore
@@ -24,7 +26,7 @@ class EmonPyCore(EmonApiCore):
     def filter_inputs_list(
         inputs: list,
         input_filter: Optional[dict] = None
-    ) -> tuple[dict, dict]:
+    ) -> Optional[list[dict]]:
         """
         Formats and filters the list of EmonCMS inputs.
 
@@ -40,7 +42,7 @@ class EmonPyCore(EmonApiCore):
                 applied.
 
         Returns:
-            tuple[dict, dict]:
+            Optional[list[dict]]:
                 - A list of formatted and filtered inputs (if successful).
                 - `None` if the input request is not successful.
 
@@ -87,7 +89,7 @@ class EmonPyCore(EmonApiCore):
     def filter_feeds_list(
         feeds: list,
         feed_filter: Optional[dict] = None
-    ) -> tuple[dict, dict]:
+    ) -> Optional[list[dict]]:
         """
         Formats and filters the list of EmonCMS feeds.
 
@@ -103,7 +105,7 @@ class EmonPyCore(EmonApiCore):
                 applied.
 
         Returns:
-            tuple[dict, dict]:
+            Optional[list[dict]]:
                 - A list of formatted and filtered feeds (if successful).
                 - `None` if the feed request is not successful.
 
@@ -152,7 +154,7 @@ class EmonPyCore(EmonApiCore):
         feeds: list,
         input_filter: Optional[dict] = None,
         feed_filter: Optional[dict] = None
-    ) -> tuple[dict, dict]:
+    ) -> tuple[Optional[list[dict]], Optional[list[dict]]]:
         """
         Filters and formats EmonCMS inputs and feeds.
 
@@ -175,7 +177,7 @@ class EmonPyCore(EmonApiCore):
                 filtering is applied.
 
         Returns:
-            tuple[dict, dict]:
+            tuple[Optional[list[dict]], Optional[list[dict]]]:
                 - A tuple containing the filtered inputs and feeds.
 
         Notes:
