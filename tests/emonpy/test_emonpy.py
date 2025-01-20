@@ -28,6 +28,44 @@ class TestEmonPy:
         assert emon.url == "http://example.com"
 
     @pytest.mark.parametrize(
+        "inputs_response, input_filter, expected_result",
+        dtest.GET_INPUTS_PARAMS
+    )
+    def test_get_inputs(
+        self,
+        api,
+        inputs_response,
+        input_filter,
+        expected_result
+    ):
+        """Test the get_structure method."""
+        api.list_inputs_fields.return_value = inputs_response
+
+        result = api.get_inputs(
+           input_filter=input_filter
+        )
+        assert result == expected_result
+
+    @pytest.mark.parametrize(
+        "feeds_response, feed_filter, expected_result",
+        dtest.GET_FEEDS_PARAMS
+    )
+    def test_get_feeds(
+        self,
+        api,
+        feeds_response,
+        feed_filter,
+        expected_result
+    ):
+        """Test the get_structure method."""
+        api.list_feeds.return_value = feeds_response
+
+        result = api.get_feeds(
+           feed_filter=feed_filter
+        )
+        assert result == expected_result
+
+    @pytest.mark.parametrize(
         "inputs_response, feeds_response, expected_result",
         dtest.GET_STRUCTURE_PARAMS
     )
