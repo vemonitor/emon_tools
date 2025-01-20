@@ -881,12 +881,13 @@ class EmonPyCore(EmonApiCore):
         if Ut.is_list(inputs, not_empty=True)\
                 and Ut.is_list(feeds, not_empty=True):
             ids = [x.get('id') for x in feeds]
-            inputs_on = [
-                item
-                for item in inputs
-                if len(item['process_list']) > 0
-                for process_list in item['process_list']
-                if len(process_list) == 2 and process_list[1] in ids
-            ]
-            return inputs_on
+            inputs_on = []
+            for item in inputs:
+                if len(item['process_list']) > 0:
+                    for process_list in item['process_list']:
+                        if len(process_list) == 2\
+                                and process_list[1] in ids:
+                            inputs_on.append(item)
+                            break
+
         return inputs_on
