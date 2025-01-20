@@ -108,8 +108,8 @@ class TestApiUtils:
     @pytest.mark.parametrize(
         "input_data, filter_data, filter_in, expected",
         [
-            # Test: Exact match (filter_in=True)
-            (
+            (  # Test 1
+                # input_data
                 [
                     {
                         "name": "I1", "nodeid": "emon_tools_ex1",
@@ -121,13 +121,16 @@ class TestApiUtils:
                         "name": "I3", "nodeid": "emon_tools_ex1",
                         "description": "Managed Input"},
                 ],
+                # filter_data
                 {"name": "I1", "nodeid": "emon_tools_ex1"},
+                # filter_in
                 True,
                 [{
                     "name": "I1", "nodeid": "emon_tools_ex1",
                     "description": "Managed Input"}],
             ),
-            (
+            (  # Test 2
+                # input_data
                 [
                     {
                         "name": "I1", "nodeid": "emon_tools_ex1",
@@ -142,8 +145,11 @@ class TestApiUtils:
                         "description": "Managed Input"
                     },
                 ],
+                # filter_data
                 {"name": ["I1", "I2"], "nodeid": "emon_tools_ex1"},
+                # filter_in
                 True,
+                # expected
                 [
                     {
                         "name": "I1", "nodeid": "emon_tools_ex1",
@@ -155,8 +161,8 @@ class TestApiUtils:
                     },
                 ],
             ),
-            # Test: No match (filter_in=True)
-            (
+            (  # Test 3
+                # input_data
                 [
                     {
                         "name": "I2", "nodeid": "emon_tools_ex1",
@@ -165,12 +171,15 @@ class TestApiUtils:
                         "name": "I3", "nodeid": "emon_tools_ex1",
                         "description": "Managed Input"},
                 ],
+                # filter_data
                 {"name": "I1", "nodeid": "emon_tools_ex1"},
+                # filter_in
                 True,
+                # expected
                 [],
             ),
-            # Test: Negate match (filter_in=False)
-            (
+            (  # Test 4
+                # input_data
                 [
                     {
                         "name": "I1", "nodeid": "emon_tools_ex1",
@@ -182,8 +191,11 @@ class TestApiUtils:
                         "name": "I3", "nodeid": "emon_tools_ex1",
                         "description": "Managed Input"},
                 ],
+                # filter_data
                 {"name": "I1", "nodeid": "emon_tools_ex1"},
+                # filter_in
                 False,
+                # expected
                 [
                     {
                         "name": "I2", "nodeid": "emon_tools_ex1",
@@ -193,8 +205,8 @@ class TestApiUtils:
                         "description": "Managed Input"},
                 ],
             ),
-            # Test: Empty filter data
-            (
+            (  # Test 5
+                # input_data
                 [
                     {
                         "name": "I1", "nodeid": "emon_tools_ex1",
@@ -203,19 +215,32 @@ class TestApiUtils:
                         "name": "I2", "nodeid": "emon_tools_ex1",
                         "description": "Managed Input"},
                 ],
+                # filter_data
                 {},
+                # filter_in
                 True,
-                [],
+                # expected
+                [
+                    {
+                        "name": "I1", "nodeid": "emon_tools_ex1",
+                        "description": "Managed Input"},
+                    {
+                        "name": "I2", "nodeid": "emon_tools_ex1",
+                        "description": "Managed Input"},
+                ],
             ),
-            # Test: Empty input data
-            (
+            (  # Test 6
+                # input_data
                 [],
+                # filter_data
                 {"name": "I1", "nodeid": "emon_tools_ex1"},
+                # filter_in
                 True,
+                # expected
                 [],
             ),
-            # Test: Partial key-value match
-            (
+            (  # Test 7
+                # input_data
                 [
                     {
                         "name": "I1", "nodeid": "emon_tools_ex1",
@@ -227,8 +252,11 @@ class TestApiUtils:
                         "name": "I3", "nodeid": "emon_tools_ex1",
                         "description": "Managed Input"},
                 ],
+                # filter_data
                 {"nodeid": "emon_tools_ex1"},
+                # filter_in
                 True,
+                # expected
                 [
                     {
                         "name": "I1", "nodeid": "emon_tools_ex1",
@@ -244,7 +272,8 @@ class TestApiUtils:
         self,
         input_data,
         filter_data,
-        filter_in, expected
+        filter_in,
+        expected
     ):
         """
         Test the filter_list_of_dicts method with various scenarios.
