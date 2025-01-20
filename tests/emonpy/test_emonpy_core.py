@@ -1,6 +1,8 @@
 """Tests for the EmonRequest class using async"""
 import pytest
 from emon_tools.emonpy_core import EmonPyCore
+from emon_tools.emonpy_core import EmonFilters
+from emon_tools.emonpy_core import EmonFilterItem
 
 
 class TestEmonPyCore:
@@ -354,6 +356,74 @@ class TestEmonPyCore:
             structure) == expected_result
 
     @pytest.mark.parametrize(
+        "process_list, feed_data, expected_result",
+        [
+            (
+                [[1, 1], [2, 2]],
+                [
+                    {"id": 1, "name": "Feed1"},
+                    {"id": 2, "name": "Feed2"},
+                    {"id": 3, "name": "Feed3"}
+                ],
+                [
+                    {"id": 1, "name": "Feed1"},
+                    {"id": 2, "name": "Feed2"}
+                ]
+            ),
+            (
+                [[1, 1], [2, 2]],
+                [
+                    {"id": 3, "name": "Feed3"},
+                    {"id": 4, "name": "Feed4"}
+                ],
+                []
+            ),
+            (
+                [],
+                [
+                    {"id": 1, "name": "Feed1"},
+                    {"id": 2, "name": "Feed2"}
+                ],
+                []
+            ),
+            (
+                [[1, 1], [2, 2]],
+                [],
+                []
+            ),
+            (
+                None,
+                [
+                    {"id": 1, "name": "Feed1"},
+                    {"id": 2, "name": "Feed2"}
+                ],
+                []
+            ),
+            (
+                [[1, 1], [2, "a"]],
+                [
+                    {"id": 1, "name": "Feed1"},
+                    {"id": 2, "name": "Feed2"}
+                ],
+                [
+                    {"id": 1, "name": "Feed1"}
+                ]
+            ),
+        ],
+    )
+    def test_get_feeds_from_input_item(
+        self,
+        process_list,
+        feed_data,
+        expected_result
+    ):
+        """Test getting feeds from input item."""
+        assert EmonPyCore.get_feeds_from_input_item(
+            process_list=process_list,
+            feed_data=feed_data
+        ) == expected_result
+
+    @pytest.mark.parametrize(
         "structure, expected_result",
         [
             (
@@ -401,3 +471,194 @@ class TestEmonPyCore:
         """Test URL validation with an invalid URL."""
         assert EmonPyCore.get_inputs_filters_from_structure(
             structure) == expected_result
+
+    @pytest.mark.parametrize(
+        "input_data, feed_data, expected_result",
+        [
+            (
+                [
+                    {"process_list": [[1, 1], [2, 2]]},
+                    {"process_list": [[3, 3], [4, 4]]}
+                ],
+                [
+                    {"id": 1, "name": "Feed1"},
+                    {"id": 2, "name": "Feed2"},
+                    {"id": 3, "name": "Feed3"},
+                    {"id": 4, "name": "Feed4"}
+                ],
+                [
+                    {"id": 1, "name": "Feed1"},
+                    {"id": 2, "name": "Feed2"},
+                    {"id": 3, "name": "Feed3"},
+                    {"id": 4, "name": "Feed4"}
+                ]
+            ),
+            (
+                [
+                    {"process_list": [[1, 1], [2, 2]]},
+                    {"process_list": [[3, 3], [4, 4]]}
+                ],
+                [],
+                []
+            ),
+            (
+                [],
+                [
+                    {"id": 1, "name": "Feed1"},
+                    {"id": 2, "name": "Feed2"},
+                    {"id": 3, "name": "Feed3"},
+                    {"id": 4, "name": "Feed4"}
+                ],
+                []
+            ),
+            (
+                [],
+                [],
+                []
+            ),
+        ],
+    )
+    def test_filter_feeds_by_inputs(
+        self,
+        input_data,
+        feed_data,
+        expected_result
+    ):
+        """Test filtering feeds by inputs."""
+        assert EmonPyCore.filter_feeds_by_inputs(
+            input_data=input_data,
+            feed_data=feed_data
+        ) == expected_result
+
+    @pytest.mark.parametrize(
+        "inputs, feeds, expected_result",
+        [
+            (
+                [
+                    {"process_list": [[1, 1], [2, 2]]},
+                    {"process_list": [[3, 3], [4, 4]]}
+                ],
+                [
+                    {"id": 1, "name": "Feed1"},
+                    {"id": 2, "name": "Feed2"},
+                    {"id": 3, "name": "Feed3"},
+                    {"id": 4, "name": "Feed4"}
+                ],
+                [
+                    {"process_list": [[1, 1], [2, 2]]},
+                    {"process_list": [[3, 3], [4, 4]]}
+                ]
+            ),
+            (
+                [
+                    {"process_list": [[1, 1], [2, 2]]},
+                    {"process_list": [[3, 3], [4, 4]]}
+                ],
+                [],
+                []
+            ),
+            (
+                [],
+                [
+                    {"id": 1, "name": "Feed1"},
+                    {"id": 2, "name": "Feed2"},
+                    {"id": 3, "name": "Feed3"},
+                    {"id": 4, "name": "Feed4"}
+                ],
+                []
+            ),
+            (
+                [],
+                [],
+                []
+            ),
+        ],
+    )
+    def test_filter_inputs_by_feeds(
+        self,
+        inputs,
+        feeds,
+        expected_result
+    ):
+        """Test filtering inputs by feeds."""
+        assert EmonPyCore.filter_inputs_by_feeds(
+            inputs=inputs,
+            feeds=feeds
+        ) == expected_result
+
+
+class TestEmonFilterItem:
+    """Tests EmonFilterItem class."""
+    def test_add_filter(self):
+        """Test adding filters to EmonFilterItem."""
+        filter_item = EmonFilterItem()
+        filter_item.add_filter("key1", "value1")
+        filter_item.add_filter("key1", "value2")
+        filter_item.add_filter("key2", 10)
+        assert filter_item.item == {
+            "key1": {"value1", "value2"},
+            "key2": {10}
+        }
+
+    def test_reset_filter(self):
+        """Test resetting filters in EmonFilterItem."""
+        filter_item = EmonFilterItem({"key1": {"value1"}})
+        filter_item.reset_filter()
+        assert filter_item.item == {}
+
+
+class TestEmonFilters:
+    """Tests EmonFilters class."""
+    def test_add_input_filter(self):
+        """Test adding input filters to EmonFilters."""
+        filters = EmonFilters()
+        filters.add_input_filter("key1", "value1")
+        filters.add_input_filter("key1", "value2")
+        filters.add_input_filter("key2", 10)
+        assert filters.filter_inputs == {
+            "key1": {"value1", "value2"},
+            "key2": {10}
+        }
+
+    def test_add_feed_filter(self):
+        """Test adding feed filters to EmonFilters."""
+        filters = EmonFilters()
+        filters.add_feed_filter("key1", "value1")
+        filters.add_feed_filter("key1", "value2")
+        filters.add_feed_filter("key2", 10)
+        assert filters.filter_feeds == {
+            "key1": {"value1", "value2"},
+            "key2": {10}
+        }
+
+    def test_reset_input_filters(self):
+        """Test resetting input filters in EmonFilters."""
+        filters = EmonFilters({"key1": {"value1"}})
+        filters.reset_input_filters()
+        assert filters.filter_inputs == {}
+
+    def test_reset_feed_filters(self):
+        """Test resetting feed filters in EmonFilters."""
+        filters = EmonFilters(feed_filters={"key1": {"value1"}})
+        filters.reset_feed_filters()
+        assert filters.filter_feeds == {}
+
+    def test_get_combined_filters(self):
+        """Test getting combined filters from EmonFilters."""
+        filters = EmonFilters(
+            input_filters={"key1": {"value1"}},
+            feed_filters={"key2": {"value2"}}
+        )
+        assert filters.get_combined_filters() == (
+            {"key1": {"value1"}},
+            {"key2": {"value2"}}
+        )
+        class TestEmonPyCore:
+            """Tests EmonPyCore class."""
+            
+            # Existing tests...
+
+            
+
+
+
