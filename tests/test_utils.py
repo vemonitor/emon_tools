@@ -8,6 +8,24 @@ from emon_tools.utils import Utils
 class TestUtils:
     """Unit tests for the Utils class."""
 
+    def test_str_to_int(self):
+        """Test str_to_int method."""
+        assert Utils.str_to_int(
+            text="hello",
+            default=None) is None
+        assert Utils.str_to_int(
+            text="hello",
+            default=0) == 0
+        assert Utils.str_to_int(
+            text="1",
+            default=None) == 1
+        assert Utils.str_to_int(
+            text="-1",
+            default=None) == -1
+        assert Utils.str_to_int(
+            text=1,
+            default=None) == 1
+
     def test_is_str(self):
         """Test is_str method."""
         assert Utils.is_str("hello") is True
