@@ -218,15 +218,14 @@ class EmonApiCore:
         Extracts a specific items from input data list.
         """
         result = []
-        if isinstance(data, list) and len(data) > 0:
+        if Ut.is_list(data, not_empty=True):
             for item in data:
                 int_keys = [
                     'id', 'userid', 'public', 'size', 'engine', 'interval']
                 tmp = item.copy()
                 for k, v in item.items():
                     if k in int_keys:
-                        if isinstance(v, str) and len(v) > 0:
-                            tmp[k] = int(v)
+                        tmp[k] = Ut.str_to_int(v, 0)
                 result.append(tmp)
         return result
 
