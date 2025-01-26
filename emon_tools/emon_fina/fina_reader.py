@@ -14,7 +14,7 @@ import math
 import datetime as dt
 import numpy as np
 
-from emon_tools.emon_fina.fina_utils import Utils
+from emon_tools.emon_fina.fina_utils import Utils as Ut
 
 logging.basicConfig()
 et_logger = logging.getLogger(__name__)
@@ -88,7 +88,7 @@ class MetaData:
         Raises:
             ValueError: If the value is not a positive integer.
         """
-        self._interval = Utils.validate_integer(
+        self._interval = Ut.validate_integer(
             value,
             "interval",
             positive=True)
@@ -114,7 +114,7 @@ class MetaData:
         Raises:
             ValueError: If the value is not a positive integer.
         """
-        self._start_time = Utils.validate_timestamp(value, "start_time")
+        self._start_time = Ut.validate_timestamp(value, "start_time")
         if hasattr(self, "_end_time"):
             self._validate_date_order()
 
@@ -139,7 +139,7 @@ class MetaData:
         Raises:
             ValueError: If the value is not a positive integer.
         """
-        self._npoints = Utils.validate_integer(value, "npoints", positive=True)
+        self._npoints = Ut.validate_integer(value, "npoints", positive=True)
 
     @property
     def end_time(self) -> int:
@@ -162,7 +162,7 @@ class MetaData:
         Raises:
             ValueError: If the value is not a positive integer.
         """
-        self._end_time = Utils.validate_timestamp(value, "end_time")
+        self._end_time = Ut.validate_timestamp(value, "end_time")
         if hasattr(self, "_start_time"):
             self._validate_date_order()
 
@@ -223,9 +223,9 @@ class FinaReader:
             ValueError: If feed_id is not positive or data_dir is invalid.
         """
         if feed_id <= 0:
-            raise ValueError("feed_id must be a positive integer.")
-        if not isdir(data_dir):
-            raise ValueError(f"{data_dir} is not a valid directory.")
+            raise ValueError("Error: feed_id must be a positive integer.")
+        if not Ut.is_str(data_dir) or not isdir(data_dir):
+            raise ValueError("Error: Invalid PhpFina directory path.")
 
         self._feed_id = feed_id
         self._data_dir = data_dir
@@ -296,8 +296,8 @@ class FinaReader:
         Raises:
             ValueError: If parameters are invalid.
         """
-        npoints = Utils.validate_integer(npoints, "npoints", positive=True)
-        self.chunk_size = Utils.validate_integer(
+        npoints = Ut.validate_integer(npoints, "npoints", positive=True)
+        self.chunk_size = Ut.validate_integer(
             chunk_size,
             "chunk_size",
             positive=True)
@@ -313,7 +313,7 @@ class FinaReader:
                 f"exceeds total npoints ({npoints}).")
 
         if window is not None:
-            window = Utils.validate_integer(window, "window", positive=True)
+            window = Ut.validate_integer(window, "window", positive=True)
             total_points = min(npoints - start_pos, window)
         else:
             total_points = npoints - start_pos
@@ -341,7 +341,7 @@ class FinaReader:
         Raises:
             ValueError: If the value is not a positive integer.
         """
-        self._feed_id = Utils.validate_integer(value, "feed_id", positive=True)
+        self._feed_id = Ut.validate_integer(value, "feed_id", positive=True)
 
     @property
     def data_dir(self) -> str:
@@ -415,7 +415,7 @@ class FinaReader:
             ValueError: If the chunk_size is negative.
         """
         self._chunk_size = max(
-            Utils.validate_integer(value, "chunk_size", positive=True),
+            Ut.validate_integer(value, "chunk_size", positive=True),
             self.CHUNK_SIZE_LIMIT
         )
 

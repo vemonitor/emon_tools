@@ -8,7 +8,7 @@ from typing import Union
 import logging
 import math
 import numpy as np
-from emon_tools.emon_fina.fina_utils import Utils
+from emon_tools.emon_fina.fina_utils import Utils as Ut
 from emon_tools.emon_fina.fina_reader import FinaReader
 
 
@@ -254,7 +254,7 @@ class FinaData:
 
         Raises:
             ValueError: If `self.start` is invalid or not properly initialized.
-                        Validation is performed by `Utils.validate_timestamp`.
+                        Validation is performed by `Ut.validate_timestamp`.
 
         Example:
             If `self.start` is 1700000000
@@ -262,7 +262,7 @@ class FinaData:
             this method returns:
             `[1700000000, 1700000010, 1700000020, 1700000030]`
         """
-        Utils.validate_timestamp(self.start, 'win_start')
+        Ut.validate_timestamp(self.start, 'win_start')
         return self.timescale() + self.start
 
     def read_fina_values(
@@ -426,12 +426,12 @@ class FinaData:
                 with NaNs for missing data.
 
         Notes:
-            - The `Utils.get_window_by_dates` method is used
+            - The `Ut.get_window_by_dates` method is used
               to compute the time range.
             - This method is useful for aligning data retrieval
               with specific time periods.
         """
-        start, window = Utils.get_window_by_dates(
+        start, window = Ut.get_window_by_dates(
             start_date=start_date,
             end_date=end_date,
             interval=self.meta.interval,
@@ -526,11 +526,11 @@ class FinaData:
         """
         max_chunk_size: int = self.reader.CHUNK_SIZE_LIMIT
 
-        window = Utils.validate_integer(
+        window = Ut.validate_integer(
             window, "window size", positive=True)
-        min_chunk_size = Utils.validate_integer(
+        min_chunk_size = Ut.validate_integer(
             min_chunk_size, "Minimum chunk size", positive=True)
-        scale_factor = Utils.validate_number(
+        scale_factor = Ut.validate_number(
             scale_factor, "Scale factor", positive=True)
 
         if min_chunk_size > max_chunk_size:
@@ -551,7 +551,7 @@ class FinaData:
 
         # Ensure chunk size is divisible by divisor and within limits
         if divisor is not None:
-            divisor = Utils.validate_integer(
+            divisor = Ut.validate_integer(
                 divisor, "divisor", positive=True)
             chunk_size = FinaData.calculate_nearest_divisible(
                 value=chunk_size,
@@ -640,10 +640,10 @@ class FinaStats:
                 If the start time exceeds the file's end time
                 or if the selected points exceed max_size.
         """
-        start_time = Utils.validate_integer(
+        start_time = Ut.validate_integer(
             start_time, "Start time", non_neg=True)
 
-        max_size = Utils.validate_integer(
+        max_size = Ut.validate_integer(
             max_size, "Max size", positive=True)
 
         file_start_time = self.meta.start_time
@@ -654,7 +654,7 @@ class FinaStats:
         if steps_window == -1:
             steps_window = total_points - start_point
         else:
-            steps_window = Utils.validate_integer(
+            steps_window = Ut.validate_integer(
                 steps_window, "Window steps", positive=True)
 
         if start_point >= total_points:
@@ -708,7 +708,7 @@ class FinaStats:
         file_start_time = self.meta.start_time
         interval = self.meta.interval
 
-        current_day_start = Utils.get_start_day(
+        current_day_start = Ut.get_start_day(
             file_start_time + start_point * interval)
         next_day_start = current_day_start + 86400
         return current_day_start, next_day_start
@@ -783,7 +783,7 @@ class FinaStats:
         Returns:
             np.ndarray: Computed statistics for the current day.
         """
-        filtered_values = Utils.filter_values_by_range(
+        filtered_values = Ut.filter_values_by_range(
             values.copy(), min_value, max_value)
         if stats_type == StatsType.INTEGRITY:
             return self.get_integrity_stats(filtered_values, current_day_start)
@@ -961,14 +961,14 @@ class FinaStats:
             # Calculate the start time and number of steps
             # based on the provided date range.
             if start_date is None:
-                start_date = Utils.get_string_datetime_from_timestamp(
+                start_date = Ut.get_string_datetime_from_timestamp(
                     self.meta.start_time)
 
             if end_date is None:
-                end_date = Utils.get_string_datetime_from_timestamp(
+                end_date = Ut.get_string_datetime_from_timestamp(
                     self.meta.end_time)
 
-            start, window = Utils.get_window_by_dates(
+            start, window = Ut.get_window_by_dates(
                 start_date=start_date,
                 end_date=end_date,
                 interval=self.meta.interval,
