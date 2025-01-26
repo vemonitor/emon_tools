@@ -15,7 +15,8 @@ class EmonPy(EmonFeedsApi):
 
     def get_inputs(
         self,
-        input_filter: Optional[dict] = None
+        input_filter: Optional[dict] = None,
+        with_process: bool = True
     ):
         """Get emoncms Inputs list"""
         inputs = self.list_inputs_fields(
@@ -23,33 +24,40 @@ class EmonPy(EmonFeedsApi):
         )
         return EmonPyCore.filter_inputs_list(
             inputs=inputs,
-            input_filter=input_filter
+            input_filter=input_filter,
+            with_process=with_process
         )
 
     def get_feeds(
         self,
-        feed_filter: Optional[dict] = None
+        feed_filter: Optional[dict] = None,
+        with_process: bool = True
     ):
         """Get emoncms Inputs Feeds structure"""
         feeds = self.list_feeds()
         return EmonPyCore.filter_feeds_list(
             feeds=feeds,
-            feed_filter=feed_filter
+            feed_filter=feed_filter,
+            with_process=with_process
         )
 
     def get_structure(
         self,
         input_filter: Optional[dict] = None,
-        feed_filter: Optional[dict] = None
+        feed_filter: Optional[dict] = None,
+        with_process: bool = True
     ):
         """Get emoncms Inputs Feeds structure"""
-        inputs = self.get_inputs(input_filter=input_filter)
-        feeds = self.get_feeds(feed_filter=feed_filter)
+        inputs = self.get_inputs(
+            input_filter=input_filter)
+        feeds = self.get_feeds(
+            feed_filter=feed_filter)
         return EmonPyCore.filter_inputs_feeds(
             inputs=inputs,
             feeds=feeds,
             input_filter=input_filter,
-            feed_filter=feed_filter
+            feed_filter=feed_filter,
+            with_process=with_process
         )
 
     def create_input_feeds(

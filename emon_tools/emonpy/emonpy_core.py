@@ -160,7 +160,8 @@ class EmonPyCore(EmonApiCore):
     @staticmethod
     def filter_inputs_list(
         inputs: list,
-        input_filter: Optional[dict] = None
+        input_filter: Optional[dict] = None,
+        with_process: bool = True
     ) -> Optional[list[dict]]:
         """
         Formats and filters the list of EmonCMS inputs.
@@ -214,8 +215,9 @@ class EmonPyCore(EmonApiCore):
                     filter_data=input_filter
                 )
             # unpack processList data
-            EmonPyCore.append_inputs_process_list(
-                input_data=inputs)
+            if with_process is True:
+                EmonPyCore.append_inputs_process_list(
+                    input_data=inputs)
         else:
             inputs = None
         return inputs
@@ -223,7 +225,8 @@ class EmonPyCore(EmonApiCore):
     @staticmethod
     def filter_feeds_list(
         feeds: list,
-        feed_filter: Optional[dict] = None
+        feed_filter: Optional[dict] = None,
+        with_process: bool = True
     ) -> Optional[list[dict]]:
         """
         Formats and filters the list of EmonCMS feeds.
@@ -277,8 +280,9 @@ class EmonPyCore(EmonApiCore):
                     filter_data=feed_filter
                 )
             # unpack processList data
-            EmonPyCore.append_inputs_process_list(
-                input_data=feeds)
+            if with_process is True:
+                EmonPyCore.append_inputs_process_list(
+                    input_data=feeds)
         else:
             feeds = None
         return feeds
@@ -288,7 +292,8 @@ class EmonPyCore(EmonApiCore):
         inputs: list,
         feeds: list,
         input_filter: Optional[dict] = None,
-        feed_filter: Optional[dict] = None
+        feed_filter: Optional[dict] = None,
+        with_process: bool = True
     ) -> tuple[Optional[list[dict]], Optional[list[dict]]]:
         """
         Filters and formats EmonCMS inputs and feeds.
@@ -353,6 +358,24 @@ class EmonPyCore(EmonApiCore):
                 inputs=inputs,
                 feeds=feeds
             )
+
+        if with_process is False:
+            inputs = [
+                Ut.filter_dict_by_keys(
+                    input_data=item,
+                    filter_data=["process_list"],
+                    filter_in=False
+                )
+                for item in inputs
+            ]
+            feeds = [
+                Ut.filter_dict_by_keys(
+                    input_data=item,
+                    filter_data=["process_list"],
+                    filter_in=False
+                )
+                for item in feeds
+            ]
         return inputs, feeds
 
     @staticmethod
