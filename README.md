@@ -109,7 +109,7 @@ The `emon_fina` module facilitates the analysis and processing of time-series da
 
 ```python
 from emon_tools.fina_time_series import FinaDataFrame
-from emon_tools.fina_plot import PlotData
+from emon_tools.emon_fina.fina_plot import PlotData
 
 fdf = FinaDataFrame(
     feed_id=1,
@@ -148,7 +148,7 @@ The `emon_api` module is Emoncms python api interface, used to easy interract wi
 #### Usage Example
 
 ```python
-from emon_tools.emon_api import EmonFeedsApi
+from emon_tools.emon_api.emon_api import EmonFeedsApi
 cli = EmonApi(
     url="http://127.0.0.1:8080",
     api_key="MyAPIKey123"
