@@ -162,7 +162,7 @@ cython_debug/
 #.idea/
 
 dev/
-.vscode/
+.vscode/settings.json
 
 */node_modules/*
 records
