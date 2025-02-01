@@ -14,8 +14,8 @@ dist/
 downloads/
 eggs/
 .eggs/
-lib/
-lib64/
+emon_tools/lib/
+emon_tools/lib64/
 parts/
 sdist/
 var/
@@ -165,3 +165,4 @@ dev/
 .vscode/
 
 */node_modules/*
+records
