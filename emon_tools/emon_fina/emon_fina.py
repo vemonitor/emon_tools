@@ -141,7 +141,7 @@ class FinaData:
               to avoid runtime errors.
         """
         step_factor = step // interval
-        self.end = start + (npts - 1) * step
+        self.end = start + ((npts - 1) * step)
         start_pos = (start - self.meta.start_time) // interval
         chunk_size = self.calculate_optimal_chunk_size(
             window=window, divisor=step_factor)
@@ -553,12 +553,17 @@ class FinaData:
         if divisor is not None:
             divisor = Ut.validate_integer(
                 divisor, "divisor", positive=True)
-            chunk_size = FinaData.calculate_nearest_divisible(
+            chunk_size = max(FinaData.calculate_nearest_divisible(
                 value=chunk_size,
                 divisor=divisor,
                 min_value=min_chunk_size,
                 max_value=max_chunk_size
-            )
+            ), min_chunk_size)
+
+            # Ensure chunk size is at least as large as the divisor
+            if chunk_size < divisor:
+                chunk_size = divisor
+
         return chunk_size
 
     @staticmethod
