@@ -6,6 +6,11 @@ from os.path import isdir, isfile
 class FilesHelper:
     """Files Helper class"""
     @staticmethod
+    def is_readable_path(file_path):
+        """Scan files from path"""
+        return isdir(file_path)
+
+    @staticmethod
     def scan_dir(file_path):
         """Scan files from path"""
         result = []

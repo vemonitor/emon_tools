@@ -19,6 +19,26 @@ class EmonFinaHelper:
         return result
 
     @staticmethod
+    def is_valid_files_source(
+        source: str
+    ) -> str:
+        """Get files source path"""
+        result = {
+            "success": False,
+            "message": "Directory is not present.",
+        }
+        file_path = EmonFinaHelper.get_files_source(
+            source=source
+        )
+        if file_path is not None\
+                and FilesHelper.is_readable_path(file_path):
+            result = {
+                "success": True,
+                "message": "Valid source Directory.",
+            }
+        return result
+
+    @staticmethod
     def scan_fina_dir(
         source: str
     ):

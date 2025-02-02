@@ -18,6 +18,20 @@ async def read_root() -> dict:
     return {"success": True, "data": "Welcome to your blog!"}
 
 
+@router.get("/isValidSource/{source}")
+async def is_valid_source(source) -> dict:
+    """Test if if is valid source directory."""
+    try:
+        FileSourceModel.model_validate({
+            'source': source,
+        })
+        return EmonFinaHelper.is_valid_files_source(
+            source=source
+        )
+    except (ValidationError, ValueError, TypeError, IOError) as ex:
+        return {"success": False, "error": str(ex)}
+
+
 @router.get("/files/{source}")
 async def get_files_list(source: str) -> dict:
     """Get phpfina files list from source."""
