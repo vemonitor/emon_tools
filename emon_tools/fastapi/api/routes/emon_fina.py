@@ -130,7 +130,6 @@ async def get_file_data(
                 step=interval,
                 window=real_window
             )
-            datas[:, 1] = np.around(datas[:, 1], 3)
             if start < fina.meta.start_time:
                 nb_na = math.ceil((fina.meta.start_time - start) / interval)
                 nans = np.full((nb_na, 2,), np.nan)
