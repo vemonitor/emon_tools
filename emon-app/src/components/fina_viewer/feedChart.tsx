@@ -231,6 +231,19 @@ export function FeedLineChart({
   } 
   const { data, left, right, bottom, top, bottom2, top2, refAreaLeft, refAreaRight } = state;
 
+  const CustomTooltip = ({ active, payload, label }) => {
+    if (active && payload && payload.length) {
+      return (
+        <div className="custom-tooltip">
+          <p className="label">{`Feed: ${payload[0].name}`}</p>
+          <p className="intro">{`Date: ${Ut.toLocaleDateFromTime(label)}`}</p>
+          <p className="desc">{`Value : ${payload[0].value}`}</p>
+        </div>
+      );
+    }
+
+    return null;
+  };
   return (
     <>
       <div
@@ -278,7 +291,7 @@ export function FeedLineChart({
               allowDataOverflow
             />
             <Legend verticalAlign="top" height={36} />
-            <Tooltip />
+            <Tooltip content={CustomTooltip}/>
             {data && Ut.isArray(data.feeds) && data.feeds && data.feeds.length > 0 ? (
               data.feeds.map((item, index) => (
                 <Line
