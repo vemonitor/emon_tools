@@ -255,7 +255,6 @@ export function FeedLineChart({
               type="number"
               label="Date"
               domain={[left, right]}
-              width={800}
               allowDataOverflow
               height={200}
               angle={45}
@@ -268,22 +267,13 @@ export function FeedLineChart({
             <YAxis
               yAxisId='left'
               type="number"
-              tickLine={true}
-              axisLine={true}
-              tickMargin={8}
               orientation='left'
-              width={120}
               domain={[bottom, top]}
-              allowDataOverflow
             />
             <YAxis
               yAxisId='right'
               type="number"
-              tickLine={true}
-              axisLine={true}
-              tickMargin={8}
               orientation='right'
-              width={120}
               domain={[bottom2, top2]}
               allowDataOverflow
             />
