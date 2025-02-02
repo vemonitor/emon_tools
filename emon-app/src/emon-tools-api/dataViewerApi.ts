@@ -65,9 +65,19 @@ export const format_data = (
         const data = item.data
         if(Ut.isArray(data)){
           const feed_data: GraphDataProps[] = data.map((value) => {
-            return {
-              date: value[0],
-              [feed_id]: value[1]
+            if(value.length === 2){
+              return {
+                date: value[0],
+                [feed_id]: value[1],
+                [`${feed_id}_range`]: []
+              }
+            }
+            else if(value.length >= 4){
+              return {
+                date: value[0],
+                [`${feed_id}_range`]: [value[1], value[3]],
+                [`${feed_id}`]: value[2],
+              }
             }
           })
           obj.data = obj.data.concat(feed_data)
