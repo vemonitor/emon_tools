@@ -136,14 +136,12 @@ export const execFinaDataQueries = (
   item: SelectedFileItem,
   source: FinaSourceProps,
   time_start: number,
-  time_end: number,
   window: number,
   interval: number
 ) => {
   const feed_id = item.item_id;
   const searchParams = new URLSearchParams({
     start: time_start.toString(),
-    end: time_end.toString(),
     window: window.toString(),
     interval: interval.toString(),
   });

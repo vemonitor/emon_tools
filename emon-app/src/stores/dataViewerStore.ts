@@ -1,4 +1,4 @@
-import { FeedMetaOut, FeedMetaResponse } from '@/emon-tools-api/dataViewerApi'
+import { FeedMetaOut } from '@/emon-tools-api/dataViewerApi'
 import Ut from '@/utils/utils'
 import { create, StateCreator } from 'zustand'
 import { devtools } from 'zustand/middleware'
@@ -152,10 +152,8 @@ export class setZoom {
 
 type DataViewerStore = {
     selected_feeds: SelectedFileItem[],
-    selected_metas: FeedMetaResponse[],
     source: FinaSourceProps,
     time_start: number,
-    time_end: number,
     time_window: number,
     interval: number,
     can_go_back: boolean,
@@ -163,13 +161,11 @@ type DataViewerStore = {
     can_zoom_in: boolean,
     can_zoom_out: boolean,
     connect_nulls: boolean,
-    add_metas: (metas: FeedMetaResponse[]) => void,
     add_feed: (selected_item: SelectedFileItem) => void,
     remove_feed: (selected_item: SelectedFileItem) => void,
     reset_feeds: (file_name: string) => void,
     init_time_start: (time_start: number) => void,
     set_time_start: (time_start: number) => void,
-    set_time_end: (time_end: number) => void,
     set_time_window: (time_window: number) => void,
     set_interval: (interval: number) => void,
     set_source: (source: FinaSourceProps) => void,
@@ -188,10 +184,8 @@ DataViewerStore,
 DataViewerStore
 > = (set) => ({
       selected_feeds: [],
-      selected_metas: [],
       source: 'archive',
       time_start: 0,
-      time_end: 0,
       time_window: 3600 * 24,
       interval: 120,
       can_go_back: true,
@@ -200,9 +194,6 @@ DataViewerStore
       can_zoom_out: true,
       connect_nulls: false,
       // store methods
-      add_metas: (metas: FeedMetaResponse[]) => set( () => (
-        { selected_metas: metas }
-    ), undefined, 'DataViewer/add_metas'),
       add_feed: (selected_item: SelectedFileItem) => set( (state) => (
           { selected_feeds: [...state.selected_feeds, selected_item] }
       ), undefined, 'DataViewer/add_feed'),
@@ -228,9 +219,6 @@ DataViewerStore
       set_time_start: (time_start: number) => set(() => (
           { time_start: time_start }
       ), undefined, 'DataViewer/set_time_start'),
-      set_time_end: (time_end: number) => set(() => (
-          { time_end: time_end }
-      ), undefined, 'DataViewer/set_time_end'),
       set_time_window: (time_window: number) => set(() => {
         const zoom = setZoom.get_interval_by_window(time_window)
         if(zoom.time_window == time_window){
@@ -284,9 +272,7 @@ DataViewerStore
       }, undefined, 'DataViewer/reset_store'),
       reset_store: () => set(() => ({
           selected_feeds: [],
-          selected_metas: [],
           time_start: 0,
-          time_end: 0,
           //time_window: 0,
           //interval: 0,
           can_go_back: true,

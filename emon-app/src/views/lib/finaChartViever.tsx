@@ -28,7 +28,6 @@ export function FinaChartViewer({
       interval
     } = useDataViewer()*/
     const time_start = useDataViewer((state) => state.time_start)
-    const time_end = useDataViewer((state) => state.time_end)
     const time_window = useDataViewer((state) => state.time_window)
     const interval = useDataViewer((state) => state.interval)
     
@@ -44,7 +43,6 @@ export function FinaChartViewer({
           item,
           source,
           time_start,
-          time_end,
           time_window,
           interval
         )),
@@ -60,7 +58,6 @@ export function FinaChartViewer({
           item,
           source,
           time_start,
-          time_end,
           time_window,
           interval
         )),
