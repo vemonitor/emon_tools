@@ -64,7 +64,8 @@ class MetaData:
         Raises:
             ValueError: If start_time is not less than end_time.
         """
-        if self._start_time >= self._end_time:
+        if self._start_time > 0\
+                and self._start_time >= self._end_time:
             raise ValueError("start_time must be less than end_time.")
 
     @property
