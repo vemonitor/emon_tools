@@ -28,7 +28,7 @@ async def get_files_list(source: str) -> dict:
         files = EmonFinaHelper.scan_fina_dir(
             source=source
         )
-    except (ValidationError, ValueError, TypeError) as ex:
+    except (ValidationError, ValueError, TypeError, IOError) as ex:
         return {"success": False, "error": str(ex)}
 
     if len(files.get('files')) > 0:
