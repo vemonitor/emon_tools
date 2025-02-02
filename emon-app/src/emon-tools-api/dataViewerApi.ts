@@ -47,10 +47,10 @@ export type FeedMetaOut = {
 
 export const getFinaFiles = (source: FinaSourceProps) => {
     return {
-        queryKey: ['emon_fina_files'],
+        queryKey: ['emon_fina_files', source],
         queryFn: () =>
           getWithFetch({
-            url:'http://127.0.0.1:8000/api/v1/emon_fina/files/' + source
+            url:`http://127.0.0.1:8000/api/v1/emon_fina/files/${source}`
           }),
       }
 }
