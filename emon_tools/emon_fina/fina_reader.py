@@ -140,7 +140,7 @@ class MetaData:
         Raises:
             ValueError: If the value is not a positive integer.
         """
-        self._npoints = Ut.validate_integer(value, "npoints", positive=True)
+        self._npoints = Ut.validate_integer(value, "npoints", non_neg=True)
 
     @property
     def end_time(self) -> int:
