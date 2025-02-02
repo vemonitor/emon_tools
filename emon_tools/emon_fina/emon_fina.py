@@ -105,6 +105,95 @@ class FinaData:
         self.start, self.step, self.lines = start, step, result.size
         return result
 
+    def _read_averaged_stats_values(
+        self,
+        start: int,
+        step: int,
+        npts: int,
+        interval: int,
+        window: int
+    ) -> np.ndarray:
+        """
+        Read and aggregate values over the given step intervals,
+        computing the minimum, mean, and maximum of the values within
+        each interval. This method reduces the data into a smaller set
+        of points by averaging over chunks, and it also provides the
+        corresponding min and max statistics for each interval.
+
+        Parameters:
+            start (int): Start time in seconds from the feed's start time.
+            step (int): Step interval in seconds for the data aggregation.
+            npts (int): Number of data points to produce after averaging.
+            interval (int): Metadata interval in seconds.
+            window (int): Total time window in seconds.
+
+        Returns:
+            np.ndarray: A NumPy array of shape (npts, 3) where each row
+                        contains [min_value, averaged_value, max_value].
+                        Missing or unfilled data points are represented as NaN.
+
+        Notes:
+            - The chunk size is adjusted to be divisible by the step factor
+            for precise reshaping.
+            - Empty or partially filled chunks are handled gracefully to
+            avoid runtime errors.
+        """
+        # Calculate how many metadata intervals per step.
+        step_factor = step // interval
+        self.end = start + ((npts - 1) * step)
+        start_pos = (start - self.meta.start_time) // interval
+
+        # Determine the optimal chunk size.
+        chunk_size = self.calculate_optimal_chunk_size(
+            window=window, divisor=step_factor)
+
+        # Initialize the results array with NaNs.
+        # It will have npts rows and 3 columns: [min, average, max]
+        result = np.full((npts, 3), np.nan)
+
+        reader_props = {
+            "npoints": self.meta.npoints,
+            "start_pos": start_pos,
+            "chunk_size": chunk_size,
+            "window": window,
+            "set_pos": True,
+        }
+
+        points_filled = 0
+        for _, values in self.reader.read_file(**reader_props):
+            if values.size == 0:
+                continue  # Skip empty reads
+
+            available = values.shape[0]
+            remaining = npts - points_filled
+            if remaining <= 0:
+                break
+
+            # Ensure the values array can be reshaped into chunks of size
+            # `step_factor`
+            usable_size = (available // step_factor) * step_factor
+            if usable_size == 0:
+                continue
+
+            reshaped_values = values[:usable_size].reshape(-1, step_factor)
+
+            # Compute statistics for the chunk using nan-aware functions.
+            averaged_values = np.nanmean(reshaped_values, axis=1)
+            min_values = np.nanmin(reshaped_values, axis=1)
+            max_values = np.nanmax(reshaped_values, axis=1)
+
+            to_copy = min(len(averaged_values), remaining)
+            result[points_filled:points_filled + to_copy, 0] = \
+                min_values[:to_copy]
+            result[points_filled:points_filled + to_copy, 1] = \
+                averaged_values[:to_copy]
+            result[points_filled:points_filled + to_copy, 2] = \
+                max_values[:to_copy]
+            points_filled += to_copy
+
+        self.start, self.step, self.lines = start, step, npts
+        return result
+
     def _read_averaged_values(
         self,
         start: int,
@@ -327,13 +416,16 @@ class FinaData:
                 set_pos
             )
 
-        return self._read_averaged_values(start, step, npts, interval, window)
+        return self._read_averaged_stats_values(
+            start, step, npts, interval, window)
 
-    def get_fina_values(self,
-                        start: int,
-                        step: int,
-                        window: int
-                        ) -> np.ndarray:
+    def get_fina_values(
+        self,
+        start: int,
+        step: int,
+        window: int,
+        n_decimals: Optional[int] = 3
+    ) -> np.ndarray:
         """
         Retrieve data values from the Fina data file
         for a specified time window.
@@ -366,20 +458,32 @@ class FinaData:
             ValueError:
             If the `start` time is invalid or exceeds the feed's end time.
         """
-        return self.read_fina_values(start=start, step=step, window=window)
+        result = self.read_fina_values(start=start, step=step, window=window)
+        if n_decimals is not None:
+            # Apply rounding/flooring only to the data columns
+            if n_decimals == 0:
+                result[:] = np.floor(result[:]).astype(int)
+            elif n_decimals > 0:
+                result[:] = np.around(result[:], decimals=n_decimals)
 
-    def get_fina_time_series(self,
-                             start: int,
-                             step: int,
-                             window: int
-                             ) -> np.ndarray:
+        return result
+
+    def get_fina_time_series(
+        self,
+        start: int,
+        step: int,
+        window: int,
+        n_decimals: Optional[int] = 3
+    ) -> np.ndarray:
         """
-        Retrieve a 2D time series array of timestamps and values
-        from the Fina data file.
+        Retrieve a 2D time series array of timestamps and Fina values.
 
-        This method combines the calculated timestamps
-        and corresponding data values into a 2D array
-        where each row represents a [timestamp, value] pair.
+        Depending on the output of self.get_fina_values, the returned array
+        has one of the following formats:
+        - [[time, value]] if get_fina_values returns a 1D array or a
+            single-column 2D array.
+        - [[time, min_value, value, max_value]] if get_fina_values returns
+            a 2D array with 3 columns.
 
         Parameters:
             start (int): Start time in seconds from the feed's start time.
@@ -388,17 +492,26 @@ class FinaData:
 
         Returns:
             np.ndarray:
-                A 2D NumPy array with shape (n, 2), where the first column
-                contains timestamps and the second contains
-                corresponding values.
-
-        Notes:
-            - Missing values in the data are represented by NaNs.
-            - The timestamps are based on the `start` parameter
-              and the step size.
+                A 2D NumPy array with shape (n, 2) or (n, 4) where the first
+                column contains timestamps and the subsequent columns contain
+                the Fina values.
         """
-        values = self.get_fina_values(start=start, step=step, window=window)
-        return np.vstack((self.timestamps(), values)).T
+        values = self.get_fina_values(
+            start=start,
+            step=step,
+            window=window,
+            n_decimals=n_decimals)
+        times = self.timestamps()
+
+        if values.ndim == 1 or values.shape[1] == 1:
+            if values.ndim == 2:
+                values = values.ravel()
+            result = np.column_stack((times, values))
+        elif values.ndim == 2 and values.shape[1] == 3:
+            result = np.column_stack((times, values))
+        else:
+            raise ValueError("Unexpected shape for values array")
+        return result
 
     def get_fina_values_by_date(self,
                                 start_date: str,
