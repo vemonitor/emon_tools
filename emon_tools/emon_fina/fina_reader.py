@@ -440,7 +440,9 @@ class FinaReader:
 
             data_size = getsize(self._get_data_path())
             npoints = data_size // 4
-            end_time = start_time + npoints * interval - interval
+            end_time = 0
+            if start_time > 0:
+                end_time = start_time + npoints * interval - interval
 
             return MetaData(interval, start_time, npoints, end_time)
         except Exception as e:
