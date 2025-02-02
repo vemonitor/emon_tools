@@ -1,9 +1,10 @@
 import clsx from 'clsx';
 import {
+  Area,
   CartesianGrid,
+  ComposedChart,
   Legend,
   Line,
-  LineChart,
   ReferenceArea,
   ResponsiveContainer,
   Tooltip,
@@ -254,7 +255,7 @@ export function FeedLineChart({
           height={800}
           className='min-h-96 w-full'
         >
-          <LineChart
+          <ComposedChart
             width={800}
             height={800}
             data={data?.data}
@@ -293,24 +294,42 @@ export function FeedLineChart({
             <Legend verticalAlign="top" height={36} />
             <Tooltip content={CustomTooltip}/>
             {data && Ut.isArray(data.feeds) && data.feeds && data.feeds.length > 0 ? (
-              data.feeds.map((item, index) => (
-                <Line
-                  key={index}
-                  connectNulls={connect_nulls}
-                  dataKey={item.feed_id}
-                  yAxisId={item.location}
-                  type="linear"
-                  stroke="#8884d8"
-                  strokeWidth={2}
-                  dot={false}
-                  animationDuration={300}
-                />
-              ))
+              
+              data.feeds.map((item, index) => [
+                  <Area
+                    key={`${index}_range`}
+                    
+                    type="monotone"
+                    dataKey={`${item.feed_id}_range`}
+                    yAxisId={item.location}
+                    stroke="none"
+                    fill="#ccc"
+                    dot={false}
+                    activeDot={false}
+                    connectNulls={connect_nulls}
+                    opacity={0.4}
+                    animationDuration={300}
+                  />,
+                  <Line
+                    key={`${index}_line`}
+                    
+                    connectNulls={connect_nulls}
+                    dataKey={item.feed_id}
+                    yAxisId={item.location}
+                    type="linear"
+                    stroke="#8884d8"
+                    strokeWidth={2}
+                    dot={false}
+                    animationDuration={300}
+                  />
+
+                
+              ])
             ) : (null) }
             {refAreaLeft && refAreaRight ? (
               <ReferenceArea yAxisId="left" x1={refAreaLeft} x2={refAreaRight} stroke="#8884d8" strokeOpacity={0.6} />
             ) : null}
-          </LineChart>
+          </ComposedChart>
         </ResponsiveContainer>
       </div>
     </>
