@@ -13,6 +13,7 @@ import {
 } from "recharts"
 import Ut from '@/utils/utils';
 import { SelectedFileItem, setZoom, useDataViewer } from '@/stores/dataViewerStore';
+import { ContentType } from 'recharts/types/component/Tooltip';
 
 export type GraphLocationProps = "left" | "right"
 
@@ -26,7 +27,7 @@ export interface LineChartDataProps {
 }
 
 type FeedLineChartProps = {
-  data_points?: LineChartDataProps;
+  data_points: LineChartDataProps;
   time_start: number;
   time_window: number;
   interval: number;
@@ -43,22 +44,27 @@ export function FeedLineChart({
   classBody
 }: FeedLineChartProps) {
   const connect_nulls = useDataViewer((state) => state.connect_nulls)
+  const can_zoom_view = useDataViewer((state) => state.can_zoom_view)
   const set_refAreaLeft = useDataViewer((state) => state.set_refAreaLeft)
   const set_refAreaRight = useDataViewer((state) => state.set_refAreaRight)
   const zoom_view = useDataViewer((state) => state.zoom_view)
+  const zoom_graph = useDataViewer((state) => state.zoom_graph)
+  const {
+    topLeft, bottomLeft,
+    topRight, bottomRight
+  } = useDataViewer((state) => state.zoom)
+
   const {
     left, right,
-    topLeft, bottomLeft,
-    topRight, bottomRight,
     refAreaLeft, refAreaRight,
-  } = useDataViewer((state) => state.zoom)
+  } = useDataViewer((state) => state.selector)
 
   const empty_graph_data = (
     time_start: number,
     time_window: number,
     interval: number
   ) => {
-    let result: LineChartDataProps |undefined = undefined
+    let result: LineChartDataProps = {data: [], feeds: []}
     if(Ut.isNumber(time_start) && Ut.isNumber(time_window) && Ut.isNumber(interval)
         && time_window > 0 && interval > 0){
       const nb_points = Math.ceil(time_window / interval)
@@ -90,13 +96,25 @@ export function FeedLineChart({
     data_points = empty_graph_data(time_start, time_window, interval)
   }
 
-  const CustomTooltip = ({ active, payload, label }) => {
+  const CustomTooltip: ContentType<number, string> = ({
+    active, payload, label
+  }) => {
     if (active && payload && payload.length) {
+      let valueIndex = 0
+      let range_index = null
+      if(payload.length == 2){
+        valueIndex = 1
+        range_index = 0
+      }
       return (
         <div className="custom-tooltip">
-          <p className="label">{`Feed: ${payload[0].name}`}</p>
+          <p className="label">{`Feed: ${payload[valueIndex].name}`}</p>
           <p className="intro">{`Date: ${Ut.toLocaleDateFromTime(label)}`}</p>
-          <p className="desc">{`Value : ${payload[0].value}`}</p>
+          <p className="desc">{`Value : ${Ut.isNumber(payload[valueIndex].value) ? payload[valueIndex].value : 'null'}`}</p>
+          {range_index !== null && payload[range_index] && payload[range_index].value && Array.isArray(payload[range_index].value) ? [
+            <p key={`${payload[valueIndex].name}_min`} className="desc">{`Min : ${payload[range_index].value[0] ? payload[range_index].value[0] : ''}`}</p>,
+            <p key={`${payload[valueIndex].name}_max`} className="desc">{`Max : ${payload[range_index].value[1]}`}</p>
+          ] : null}
         </div>
       );
     }
@@ -107,7 +125,9 @@ export function FeedLineChart({
   return (
     <>
       <div
-        className={clsx('w-full flex items-start justify-start gap-2 h-full', classBody)}
+        className={clsx(
+          'w-full flex items-start justify-start gap-2 h-full select-none',
+          classBody)}
       >
        <ResponsiveContainer
           width="100%"
@@ -120,7 +140,7 @@ export function FeedLineChart({
             data={data_points?.data}
             onMouseDown={(e) => set_refAreaLeft(Number(e.activeLabel) || 0)}
             onMouseMove={(e) => refAreaLeft && set_refAreaRight(Number( e.activeLabel) || 0)}
-            onMouseUp={()=>zoom_view(data_points)}
+            onMouseUp={()=>can_zoom_view ? zoom_view(data_points) : zoom_graph()}
           >
             <CartesianGrid strokeDasharray="3 2 1" opacity={0.2} />
             <XAxis
