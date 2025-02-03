@@ -230,6 +230,7 @@ export const get_view_time_rage = () => {
 }
 
 export type NavigationMenu = {
+  can_reload: boolean,
   can_go_start: boolean;
   can_go_back: boolean;
   can_go_after: boolean;
@@ -241,6 +242,7 @@ export type NavigationMenu = {
 }
 
 export const initialNavGaph = {
+  can_reload: true,
   can_go_back: true,
   can_go_after: true,
   can_zoom_in: true,
@@ -252,21 +254,32 @@ export const initialNavGaph = {
 } as NavigationMenu
 
 export const initialNavView = {
-  can_go_back: true,
-  can_go_after: true,
+  can_reload: false,
+  can_go_back: false,
+  can_go_after: false,
   can_zoom_in: true,
-  can_zoom_out: true,
-  can_go_start: true,
-  can_go_end: true,
+  can_zoom_out: false,
+  can_go_start: false,
+  can_go_end: false,
   zoom_level: 0.25,
   move_level: 0.25,
 } as NavigationMenu
 
-export type GraphZoom = {
+export type GraphSelector = {
   left: string | number,
   right: string | number,
   refAreaLeft: number,
-  refAreaRight: number,
+  refAreaRight: number
+}
+
+export const initialSelector = {
+  left: 'dataMin',
+  right: 'dataMax',
+  refAreaLeft: 0,
+  refAreaRight: 0
+} as GraphSelector
+
+export type GraphZoom = {
   topLeft: string | number,
   bottomLeft: string | number,
   topRight: string | number,
@@ -292,6 +305,7 @@ type DataViewerStore = {
     time_start: number,
     time_window: number,
     interval: number,
+    selector: GraphSelector,
     zoom: GraphZoom,
     nav_graph: NavigationMenu,
     nav_view: NavigationMenu,
@@ -312,10 +326,12 @@ type DataViewerStore = {
     zoom_view: (data: LineChartDataProps) => void,
     zoom_out_view: () => void,
     toggle_can_zoom_view: () => void,
+    reload: () => void,
     go_back: () => void,
     go_after: () => void,
     go_start: () => void,
     go_end: () => void,
+    zoom_graph: () => void,
     zoom_in: () => void,
     zoom_out: () => void,
     reset_store: () => void,
@@ -333,6 +349,7 @@ DataViewerStore
       time_start: 0,
       time_window: 3600 * 24,
       interval: 120,
+      selector: initialSelector,
       zoom: initialZoom,
       nav_graph: initialNavGaph,
       nav_view: initialNavView,
@@ -352,16 +369,16 @@ DataViewerStore
             state.reset_store()
           }
           return{ selected_feeds: current_feeds }
-      }, undefined, 'DataViewer/remove_left_graph'),
+      }, undefined, 'DataViewer/remove_feed'),
       reset_feeds: () => set(() => (
           { selected_feeds: [] }
-      ), undefined, 'DataViewer/reset_selected_feeds'),
+      ), undefined, 'DataViewer/reset_feeds'),
       init_time_start: (time_start: number) => set((state) => {
           if(state.time_start <= 0){
             return { time_start: time_start }
           }
           return {}
-      }, undefined, 'DataViewer/set_time_start'),
+      }, undefined, 'DataViewer/init_time_start'),
       set_time_start: (time_start: number) => set(() => (
           { time_start: time_start }
       ), undefined, 'DataViewer/set_time_start'),
@@ -386,16 +403,44 @@ DataViewerStore
           { source: source }
       ), undefined, 'DataViewer/set_source'),
       set_refAreaLeft: (value: number) => set((state) => (
-          { zoom: { ...state.zoom, refAreaLeft: value } }
+          { selector: { ...state.selector, refAreaLeft: value } }
       ), undefined, 'DataViewer/set_refAreaLeft'),
       set_refAreaRight: (value: number) => set((state) => (
-          { zoom: { ...state.zoom, refAreaRight: value } }
-      ), undefined, 'DataViewer/refAreaRight'),
+          { selector: { ...state.selector, refAreaRight: value } }
+      ), undefined, 'DataViewer/set_refAreaRight'),
       reset_refAreas: () => set((state) => (
-          { zoom: { ...state.zoom, refAreaLeft: 0, refAreaRight: 0 } }
+          { selector: { ...state.selector, refAreaLeft: 0, refAreaRight: 0 } }
       ), undefined, 'DataViewer/reset_refAreas'),
+      zoom_graph: () => set((state) => {
+        let { refAreaLeft, refAreaRight } = state.selector;
+        if (refAreaLeft === refAreaRight || refAreaRight === 0) {
+          state.reset_refAreas();
+          return {}
+        }
+
+        if (refAreaLeft > refAreaRight) {
+          [refAreaLeft, refAreaRight] = [refAreaRight, refAreaLeft];
+        }
+        const time_window = refAreaRight - refAreaLeft
+        const zoom = setZoom.zoom_in(time_window)
+        return {
+          selector:{
+            refAreaLeft: 0,
+            refAreaRight: 0,
+            left: refAreaLeft,
+            right: refAreaRight,
+          },
+          nav_graph: {
+            ...state.nav_graph,
+            can_zoom_in: setZoom.zoom_in(zoom.time_window).time_window != zoom.time_window,
+            can_zoom_out: true
+          },
+          time_start: refAreaLeft,
+          time_window: time_window
+        }
+      }, undefined, 'DataViewer/zoom_graph'),
       zoom_view: (data: LineChartDataProps) => set((state) => {
-        let { refAreaLeft, refAreaRight } = state.zoom;
+        let { refAreaLeft, refAreaRight } = state.selector;
         if (refAreaLeft === refAreaRight || refAreaRight === 0) {
           state.reset_refAreas();
           return {}
@@ -411,12 +456,23 @@ DataViewerStore
         )
         return {
           is_view_zoomed: true,
-          zoom: {
-            ...state.zoom,
+          nav_view: {
+            can_reload: true,
+            can_go_back: true,
+            can_go_after: true,
+            can_zoom_in: true,
+            can_zoom_out: true,
+            can_go_start: true,
+            can_go_end: true,
+          },
+          selector: {
             refAreaLeft: 0,
             refAreaRight: 0,
             left: refAreaLeft,
             right: refAreaRight,
+          },
+          zoom: {
+            ...state.zoom,
             topLeft: verticalRange.topLeft,
             bottomLeft: verticalRange.bottomLeft,
             topRight: verticalRange.topRight,
@@ -425,19 +481,56 @@ DataViewerStore
         }
       }, undefined, 'DataViewer/zoom_view'),
       zoom_out_view: () => set(() => {
-        return{ is_view_zoomed: false, zoom: initialZoom }
+        return{
+          is_view_zoomed: false,
+          zoom: initialZoom,
+          selector: initialSelector,
+          nav_view: initialNavView
+        }
       }, undefined, 'DataViewer/zoom_out_view'),
       toggle_can_zoom_view: () => set((state) => {
           return {
+            nav_graph: initialNavGaph,
+            nav_view: initialNavView,
             can_zoom_view: state.can_zoom_view === true ? false : true
           }
-      }, undefined, 'DataViewer/reset_store'),
+      }, undefined, 'DataViewer/toggle_can_zoom_view'),
+      reload: () => set((state) => {
+        if(state.can_zoom_view === true){
+          state.zoom_out_view()
+          return {}
+        }
+        const zoom = setZoom.get_interval_by_window(state.time_window)
+        return{ time_start: state.time_start - zoom.moveBy }
+      }, undefined, 'DataViewer/reload'),
       go_back: () => set((state) => {
+        if(state.can_zoom_view === true){
+          if(Ut.isNumber(state.selector.left)){
+            const move = Math.ceil(Number(state.selector.left) * 25 / 100)
+            return {selector: {
+              ...initialSelector,
+              left: Number(state.selector.left) - move,
+              right: Number(state.selector.right) - move
+            }}
+          }
+          return {}
+        }
         state.zoom_out_view()
         const zoom = setZoom.get_interval_by_window(state.time_window)
         return{ time_start: state.time_start - zoom.moveBy }
       }, undefined, 'DataViewer/go_back'),
       go_after: () => set((state) => {
+        if(state.can_zoom_view === true){
+          if(Ut.isNumber(state.selector.right)){
+            const move = Math.ceil(Number(state.selector.right) * 25 / 100)
+            return {selector: {
+              ...initialSelector,
+              left: Number(state.selector.left) - move,
+              right: Number(state.selector.right) - move
+            }}
+          }
+          return {}
+        }
         state.zoom_out_view()
         const zoom = setZoom.get_interval_by_window(state.time_window)
         return{ time_start: state.time_start + zoom.moveBy }
@@ -483,16 +576,15 @@ DataViewerStore
           return {
             connect_nulls: state.connect_nulls === true ? false : true
           }
-      }, undefined, 'DataViewer/reset_store'),
+      }, undefined, 'DataViewer/toggle_connect_nulls'),
       reset_store: () => set(() => ({
           selected_feeds: [],
           time_start: 0,
           //time_window: 0,
           //interval: 0,
-          can_go_back: true,
-          can_go_after: true,
-          can_zoom_in: true,
-          can_zoom_out: true,
+          nav_graph: initialNavGaph,
+          nav_view: initialNavView,
+          
       }), undefined, 'DataViewer/reset_store')
 })
 
