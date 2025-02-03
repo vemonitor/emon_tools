@@ -16,6 +16,8 @@ import clsx from 'clsx';
 import { ArrowLeftFromLine, ArrowLeftToLine, ArrowRightFromLine, ArrowRightToLine, ChartSpline, Eye, RotateCw, SearchCode, Unplug, ZoomIn, ZoomOut } from 'lucide-react';
 
 type NavigationMenuProps = {
+  can_reload: boolean;
+  handleReload: () => void;
   can_go_back: boolean;
   handleGoBack: () => void;
   can_go_after: boolean;
@@ -32,6 +34,8 @@ type NavigationMenuProps = {
 }
 
 export function NavigationMenu({
+  can_reload,
+  handleReload,
   can_go_back,
   handleGoBack,
   can_go_after,
@@ -54,6 +58,9 @@ export function NavigationMenu({
       )}>
       <Button
         variant={'ghost'}
+        title='Reload'
+        disabled={!can_reload}
+        onClick={()=>handleReload()}
       >
         <RotateCw />
       </Button>
@@ -114,43 +121,11 @@ export function NavGraphMenu({
   classBody
 }: NavMenuProps) {
   const nav_graph = useDataViewer((state) => state.nav_graph)
-
-  const {
-    go_back,
-    go_after,
-    zoom_in,
-    zoom_out,
-    go_start,
-    go_end,
-  } = useDataViewer()
-
-  return (
-    <NavigationMenu
-        can_go_back={nav_graph.can_go_back}
-        handleGoBack={go_back}
-        can_go_after={nav_graph.can_go_after}
-        handleGoAfter={go_after}
-        can_zoom_in={nav_graph.can_zoom_in}
-        handleZoomIn={zoom_in}
-        can_zoom_out={nav_graph.can_zoom_out}
-        handleZoomOut={zoom_out}
-        can_go_start={nav_graph.can_go_start}
-        handleGoStart={go_start}
-        can_go_end={nav_graph.can_go_end}
-        handleGoEnd={go_end}
-        classBody={classBody}
-      />
-  )
-
-}
-
-
-export function NavViewMenu({
-  classBody
-}: NavMenuProps) {
   const nav_view = useDataViewer((state) => state.nav_view)
+  const can_zoom_view = useDataViewer((state) => state.can_zoom_view)
 
   const {
+    reload,
     go_back,
     go_after,
     zoom_in,
@@ -159,19 +134,16 @@ export function NavViewMenu({
     go_end,
   } = useDataViewer()
 
+  const currentNav = can_zoom_view == true ? {...nav_view}: {...nav_graph}
   return (
     <NavigationMenu
-        can_go_back={nav_view.can_go_back}
+        {...currentNav}
+        handleReload={reload}
         handleGoBack={go_back}
-        can_go_after={nav_view.can_go_after}
         handleGoAfter={go_after}
-        can_zoom_in={nav_view.can_zoom_in}
         handleZoomIn={zoom_in}
-        can_zoom_out={nav_view.can_zoom_out}
         handleZoomOut={zoom_out}
-        can_go_start={nav_view.can_go_start}
         handleGoStart={go_start}
-        can_go_end={nav_view.can_go_end}
         handleGoEnd={go_end}
         classBody={classBody}
       />
