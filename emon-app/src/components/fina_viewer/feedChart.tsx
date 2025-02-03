@@ -11,15 +11,8 @@ import {
   XAxis,
   YAxis
 } from "recharts"
-import {
-    ChartConfig,
-    ChartContainer,
-    ChartTooltip,
-    ChartTooltipContent,
-  } from "@/components/ui/chart"
 import Ut from '@/utils/utils';
 import { SelectedFileItem, setZoom, useDataViewer } from '@/stores/dataViewerStore';
-import { SetStateAction, useState } from 'react';
 
 export type GraphLocationProps = "left" | "right"
 
@@ -31,59 +24,6 @@ export interface LineChartDataProps {
   data: GraphDataProps[],
   feeds: GraphFeedProps[]
 }
-
-
-const roundFloat = (value: number) => {
-  return Math.round((value + Number.EPSILON) * 1000) / 1000
-}
-
-type StateProps = {
-  data: LineChartDataProps
-  left: string | number,
-  right: string | number,
-  refAreaLeft: number,
-  refAreaRight: number,
-  top: string | number,
-  bottom: string | number,
-  top2: string | number,
-  bottom2: string | number,
-  animation: boolean,
-  time_start: number,
-  time_window: number,
-  interval: number,
-}
-const initialState = {
-  data: {data: [], feeds: []},
-  left: 'dataMin',
-  right: 'dataMax',
-  refAreaLeft: 0,
-  refAreaRight: 0,
-  top: 'dataMax+0.5',
-  bottom: 'dataMin-0.5',
-  top2: 'dataMax+0.5',
-  bottom2: 'dataMin-0.5',
-  animation: true,
-  time_start: 0,
-  time_window: 0,
-  interval: 0,
-} as StateProps;
-
-const getAxisYDomain = (
-  data: GraphDataProps[],
-  from: number,
-  to: number,
-  ref: string
-) => {
-  const refData = data.filter((item) => {
-    return item.date !== null && item.date >= from &&  item.date <= to
-  });
-  let [bottom, top] = [refData[0][ref], refData[0][ref]];
-  refData.forEach((d) => {
-    if (d[ref] !== null && ((top !== null && d[ref] > top) || top === null)) top = d[ref];
-    if (d[ref] !== null && ((bottom !== null && d[ref] < bottom) || bottom === null)) bottom = d[ref];
-  });
-  return [bottom, top];
-};
 
 type FeedLineChartProps = {
   data_points?: LineChartDataProps;
@@ -103,96 +43,15 @@ export function FeedLineChart({
   classBody
 }: FeedLineChartProps) {
   const connect_nulls = useDataViewer((state) => state.connect_nulls)
-  
-  const [state, setState] = useState<StateProps>({
-    data: data_points || { data: [], feeds: [] },
-    left: 'dataMin',
-    right: 'dataMax',
-    refAreaLeft: 0,
-    refAreaRight: 0,
-    top: 'dataMax+0.5',
-    bottom: 'dataMin-0.5',
-    top2: 'dataMax+0.5',
-    bottom2: 'dataMin-0.5',
-    animation: true,
-    time_start: time_start,
-    time_window: time_window,
-    interval: interval,
-  });
-  
-  const zoom = () => {
-    let { refAreaLeft, refAreaRight, data } = state;
-    if (refAreaLeft === refAreaRight || refAreaRight === 0) {
-      setState((prev) => ({ ...prev, refAreaLeft: 0, refAreaRight: 0 }));
-      return;
-    }
-    if (refAreaLeft > refAreaRight) [refAreaLeft, refAreaRight] = [refAreaRight, refAreaLeft];
-
-    const verticalZ = data.feeds
-      .reduce((result, item)=>{
-        const [bottom, top] = getAxisYDomain(
-          data?.data, refAreaLeft, refAreaRight, `${item.feed_id}`);
-        if(item.location === 'left'){
-          if(top !== null) {result.left_top.push(top)}
-          if(bottom !== null) {result.left_bottom.push(bottom)}
-        }
-        else{
-          if(top !== null) {result.right_top.push(top)}
-          if(bottom !== null) {result.right_bottom.push(bottom)}
-        }
-          
-        return result
-      }, {left_top: [], left_bottom: [], right_top: [], right_bottom: [], })
-    let top = initialState.top
-    let bottom = initialState.bottom
-    let top2 = initialState.top2
-    let bottom2 = initialState.bottom2
-    
-    const offset_right = (top - bottom) * 5 / 100
-    if(verticalZ.left_top.length > 0 && verticalZ.left_bottom.length > 0){
-      top = Math.max(verticalZ.left_top)
-      bottom = Math.min(verticalZ.left_bottom)
-      const offset_left = (top - bottom) * 5 / 100
-      top = roundFloat(top + offset_left)
-      bottom = roundFloat(bottom - offset_left)
-    }
-    if(verticalZ.right_top.length > 0 && verticalZ.right_bottom.length > 0){
-      top2 = Math.max(verticalZ.right_top)
-      bottom2 = Math.min(verticalZ.right_bottom)
-      const offset_right = Ut.toFixedFloat((top2 - bottom2) * 5 / 100, 3)
-      top2 += offset_right
-      bottom2 += offset_right
-    }
-    setState((prev) => ({
-      ...prev,
-      refAreaLeft: 0,
-      refAreaRight: 0,
-      data: data,
-      left: refAreaLeft,
-      right: refAreaRight,
-      bottom,
-      top,
-      bottom2,
-      top2,
-    }));
-  };
-
-  const zoomOut = () => {
-    setState({
-      data: data_points,
-      refAreaLeft: 0,
-      refAreaRight: 0,
-      left: 'dataMin',
-      right: 'dataMax',
-      top: 'dataMax+1',
-      bottom: 'dataMin',
-      top2: 'dataMax+50',
-      bottom2: 'dataMin+50',
-      time_start: time_start,
-      time_window: time_window,
-      interval: interval,
-    });
-  };
+  const set_refAreaLeft = useDataViewer((state) => state.set_refAreaLeft)
+  const set_refAreaRight = useDataViewer((state) => state.set_refAreaRight)
+  const zoom_view = useDataViewer((state) => state.zoom_view)
+  const {
+    left, right,
+    topLeft, bottomLeft,
+    topRight, bottomRight,
+    refAreaLeft, refAreaRight,
+  } = useDataViewer((state) => state.zoom)
 
   const empty_graph_data = (
     time_start: number,
@@ -229,8 +88,7 @@ export function FeedLineChart({
   }
   if(!hasData(data_points)){
     data_points = empty_graph_data(time_start, time_window, interval)
-  } 
-  const { data, left, right, bottom, top, bottom2, top2, refAreaLeft, refAreaRight } = state;
+  }
 
   const CustomTooltip = ({ active, payload, label }) => {
     if (active && payload && payload.length) {
@@ -245,6 +103,7 @@ export function FeedLineChart({
 
     return null;
   };
+
   return (
     <>
       <div
@@ -258,10 +117,10 @@ export function FeedLineChart({
           <ComposedChart
             width={800}
             height={800}
-            data={data?.data}
-            onMouseDown={(e) => setState((prev) => ({ ...prev, refAreaLeft: Number(e.activeLabel) || 0 }))}
-            onMouseMove={(e) => state.refAreaLeft && setState((prev) => ({ ...prev, refAreaRight: Number( e.activeLabel) || 0 }))}
-            onMouseUp={zoom}
+            data={data_points?.data}
+            onMouseDown={(e) => set_refAreaLeft(Number(e.activeLabel) || 0)}
+            onMouseMove={(e) => refAreaLeft && set_refAreaRight(Number( e.activeLabel) || 0)}
+            onMouseUp={()=>zoom_view(data_points)}
           >
             <CartesianGrid strokeDasharray="3 2 1" opacity={0.2} />
             <XAxis
@@ -282,24 +141,24 @@ export function FeedLineChart({
               yAxisId='left'
               type="number"
               orientation='left'
-              domain={[bottom, top]}
+              domain={[bottomLeft, topLeft]}
             />
             <YAxis
               yAxisId='right'
               type="number"
               orientation='right'
-              domain={[bottom2, top2]}
+              domain={[bottomRight, topRight]}
               allowDataOverflow
             />
             <Legend verticalAlign="top" height={36} />
             <Tooltip content={CustomTooltip}/>
-            {data && Ut.isArray(data.feeds) && data.feeds && data.feeds.length > 0 ? (
+            {data_points && Ut.isArray(data_points.feeds) && data_points.feeds && data_points.feeds.length > 0 ? (
               
-              data.feeds.map((item, index) => [
+              data_points.feeds.map((item, index) => [
                   <Area
                     key={`${index}_range`}
-                    
-                    type="monotone"
+                    legendType='none'
+                    type="linear"
                     dataKey={`${item.feed_id}_range`}
                     yAxisId={item.location}
                     stroke="none"
