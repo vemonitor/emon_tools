@@ -57,7 +57,8 @@ class TestFinaReader:
         """
         Test initializing FinaReader with an invalid data_dir.
         """
-        with pytest.raises(ValueError, match="is not a valid directory."):
+        with pytest.raises(
+                ValueError, match="Error: Invalid PhpFina directory path."):
             FinaReader(feed_id=1, data_dir="invalid_dir")
 
     def test_setters(self, valid_fina_reader, tmp_path_override):
