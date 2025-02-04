@@ -78,7 +78,7 @@ class TestFinaData:
             FinaData(feed_id=-1, data_dir=tmp_path_override)
 
         with pytest.raises(
-                ValueError, match="/invalid_dir is not a valid directory."):
+                ValueError, match="Error: Invalid PhpFina directory path."):
             FinaData(feed_id=1, data_dir="/invalid_dir")
 
     @patch("builtins.open",
@@ -155,8 +155,16 @@ class TestFinaData:
 
         mock_mmap_instance.__getitem__.side_effect = mock_getitem
         fdt.reader.CHUNK_SIZE_LIMIT = 4096
-        result = fdt._read_averaged_values(start, step, npts, interval, window)
-        assert result.tolist() == [1.5, 3.5, 5.5]
+        result = fdt._read_averaged_values(
+            start, step, npts, interval, window)
+        assert result.shape[1] == 1
+        assert result[:, 0].tolist() == [1.5, 3.5, 5.5]
+        result = fdt._read_averaged_values(
+            start, step, npts, interval, window, with_stats=True)
+        assert result.shape[1] == 3
+        assert result[:, 0].tolist() == [1.0, 3.0, 5.0]
+        assert result[:, 1].tolist() == [1.5, 3.5, 5.5]
+        assert result[:, 2].tolist() == [2.0, 4.0, 6.0]
 
     @patch("builtins.open",
            new_callable=mock_open,
@@ -193,8 +201,15 @@ class TestFinaData:
 
         mock_mmap_instance.__getitem__.side_effect = mock_getitem
         fdt.reader.CHUNK_SIZE_LIMIT = 4096
-        result = fdt._read_averaged_values(start, step, npts, interval, window)
-        assert result.tolist() == [1.5, 3.5]
+        result = fdt._read_averaged_values(
+            start, step, npts, interval, window)
+        assert result[:, 0].tolist() == [1.5, 3.5]
+        result = fdt._read_averaged_values(
+            start, step, npts, interval, window, with_stats=True)
+        assert result.shape[1] == 3
+        assert result[:, 0].tolist() == [1.0, 3.0]
+        assert result[:, 1].tolist() == [1.5, 3.5]
+        assert result[:, 2].tolist() == [2.0, 4.0]
 
     @patch("builtins.open",
            new_callable=mock_open,
@@ -591,13 +606,13 @@ class TestFinaData:
 
         # Test with valid parameters
         assert fdt.calculate_optimal_chunk_size(
-            window=10000) == 256
+            window=10000) == 4096
         assert fdt.calculate_optimal_chunk_size(
-            window=10000, min_chunk_size=512) == 512
+            window=10000, min_chunk_size=512) == 4096
         assert fdt.calculate_optimal_chunk_size(
-            window=10000, scale_factor=2.0) == 256
+            window=10000, scale_factor=2.0) == 4096
         assert fdt.calculate_optimal_chunk_size(
-            window=10000, divisor=128) == 256
+            window=10000, divisor=128) == 4096
 
         # Test with invalid parameters
         with pytest.raises(
