@@ -15,10 +15,8 @@ from emon_tools.emon_api.api_utils import SUCCESS_KEY
 from tests.emonpy.emonpy_test_data import EmonpyDataTest as dtest
 
 
-@pytest.mark.asyncio
 class TestAsyncEmonPy:
     """Unit tests for the AsyncEmonPy class."""
-
     @pytest.fixture
     def api(self):
         """Fixture to create an instance of AsyncEmonPy."""
@@ -37,6 +35,7 @@ class TestAsyncEmonPy:
         assert emon.api_key == "123"
         assert emon.url == "http://example.com"
 
+    @pytest.mark.asyncio
     @pytest.mark.parametrize(
         "inputs_response, feeds_response, expected_result",
         dtest.GET_STRUCTURE_PARAMS
@@ -61,6 +60,7 @@ class TestAsyncEmonPy:
 
         assert result == expected_result
 
+    @pytest.mark.asyncio
     @pytest.mark.parametrize(
         "feeds, create_feed_results, expected_processes",
         dtest.CREATE_INPUT_FEEDS_PARAMS,
@@ -82,6 +82,7 @@ class TestAsyncEmonPy:
         _, result = await api.create_input_feeds(feeds=feeds)
         assert result == expected_processes
 
+    @pytest.mark.asyncio
     async def test_create_input_feeds_invalid(
         self,
         api
@@ -97,6 +98,7 @@ class TestAsyncEmonPy:
             await api.create_input_feeds(
                 feeds=[{"name": "feed1", "tag": "tag1"}])
 
+    @pytest.mark.asyncio
     @pytest.mark.parametrize(
         "inputs, post_inputs_responses, expected_count",
         dtest.CREATE_INPUTS_PARAMS
@@ -114,6 +116,7 @@ class TestAsyncEmonPy:
         result = await api.create_inputs(inputs=inputs)
         assert result == expected_count
 
+    @pytest.mark.asyncio
     async def test_create_inputs_invalid(
         self,
         api
@@ -129,6 +132,7 @@ class TestAsyncEmonPy:
             await api.create_inputs(
                 inputs=[{"nodeid": "node1", "name": "input1"}])
 
+    @pytest.mark.asyncio
     @pytest.mark.parametrize(
         "structure, inputs, expected_count",
         dtest.INIT_INPUTS_STRUCTURE_PARAMS
@@ -146,6 +150,7 @@ class TestAsyncEmonPy:
         result = await api.init_inputs_structure(structure=structure)
         assert result == expected_count
 
+    @pytest.mark.asyncio
     @pytest.mark.parametrize(
         "input_item, feeds_on, expected_created, expected_process",
         dtest.ADD_INPUT_FEEDS_STRUCTURE_PARAMS
@@ -165,6 +170,7 @@ class TestAsyncEmonPy:
             feeds_on=feeds_on)
         assert result == expected_process
 
+    @pytest.mark.asyncio
     @pytest.mark.parametrize(
         (
             "input_id, current, description, "
@@ -189,6 +195,7 @@ class TestAsyncEmonPy:
         )
         assert result == expected_result
 
+    @pytest.mark.asyncio
     @pytest.mark.parametrize(
         (
             "input_id, current_processes, new_processes, "
@@ -215,6 +222,7 @@ class TestAsyncEmonPy:
         )
         assert result == expected_result
 
+    @pytest.mark.asyncio
     @pytest.mark.parametrize(
         (
             "structure, get_structure_return, "
@@ -257,6 +265,7 @@ class TestAsyncEmonPy:
             )
             assert result == expected_result
 
+    @pytest.mark.asyncio
     @pytest.mark.parametrize(
         (
             "structure, get_structure_return, "
