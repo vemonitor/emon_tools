@@ -37,7 +37,7 @@ from typing import List
 from typing import Union
 import numpy as np
 import pandas as pd
-from emon_tools.emon_fina.emon_fina import Utils
+from emon_tools.emon_fina.fina_utils import Utils as Ut
 from emon_tools.emon_fina.emon_fina import FinaData
 from emon_tools.emon_fina.emon_fina import FinaStats
 from emon_tools.emon_fina.emon_fina import StatsType
@@ -71,7 +71,8 @@ class FinaDataFrame(FinaData):
         self,
         start: int,
         step: int,
-        window: int
+        window: int,
+        with_stats: bool = False
     ) -> pd.DataFrame:
         """
         Retrieve time series data within a specified time window
@@ -93,7 +94,8 @@ class FinaDataFrame(FinaData):
         Example:
             >>> fina_data.get_fina_time_series(start=0, step=60, window=3600)
         """
-        values = self.read_fina_values(start=start, step=step, window=window)
+        values = self.read_fina_values(
+            start=start, step=step, window=window, with_stats=with_stats)
         return self.set_data_frame(self.timestamps(), values)
 
     def get_fina_time_series_by_date(
@@ -101,7 +103,8 @@ class FinaDataFrame(FinaData):
         start_date: str,
         end_date: str,
         step: int,
-        date_format: str = "%Y-%m-%d %H:%M:%S"
+        date_format: str = "%Y-%m-%d %H:%M:%S",
+        with_stats: bool = False
     ) -> pd.DataFrame:
         """
         Retrieve time series data by specifying a date range
@@ -128,13 +131,17 @@ class FinaDataFrame(FinaData):
                 "2023-01-02 00:00:00",
                 step=60)
         """
-        start_dt = Utils.get_utc_datetime_from_string(start_date, date_format)
-        end_dt = Utils.get_utc_datetime_from_string(end_date, date_format)
+        start_dt = Ut.get_utc_datetime_from_string(start_date, date_format)
+        end_dt = Ut.get_utc_datetime_from_string(end_date, date_format)
 
         start = int(start_dt.timestamp())
         window = int(end_dt.timestamp() - start)
 
-        values = self.get_fina_values(start=start, step=step, window=window)
+        values = self.get_fina_values(
+            start=start,
+            step=step,
+            window=window,
+            with_stats=with_stats)
 
         return self.set_data_frame(self.timestamps(), values)
 
