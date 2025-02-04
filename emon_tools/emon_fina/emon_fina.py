@@ -105,137 +105,83 @@ class FinaData:
         self.start, self.step, self.lines = start, step, result.size
         return result
 
-    def _read_averaged_stats_values(
-        self,
-        start: int,
-        step: int,
-        npts: int,
-        interval: int,
-        window: int
-    ) -> np.ndarray:
-        """
-        Read and aggregate values over the given step intervals,
-        computing the minimum, mean, and maximum of the values within
-        each interval. This method reduces the data into a smaller set
-        of points by averaging over chunks, and it also provides the
-        corresponding min and max statistics for each interval.
-
-        Parameters:
-            start (int): Start time in seconds from the feed's start time.
-            step (int): Step interval in seconds for the data aggregation.
-            npts (int): Number of data points to produce after averaging.
-            interval (int): Metadata interval in seconds.
-            window (int): Total time window in seconds.
-
-        Returns:
-            np.ndarray: A NumPy array of shape (npts, 3) where each row
-                        contains [min_value, averaged_value, max_value].
-                        Missing or unfilled data points are represented as NaN.
-
-        Notes:
-            - The chunk size is adjusted to be divisible by the step factor
-            for precise reshaping.
-            - Empty or partially filled chunks are handled gracefully to
-            avoid runtime errors.
-        """
-        # Calculate how many metadata intervals per step.
-        step_factor = step // interval
-        self.end = start + ((npts - 1) * step)
-        start_pos = (start - self.meta.start_time) // interval
-
-        # Determine the optimal chunk size.
-        chunk_size = self.calculate_optimal_chunk_size(
-            window=window, divisor=step_factor)
-
-        # Initialize the results array with NaNs.
-        # It will have npts rows and 3 columns: [min, average, max]
-        result = np.full((npts, 3), np.nan)
-
-        reader_props = {
-            "npoints": self.meta.npoints,
-            "start_pos": start_pos,
-            "chunk_size": chunk_size,
-            "window": window,
-            "set_pos": True,
-        }
-
-        points_filled = 0
-        for _, values in self.reader.read_file(**reader_props):
-            if values.size == 0:
-                continue  # Skip empty reads
-
-            available = values.shape[0]
-            remaining = npts - points_filled
-            if remaining <= 0:
-                break
-
-            # Ensure the values array can be reshaped into chunks of size
-            # `step_factor`
-            usable_size = (available // step_factor) * step_factor
-            if usable_size == 0:
-                continue
-
-            reshaped_values = values[:usable_size].reshape(-1, step_factor)
-
-            # Compute statistics for the chunk using nan-aware functions.
-            averaged_values = np.nanmean(reshaped_values, axis=1)
-            min_values = np.nanmin(reshaped_values, axis=1)
-            max_values = np.nanmax(reshaped_values, axis=1)
-
-            to_copy = min(len(averaged_values), remaining)
-            result[points_filled:points_filled + to_copy, 0] = \
-                min_values[:to_copy]
-            result[points_filled:points_filled + to_copy, 1] = \
-                averaged_values[:to_copy]
-            result[points_filled:points_filled + to_copy, 2] = \
-                max_values[:to_copy]
-            points_filled += to_copy
-
-        self.start, self.step, self.lines = start, step, npts
-        return result
-
     def _read_averaged_values(
         self,
         start: int,
         step: int,
         npts: int,
         interval: int,
-        window: int
+        window: int,
+        with_stats: bool = False
     ) -> np.ndarray:
         """
-        Read and average values when the step interval
-        is greater than the metadata interval.
-
-        This method aggregates values within each `step` interval,
-        computing their mean to
-        produce a reduced and meaningful representation of the data.
+        Read and aggregate values over the given step intervals,
+        computing the minimum, mean, and maximum of the values within
+        each interval. Unlike earlier versions, the provided start time
+        is used as given (without alignment), and aggregation is done
+        for every step window. The first and last windows may be incomplete,
+        but statistics will be computed for the available samples.
 
         Parameters:
             start (int): Start time in seconds from the feed's start time.
+                        This value is used as provided.
             step (int): Step interval in seconds for the data aggregation.
-            npts (int): Number of data points to produce after averaging.
+                        (For example, 60 seconds for per-minute stats.)
+            npts (int): Number of aggregated data points (windows) to produce.
             interval (int): Metadata interval in seconds.
-            window (int): Total time window in seconds.
-
+            window (int):
+                Total time window in seconds
+                (used for determining the optimal chunk size).
+            with_stats (bool):
+                If activated, compute statistics from aggregated data points.
+                return value as [min, value, max]
         Returns:
-            np.ndarray: A NumPy array containing the averaged values,
-            with NaNs for missing data.
-
-        Notes:
-            - The averaging process ensures the result matches
-              the expected number of points (`npts`).
-            - Chunk size is adjusted to be divisible by the step factor
-              for precise reshaping.
-            - Empty or partially filled chunks are handled gracefully
-              to avoid runtime errors.
+            np.ndarray: A NumPy array of shape (npts, 3) where each row
+                        contains [min_value, averaged_value, max_value]. Any
+                        window with no data will be left as NaN.
         """
+        # ----------------------------------------------------------------
+        # 1. Determine the sample grouping for each aggregation window.
+        # ----------------------------------------------------------------
+        # The number of samples that ideally form a full step window.
         step_factor = step // interval
-        self.end = start + ((npts - 1) * step)
-        start_pos = (start - self.meta.start_time) // interval
-        chunk_size = self.calculate_optimal_chunk_size(
-            window=window, divisor=step_factor)
-        result = np.full(npts, np.nan)
 
+        # Determine the reading starting position.
+        # (This is computed from the provided start value without alignment.)
+        start_pos = (start - self.meta.start_time) // interval
+
+        # Compute the effective end time (for informational purposes).
+        self.end = start + ((npts - 1) * step)
+
+        # For the very first window, determine how many samples to use.
+        # If the provided start does not fall exactly on a step boundary,
+        # the first window will be incomplete.
+        offset_samples = (start - self.meta.start_time) // interval
+        remainder = offset_samples % step_factor
+        if remainder != 0:
+            first_window_needed = step_factor - remainder
+        else:
+            first_window_needed = step_factor
+
+        # ----------------------------------------------------------------
+        # 2. Initialize result array and buffer.
+        # ----------------------------------------------------------------
+        nb_cols = 1
+        if with_stats is True:
+            nb_cols = 3
+        result = np.full((npts, nb_cols), np.nan, dtype=np.float64)
+        # Use an explicitly empty array.
+        buffer = np.array([], dtype=np.float64)
+
+        # Compute an optimal chunk size.
+        # We use the step_factor as the divisor so that the chunk size is a
+        # multiple of the expected full-window sample count.
+        chunk_size = self.calculate_optimal_chunk_size(
+            window, divisor=step_factor)
+
+        windows_filled = 0
+
+        # Prepare reader properties.
         reader_props = {
             "npoints": self.meta.npoints,
             "start_pos": start_pos,
@@ -244,32 +190,69 @@ class FinaData:
             "set_pos": True,
         }
 
-        nb_filled = 0
+        # ----------------------------------------------------------------
+        # 3. Read data in chunks and process windows sequentially.
+        # ----------------------------------------------------------------
         for _, values in self.reader.read_file(**reader_props):
             if values.size == 0:
-                continue  # Skip empty reads
+                continue  # Skip empty reads.
 
-            available = values.shape[0]
-            remaining = npts - nb_filled
+            # Append new values to the buffer.
+            buffer = np.concatenate((buffer, values))
 
-            if remaining <= 0:
+            # Process the first window (if not already done).
+            if windows_filled == 0 and buffer.size > 0:
+                if buffer.size >= first_window_needed:
+                    current_window = buffer[:first_window_needed]
+                    # Compute statistics even if the window is incomplete.
+                    avg_val = np.nanmean(current_window)
+                    if with_stats is True:
+                        min_val = np.nanmin(current_window)
+                        max_val = np.nanmax(current_window)
+                        result[windows_filled, :] = [min_val, avg_val, max_val]
+                    else:
+                        result[windows_filled, :] = [avg_val]
+                    windows_filled += 1
+                    buffer = buffer[first_window_needed:]
+                # (If there isn’t enough data yet, wait for the next chunk.)
+
+            # Process subsequent full windows.
+            while windows_filled > 0\
+                    and windows_filled < npts and buffer.size >= step_factor:
+                current_window = buffer[:step_factor]
+                avg_val = np.nanmean(current_window)
+                if with_stats is True:
+                    min_val = np.nanmin(current_window)
+                    max_val = np.nanmax(current_window)
+                    result[windows_filled, :] = [min_val, avg_val, max_val]
+                else:
+                    result[windows_filled, :] = [avg_val]
+                windows_filled += 1
+                buffer = buffer[step_factor:]
+                # If we've produced all required windows, break out.
+                if windows_filled >= npts:
+                    break
+
+            if windows_filled >= npts:
                 break
 
-            # Ensure the values array can be reshaped without remainder
-            usable_size = (available // step_factor) * step_factor
-            reshaped_values = values[:usable_size].reshape(-1, step_factor)
-
-            # Avoid computing mean on empty arrays
-            if reshaped_values.size > 0:
-                averaged_values = np.nanmean(reshaped_values, axis=1)
+        # ----------------------------------------------------------------
+        # 4. Finalize processing: if the file ended but
+        #    a partial window remains, compute stats for the partial window.
+        # ----------------------------------------------------------------
+        if windows_filled < npts and buffer.size > 0:
+            current_window = buffer  # Use all remaining samples.
+            avg_val = np.nanmean(current_window)
+            if with_stats is True:
+                min_val = np.nanmin(current_window)
+                max_val = np.nanmax(current_window)
+                result[windows_filled, :] = [min_val, avg_val, max_val]
             else:
-                averaged_values = np.full(reshaped_values.shape[0], np.nan)
+                result[windows_filled, :] = [avg_val]
+            windows_filled += 1
 
-            to_copy = min(len(averaged_values), remaining)
-            result[nb_filled:nb_filled + to_copy] = averaged_values[:to_copy]
-            nb_filled += to_copy
-
-        self.start, self.step, self.lines = start, step, result.size
+        # (Any remaining windows beyond the available data remain as NaN.)
+        self.start, self.step, self.lines = start, step, npts
         return result
 
     def reset(self):
