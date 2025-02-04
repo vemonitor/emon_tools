@@ -5,6 +5,20 @@
     "version": "0.2.0",
     "configurations": [
         {
+            "command": "npm test --coverage",
+            "name": "Vitest",
+            "request": "launch",
+            "type": "node-terminal",
+            "cwd": "${workspaceFolder}/emon-app"
+        },
+        {
+            "name": "Launch Chrome",
+            "request": "launch",
+            "type": "chrome",
+            "url": "http://localhost:5173",
+            "webRoot": "${workspaceFolder}"
+        },
+        {
             "name": "Python Debugger: FastAPI",
             "type": "debugpy",
             "request": "launch",
@@ -14,13 +28,6 @@
                 "--reload"
             ],
             "jinja": true
-        },
-        {
-            "name": "Launch Chrome",
-            "request": "launch",
-            "type": "chrome",
-            "url": "http://localhost:5173",
-            "webRoot": "${workspaceFolder}"
         },
         {
             "name": "Python Debugger: Flask",
