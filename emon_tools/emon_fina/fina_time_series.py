@@ -175,11 +175,23 @@ class FinaDataFrame(FinaData):
                 or not isinstance(values, np.ndarray):
             raise ValueError("Times and Values must be a numpy ndarray.")
 
-        if not times.shape == values.shape:
+        if not times.shape[0] == values.shape[0]:
             raise ValueError("Times and Values must have same shape.")
-
+        nb_shape = len(values.shape)
+        if nb_shape == 1:
+            cols = {"values": values}
+        elif nb_shape == 2 and values.shape[1] == 1:
+            cols = {"values": values[:, 0]}
+        elif nb_shape == 2 and values.shape[1] == 3:
+            cols = {
+                "min": values[:, 0],
+                "values": values[:, 1],
+                "max": values[:, 2]
+            }
+        else:
+            raise ValueError("Invalid shape Values. Data missing or corrupted.")
         df = pd.DataFrame(
-            {"values": values},
+            {"values": cols},
             index=pd.to_datetime(times, unit="s", utc=True)
         )
         df.index.name = "times"
