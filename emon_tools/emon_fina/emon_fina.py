@@ -11,7 +11,6 @@ import numpy as np
 from emon_tools.emon_fina.fina_utils import Utils as Ut
 from emon_tools.emon_fina.fina_reader import FinaReader
 
-
 logging.basicConfig()
 et_logger = logging.getLogger(__name__)
 
