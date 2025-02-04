@@ -341,7 +341,8 @@ class FinaData:
         start: int,
         step: int,
         window: int,
-        set_pos: bool = True
+        set_pos: bool = True,
+        with_stats: bool = False
     ) -> np.ndarray:
         """
         Read values from the Fina data file, either directly or averaged,
@@ -398,15 +399,16 @@ class FinaData:
                 set_pos
             )
 
-        return self._read_averaged_stats_values(
-            start, step, npts, interval, window)
+        return self._read_averaged_values(
+            start, step, npts, interval, window, with_stats)
 
     def get_fina_values(
         self,
         start: int,
         step: int,
         window: int,
-        n_decimals: Optional[int] = 3
+        n_decimals: Optional[int] = 3,
+        with_stats: bool = False
     ) -> np.ndarray:
         """
         Retrieve data values from the Fina data file
@@ -440,7 +442,8 @@ class FinaData:
             ValueError:
             If the `start` time is invalid or exceeds the feed's end time.
         """
-        result = self.read_fina_values(start=start, step=step, window=window)
+        result = self.read_fina_values(
+            start=start, step=step, window=window, with_stats=with_stats)
         if n_decimals is not None:
             # Apply rounding/flooring only to the data columns
             if n_decimals == 0:
@@ -455,7 +458,8 @@ class FinaData:
         start: int,
         step: int,
         window: int,
-        n_decimals: Optional[int] = 3
+        n_decimals: Optional[int] = 3,
+        with_stats: bool = False
     ) -> np.ndarray:
         """
         Retrieve a 2D time series array of timestamps and Fina values.
@@ -482,7 +486,8 @@ class FinaData:
             start=start,
             step=step,
             window=window,
-            n_decimals=n_decimals)
+            n_decimals=n_decimals,
+            with_stats=with_stats)
         times = self.timestamps()
 
         if values.ndim == 1 or values.shape[1] == 1:
@@ -495,12 +500,14 @@ class FinaData:
             raise ValueError("Unexpected shape for values array")
         return result
 
-    def get_fina_values_by_date(self,
-                                start_date: str,
-                                end_date: str,
-                                step: int,
-                                date_format: str = "%Y-%m-%d %H:%M:%S"
-                                ) -> np.ndarray:
+    def get_fina_values_by_date(
+        self,
+        start_date: str,
+        end_date: str,
+        step: int,
+        date_format: str = "%Y-%m-%d %H:%M:%S",
+        with_stats: bool = False
+    ) -> np.ndarray:
         """
         Retrieve values from the Fina data file
         based on a specified date range.
@@ -533,7 +540,12 @@ class FinaData:
             date_format=date_format,
         )
 
-        return self.get_fina_values(start=start, step=step, window=window)
+        return self.get_fina_values(
+            start=start,
+            step=step,
+            window=window,
+            with_stats=with_stats
+        )
 
     def get_fina_time_series_by_date(self,
                                      start_date: str,
@@ -574,10 +586,17 @@ class FinaData:
             step=step,
             date_format=date_format
         )
-        return np.vstack((
-            self.timestamps(),
-            values
-        )).T
+        times = self.timestamps()
+
+        if values.ndim == 1 or values.shape[1] == 1:
+            if values.ndim == 2:
+                values = values.ravel()
+            result = np.column_stack((times, values))
+        elif values.ndim == 2 and values.shape[1] == 3:
+            result = np.column_stack((times, values))
+        else:
+            raise ValueError("Unexpected shape for values array")
+        return result
 
     def calculate_optimal_chunk_size(
         self,
