@@ -608,17 +608,21 @@ class FinaData:
         Compute the optimal chunk size for processing data
         within the given constraints.
 
-        This method determines the best chunk size
-        based on the total window size, scaling factors,
-        and optional divisors while ensuring it remains
-        within the provided limits.
+        This version favors a target chunk size of 4096
+        (a common efficient I/O size)when possible.
+        It then ensures the computed chunk size is within
+        [min_chunk_size, self.reader.CHUNK_SIZE_LIMIT]
+        and (if provided) is a multiple of `divisor`.
 
         Parameters:
-            window (int): The total size of the data window to process.
+            window (int):
+                The total size (e.g. number of data points) of the window.
             min_chunk_size (int):
                 Minimum allowable chunk size. Defaults to 256.
             scale_factor (float):
-                Factor used to compute the initial division. Defaults to 1.5.
+                Factor used in legacy calculations
+                (retained here for compatibility).
+                Defaults to 1.5.
             divisor (Optional[int]):
                 Optional divisor to ensure the chunk size
                 is a multiple of this value.
@@ -628,19 +632,23 @@ class FinaData:
 
         Raises:
             ValueError:
-                If any input parameter is invalid,
-                such as negative values or invalid ranges.
+                If any input parameter is invalid, such as negative values,
+                or if min_chunk_size exceeds the maximum allowed chunk size.
 
         Notes:
-            - If `divisor` is provided,
-              the chunk size is adjusted to the nearest multiple of `divisor`.
-            - The method ensures that the chunk size respects
-              both minimum and maximum constraints.
+            - If `divisor` is provided, the chunk size is adjusted
+            to the nearest multiple of `divisor`
+            (using FinaData.calculate_nearest_divisible)
+            within the given limits.
+            - The effective chunk size is the smaller of 4096
+            and the window size (if the window is very small),
+            then clamped to the allowed [min_chunk_size, max_chunk_size] range.
         """
+        # Get the maximum allowed chunk size from the reader.
         max_chunk_size: int = self.reader.CHUNK_SIZE_LIMIT
 
-        window = Ut.validate_integer(
-            window, "window size", positive=True)
+        # Validate input parameters.
+        window = Ut.validate_integer(window, "window size", positive=True)
         min_chunk_size = Ut.validate_integer(
             min_chunk_size, "Minimum chunk size", positive=True)
         scale_factor = Ut.validate_number(
@@ -648,36 +656,34 @@ class FinaData:
 
         if min_chunk_size > max_chunk_size:
             raise ValueError(
-                "min_chunk_size must be less than or equal "
-                "to max_chunk_size."
+                "min_chunk_size must be less than "
+                "or equal to the maximum chunk size."
             )
 
-        # Calculate the base optimal chunk size
-        division_factor = int(scale_factor * (window ** 0.5))
-        chunk_size = max(
-            min(window // division_factor, max_chunk_size), min_chunk_size)
+        # Favor 4096 as the target chunk size if possible.
+        # Also, if the window is very small, use window instead.
+        target = min(4096, window)
+        # Ensure the target is not below min_chunk_size
+        # or above max_chunk_size.
+        target = max(target, min_chunk_size)
+        target = min(target, max_chunk_size)
 
-        # Adjust chunk size for small remainders
-        remaining_points = window % chunk_size
-        if remaining_points > 0 and remaining_points <= chunk_size // 2:
-            chunk_size = max(min_chunk_size, remaining_points)
-
-        # Ensure chunk size is divisible by divisor and within limits
+        # If a divisor is provided, adjust target to the nearest value
+        # that is divisible by it.
         if divisor is not None:
-            divisor = Ut.validate_integer(
-                divisor, "divisor", positive=True)
-            chunk_size = max(FinaData.calculate_nearest_divisible(
-                value=chunk_size,
+            divisor = Ut.validate_integer(divisor, "divisor", positive=True)
+            target = FinaData.calculate_nearest_divisible(
+                value=target,
                 divisor=divisor,
                 min_value=min_chunk_size,
                 max_value=max_chunk_size
-            ), min_chunk_size)
+            )
+            # Ensure that the final candidate is at least
+            # as large as the divisor.
+            if target < divisor:
+                target = divisor
 
-            # Ensure chunk size is at least as large as the divisor
-            if chunk_size < divisor:
-                chunk_size = divisor
-
-        return chunk_size
+        return target
 
     @staticmethod
     def calculate_nearest_divisible(
