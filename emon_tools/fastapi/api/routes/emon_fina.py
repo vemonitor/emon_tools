@@ -146,14 +146,14 @@ async def get_file_data(
             )
             if start < fina.meta.start_time:
                 nb_na = math.ceil((fina.meta.start_time - start) / interval)
-                nans = np.full((nb_na, 2,), np.nan)
+                nans = np.full((nb_na, datas.shape[1],), np.nan)
                 nans[:, 0] = np.arange(start, fina.meta.start_time, interval)
                 datas = np.concatenate((nans, datas), axis=0)
 
             if start + window > fina.meta.end_time:
                 nb_na = math.ceil(
                     (start + window - fina.meta.end_time) / interval)
-                nans = np.full((nb_na, 2,), np.nan)
+                nans = np.full((nb_na, datas.shape[1],), np.nan)
                 nans[:, 0] = np.arange(
                     fina.meta.end_time + interval,
                     start + window + interval, interval)
