@@ -12,6 +12,7 @@ import {
 import { Separator } from '@/components/ui/separator';
 import { Toggle } from '@/components/ui/toggle';
 import { GraphHelper } from '@/helpers/graphHelper';
+import { useDataViewer } from '@/stores/dataViewerStore';
 import clsx from 'clsx';
 import { ArrowLeftFromLine, ArrowLeftToLine, ArrowRightFromLine, ArrowRightToLine, ChartSpline, Eye, RotateCw, SearchCode, Unplug, ZoomIn, ZoomOut } from 'lucide-react';
 
@@ -121,8 +122,6 @@ export function NavGraphMenu({
   classBody
 }: NavMenuProps) {
   const nav_graph = useDataViewer((state) => state.nav_graph)
-  const nav_view = useDataViewer((state) => state.nav_view)
-  const can_zoom_view = useDataViewer((state) => state.can_zoom_view)
 
   const {
     reload,
@@ -134,10 +133,9 @@ export function NavGraphMenu({
     go_end,
   } = useDataViewer()
 
-  const currentNav = can_zoom_view == true ? {...nav_view}: {...nav_graph}
   return (
     <NavigationMenu
-        {...currentNav}
+        {...nav_graph}
         handleReload={reload}
         handleGoBack={go_back}
         handleGoAfter={go_after}
