@@ -161,12 +161,14 @@ export function FeedLineChart({
               yAxisId='left'
               type="number"
               orientation='left'
+              scale={'linear'}
               domain={[bottomLeft, topLeft]}
             />
             <YAxis
               yAxisId='right'
               type="number"
               orientation='right'
+              scale={'linear'}
               domain={[bottomRight, topRight]}
               allowDataOverflow
             />
