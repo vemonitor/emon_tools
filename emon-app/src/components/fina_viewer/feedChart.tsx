@@ -11,10 +11,13 @@ import {
   XAxis,
   YAxis
 } from "recharts"
-import Ut from '@/utils/utils';
-import { SelectedFileItem, setZoom, useDataViewer } from '@/stores/dataViewerStore';
+import Ut from '@/helpers/utils';
+import { useDataViewer } from '@/stores/dataViewerStore';
 import { ContentType } from 'recharts/types/component/Tooltip';
-
+import { scaleTime } from 'd3-scale';
+import { utcFormat } from 'd3-time-format';
+import { utcHour, utcSecond, utcMinute, utcDay, utcMonth, utcYear, utcWeek } from 'd3-time';
+import { SelectedFileItem } from '@/lib/graphTypes';
 export type GraphLocationProps = "left" | "right"
 
 export type GraphDataProps = {[key: string]: number | null}
