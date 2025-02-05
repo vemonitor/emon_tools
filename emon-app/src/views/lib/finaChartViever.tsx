@@ -94,21 +94,13 @@ export function FinaChartViewer({
     return (
       <>
         <div className='w-full h-full'>
-          {leftGraph.pending || rightGraph.pending ? (
-              <div>Loading...</div>
-            ) : (leftGraph.data && rightGraph.data ? (
-              <FeedLineChart 
-                data_points={format_datas(leftGraph.data, rightGraph.data)}
-                time_start={time_start}
-                time_window={time_window}
-                interval={interval}
-                selected_feeds={selected_feeds}
-              />
-                          
-            ) : (
-              <div>No data available</div>
-            )
-          )}
+          <FeedLineChart 
+            data_points={data_points}
+            time_start={time_start}
+            time_window={time_window}
+            interval={interval}
+            selected_feeds={selected_feeds}
+          />
         </div>
         <div className="w-full h-20">
       
