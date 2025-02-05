@@ -1,12 +1,12 @@
 import clsx from 'clsx';
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Separator } from "@/components/ui/separator"
-import Ut from '@/utils/utils';
-import { FeedMetaOut } from '@/emon-tools-api/dataViewerApi';
+import Ut from '@/helpers/utils';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
 import { ChangeEvent, ChangeEventHandler } from 'react';
-import { SelectedFileItem } from '@/stores/dataViewerStore';
+import { FeedMetaOut, GraphLocationProps, SelectedFileItem } from '@/lib/graphTypes';
+import { useDataViewer } from '@/stores/dataViewerStore';
 
 export interface IFilesData {
   feed_id: number,
@@ -39,7 +39,12 @@ export function FilesListItem({
   handleSelectRight,
   classBody
 }: FilesListItemProps) {
+  const selected_feeds = useDataViewer((state) => state.selected_feeds)
 
+  const is_selected = (side: GraphLocationProps) => {
+    const selecteds = selected_feeds.filter(item=>item.side === side && Number(item.item_id) === file_meta.feed_id)
+    return selecteds.length > 0
+  }
   return (
     <>
       <div
@@ -54,6 +59,7 @@ export function FilesListItem({
               className='w-6 h-6 m-auto'
               value={file_meta.feed_id}
               onChange={handleSelectLeft}
+              checked={is_selected("left")}
             />
           </div>
           <div className="col-span-3 text-sm flex items-center justify-center border-x-2">
@@ -70,6 +76,7 @@ export function FilesListItem({
               className='w-6 h-6 m-auto'
               value={file_meta.feed_id}
               onChange={handleSelectRight}
+              checked={is_selected("right")}
             />
           </div>
         </div>
@@ -124,6 +131,7 @@ export function FilesListPane({
     handleSelectItem,
     classBody
 }: FilesListPaneProps) {
+    
     const is_data = Ut.isObject(data) && data.success === true && Ut.isArray(data.files)
 
     const getSelectedFile = (e: ChangeEvent<HTMLInputElement>): SelectedFileItem =>{
@@ -163,7 +171,8 @@ export function FilesListPane({
                     key={index}
                     file_meta={file}
                     handleSelectLeft={handleGraphLeft}
-                    handleSelectRight={handleGraphRight} />
+                    handleSelectRight={handleGraphRight}
+                  />
                 ))
               ) : (
                 <div>Unable to get files list</div>
