@@ -1,6 +1,7 @@
 import { FilesListPane } from "@/components/fina_viewer/feedList";
-import { DataViewerProps, getFinaFiles } from "@/emon-tools-api/dataViewerApi";
-import { SelectedFileItem, useDataViewer } from "@/stores/dataViewerStore";
+import { getFinaFiles } from "@/emon-tools-api/dataViewerApi";
+import { DataViewerProps, SelectedFileItem } from "@/lib/graphTypes";
+import { useDataViewer } from "@/stores/dataViewerStore";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 
 
