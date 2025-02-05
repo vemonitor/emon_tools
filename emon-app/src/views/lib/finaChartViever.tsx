@@ -4,18 +4,36 @@ import {
   execFinaDataQueries,
   format_datas
 } from '@/emon-tools-api/dataViewerApi';
-import { FinaSourceProps, SelectedFileItem, useDataViewer } from '@/stores/dataViewerStore';
+import { useDataViewer } from '@/stores/dataViewerStore';
 import clsx from 'clsx';
 import { FeedLineChart } from '@/components/fina_viewer/feedChart';
 import { ChartTopMenu } from './chartTopMenu';
-import Ut from '@/utils/utils';
+import Ut from '@/helpers/utils';
 import { Skeleton } from '@/components/ui/skeleton';
+import { useShallow } from 'zustand/react/shallow'
+import { Suspense } from 'react';
+import { FinaSourceProps, SelectedFileItem } from '@/lib/graphTypes';
 
 type FinaChartViewerProps = {
   source: FinaSourceProps,
   selected_feeds: SelectedFileItem[]
   classBody?: string;
 }
+
+const GraphLoader = () => {
+  return(
+    <>
+      <div className='w-full min-h-[400px] p-4'>
+        <Skeleton className="h-full w-full rounded-xl" />
+      </div>
+      <div className="w-full h-20 p-4">
+        <Skeleton className="h-full w-full rounded-xl" />
+      </div>
+    </>
+  )
+}
+
+
 
 export function FinaChartViewer({
   source,
@@ -66,19 +84,13 @@ export function FinaChartViewer({
       }
     });
 
-    if(!has_selected_feeds){
+    if(!has_selected_feeds || leftGraph.pending || rightGraph.pending){
       return (
-        <>
-          <div className='w-full min-h-[400px] p-4'>
-            <Skeleton className="h-full w-full rounded-xl" />
-          </div>
-          <div className="w-full h-20 p-4">
-            <Skeleton className="h-full w-full rounded-xl" />
-          </div>
-        </>
+        <GraphLoader />
       )
     }
-
+    const data_points = format_datas(leftGraph.data ?? [], rightGraph.data ?? [])
+    //set_data_points(data_points)
     return (
       <>
         <div className='w-full h-full'>
