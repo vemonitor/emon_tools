@@ -35,7 +35,7 @@ export const initialNavGaph = {
   can_zoom_out: true,
   can_go_start: true,
   can_go_end: true,
-  zoom_level: 0.25,
+  zoom_level: 0.5,
   move_level: 0.25,
 } as NavigationMenu
 
@@ -47,7 +47,7 @@ export const initialNavView = {
   can_zoom_out: false,
   can_go_start: false,
   can_go_end: false,
-  zoom_level: 0.25,
+  zoom_level: 0.5,
   move_level: 0.25,
 } as NavigationMenu
 
