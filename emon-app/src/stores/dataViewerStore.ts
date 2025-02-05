@@ -90,7 +90,6 @@ type DataViewerStore = {
     selector: GraphSelector,
     zoom: GraphZoom,
     nav_graph: NavigationMenu,
-    nav_view: NavigationMenu,
     can_zoom_view:  boolean,
     is_view_zoomed:  boolean,
     connect_nulls: boolean,
@@ -106,7 +105,7 @@ type DataViewerStore = {
     set_refAreaLeft: (value: number) => void,
     set_refAreaRight: (value: number) => void,
     zoom_view: (data: LineChartDataProps) => void,
-    zoom_out_view: () => void,
+    reload_view: () => void,
     toggle_can_zoom_view: () => void,
     reload: () => void,
     go_back: () => void,
@@ -114,6 +113,7 @@ type DataViewerStore = {
     go_start: () => void,
     go_end: () => void,
     zoom_graph: () => void,
+    reset_graph: () => void,
     zoom_in: () => void,
     zoom_out: () => void,
     reset_store: () => void,
@@ -134,7 +134,6 @@ DataViewerStore
       selector: initialSelector,
       zoom: initialZoom,
       nav_graph: initialNavGaph,
-      nav_view: initialNavView,
       can_zoom_view:  false,
       is_view_zoomed:  false,
       connect_nulls: false,
@@ -221,6 +220,15 @@ DataViewerStore
           time_window: time_window
         }
       }, undefined, 'DataViewer/zoom_graph'),
+      reset_graph: () => set(() => (
+          { 
+            selector: initialSelector,
+            nav_graph: initialNavGaph,
+            time_start: 0,
+            time_window: 0,
+            interval: 0
+          }
+      ), undefined, 'DataViewer/reset_graph'),
       zoom_view: (data: LineChartDataProps) => set((state) => {
         let { refAreaLeft, refAreaRight } = state.selector;
         if (refAreaLeft === refAreaRight || refAreaRight === 0) {
@@ -262,28 +270,32 @@ DataViewerStore
           }
         }
       }, undefined, 'DataViewer/zoom_view'),
-      zoom_out_view: () => set(() => {
+      reload_view: () => set(() => {
         return{
           is_view_zoomed: false,
           zoom: initialZoom,
           selector: initialSelector,
-          nav_view: initialNavView
+          nav_graph: initialNavView
         }
-      }, undefined, 'DataViewer/zoom_out_view'),
+      }, undefined, 'DataViewer/reload_view'),
       toggle_can_zoom_view: () => set((state) => {
-          return {
-            nav_graph: initialNavGaph,
-            nav_view: initialNavView,
-            can_zoom_view: state.can_zoom_view === true ? false : true
-          }
+        const currentState = state.can_zoom_view === true
+        if(currentState === false){
+          state.reload_view()
+          return {can_zoom_view: true}
+        }
+        return {
+          nav_graph: initialNavGaph,
+          can_zoom_view: currentState ? false : true
+        }
       }, undefined, 'DataViewer/toggle_can_zoom_view'),
       reload: () => set((state) => {
         if(state.can_zoom_view === true){
-          state.zoom_out_view()
+          state.reload_view()
           return {}
         }
-        const zoom = setZoom.get_interval_by_window(state.time_window)
-        return{ time_start: state.time_start - zoom.moveBy }
+        state.reset_graph()
+        return {}
       }, undefined, 'DataViewer/reload'),
       go_back: () => set((state) => {
         if(state.can_zoom_view === true){
@@ -364,8 +376,7 @@ DataViewerStore
           time_start: 0,
           //time_window: 0,
           //interval: 0,
-          nav_graph: initialNavGaph,
-          nav_view: initialNavView,
+          nav_graph: initialNavGaph
           
       }), undefined, 'DataViewer/reset_store')
 })
