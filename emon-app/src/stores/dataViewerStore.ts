@@ -74,10 +74,6 @@ export type GraphZoom = {
 }
 
 export const initialZoom = {
-  left: 'dataMin',
-  right: 'dataMax',
-  refAreaLeft: 0,
-  refAreaRight: 0,
   topLeft: 'dataMax+0.5',
   bottomLeft: 'dataMin-0.5',
   topRight: 'dataMax+0.5',
