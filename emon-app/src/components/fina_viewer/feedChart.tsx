@@ -41,7 +41,11 @@ type FeedLineChartProps = {
 const getCurrentDomain = (data: GraphDataProps[], left: number, right: number) => {
   if (!data || !data.length ) {return [];}
   const is_domain = !(!Ut.isNumber(left) && !Ut.isNumber(right))
-  return is_domain ? [new Date(left * 1000), new Date(right * 1000)] : [new Date(data[0].date * 1000), new Date(data[data.length - 1].date * 1000)];
+  return is_domain ? [
+    new Date(left * 1000), new Date(right * 1000)
+  ] : [
+    new Date((data[0]?.date ?? 0) * 1000), new Date((data[data.length - 1]?.date ?? 0) * 1000)
+  ];
 }
 
 const getTicks = (data: GraphDataProps[], left: number, right: number) => {
