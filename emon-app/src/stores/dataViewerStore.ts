@@ -1,22 +1,9 @@
-import { GraphDataProps, LineChartDataProps } from '@/components/fina_viewer/feedChart'
-import { FeedMetaOut } from '@/emon-tools-api/dataViewerApi'
-import Ut from '@/utils/utils'
+import { LineChartDataProps } from '@/components/fina_viewer/feedChart'
+import { GraphHelper } from '@/helpers/graphHelper'
+import Ut from '@/helpers/utils'
+import { FinaSourceProps, SelectedFileItem } from '@/lib/graphTypes'
 import { create, StateCreator } from 'zustand'
 import { devtools } from 'zustand/middleware'
-
-export type FinaSourceProps = "emoncms" | "archive"
-
-export type GraphLocationProps = "left" | "right"
-
-export type SelectedFeedsProps = {file_name: string, position: GraphLocationProps}
-
-export type SelectedFileItem = {
-  is_checked: boolean;
-  item_id: string;
-  side: GraphLocationProps;
-  name: string;
-  meta: FeedMetaOut;
-}
 
 export type VerticalRange = {
   left_top: number[], left_bottom: number[], right_top: number[], right_bottom: number[]
