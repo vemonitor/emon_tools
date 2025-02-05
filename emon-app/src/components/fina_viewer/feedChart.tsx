@@ -160,7 +160,7 @@ export function FeedLineChart({
     <>
       <div
         className={clsx(
-          'w-full flex items-start justify-start gap-2 h-full select-none',
+          'w-full flex flex-col items-start justify-start gap-2 h-full select-none',
           classBody)}
       >
        <ResponsiveContainer
