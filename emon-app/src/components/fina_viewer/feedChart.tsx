@@ -18,6 +18,7 @@ import { scaleTime } from 'd3-scale';
 import { utcFormat } from 'd3-time-format';
 import { utcHour, utcSecond, utcMinute, utcDay, utcMonth, utcYear, utcWeek } from 'd3-time';
 import { SelectedFileItem } from '@/lib/graphTypes';
+import ChartInfo from './chartInfo';
 export type GraphLocationProps = "left" | "right"
 
 export type GraphDataProps = {[key: string]: number | null}
@@ -90,6 +91,7 @@ export function FeedLineChart({
   const set_refAreaRight = useDataViewer((state) => state.set_refAreaRight)
   const zoom_view = useDataViewer((state) => state.zoom_view)
   const zoom_graph = useDataViewer((state) => state.zoom_graph)
+  
   const {
     topLeft, bottomLeft,
     topRight, bottomRight
@@ -162,99 +164,107 @@ export function FeedLineChart({
 
     return null;
   };
-
   return (
     <>
       <div
         className={clsx(
-          'w-full flex flex-col items-start justify-start gap-2 h-full select-none',
+          'w-full flex flex-col items-start justify-start gap-0 h-full',
           classBody)}
       >
-       <ResponsiveContainer
-          width="100%"
-          height={800}
-          className='min-h-96 w-full'
-        >
-          <ComposedChart
-            width={800}
-            height={800}
-            data={data_points?.data}
-            onMouseDown={(e) => set_refAreaLeft(Number(e.activeLabel) || 0)}
-            onMouseMove={(e) => refAreaLeft && set_refAreaRight(Number( e.activeLabel) || 0)}
-            onMouseUp={()=>can_zoom_view ? zoom_view(data_points) : zoom_graph()}
+        <div className='w-full h-full select-none'>
+          <ResponsiveContainer
+            width="100%"
+            height={750}
+            className='min-h-96 w-full'
           >
-            <CartesianGrid strokeDasharray="3 2 1" opacity={0.2} />
-            <XAxis
-              dataKey="date"
-              type="number"
-              label="Date"
-              domain={[left, right]}
-              allowDataOverflow
-              includeHidden
-              height={200}
-              angle={45}
-              scale={'time'}
-              ticks={getTicks(data_points?.data, left, right)}///data_points?.data, interval)}
-              textAnchor="start"
-              tickFormatter={(value: number) => {
-                return dateFormat(value)
-              }}
-            />
-            <YAxis
-              yAxisId='left'
-              type="number"
-              orientation='left'
-              scale={'linear'}
-              domain={[bottomLeft, topLeft]}
-            />
-            <YAxis
-              yAxisId='right'
-              type="number"
-              orientation='right'
-              scale={'linear'}
-              domain={[bottomRight, topRight]}
-              allowDataOverflow
-            />
-            <Legend verticalAlign="top" height={36} />
-            <Tooltip content={CustomTooltip}/>
-            {data_points && Ut.isArray(data_points.feeds) && data_points.feeds && data_points.feeds.length > 0 ? (
+            <ComposedChart
+              width={800}
+              height={720}
+              data={data_points?.data}
+              onMouseDown={(e) => set_refAreaLeft(Number(e.activeLabel) || 0)}
+              onMouseMove={(e) => refAreaLeft && set_refAreaRight(Number( e.activeLabel) || 0)}
+              onMouseUp={()=>can_zoom_view ? zoom_view(data_points) : zoom_graph()}
               
-              data_points.feeds.map((item, index) => [
-                  <Area
-                    key={`${index}_range`}
-                    legendType='none'
-                    type="linear"
-                    dataKey={`${item.feed_id}_range`}
-                    yAxisId={item.location}
-                    stroke="none"
-                    fill="#ccc"
-                    dot={false}
-                    activeDot={false}
-                    connectNulls={connect_nulls}
-                    opacity={0.4}
-                    animationDuration={300}
-                  />,
-                  <Line
-                    key={`${index}_line`}
-                    
-                    connectNulls={connect_nulls}
-                    dataKey={item.feed_id}
-                    yAxisId={item.location}
-                    type="linear"
-                    stroke="#8884d8"
-                    strokeWidth={2}
-                    dot={false}
-                    animationDuration={300}
-                  />
-
+            >
+              <CartesianGrid strokeDasharray="3 2 1" opacity={0.2} />
+              <XAxis
+                dataKey="date"
+                type="number"
+                label="Date"
+                domain={[left, right]}
+                allowDataOverflow
+                includeHidden
+                height={220}
+                angle={45}
+                scale={'time'}
+                ticks={getTicks(data_points?.data, left, right)}///data_points?.data, interval)}
+                interval={5}
+                textAnchor="start"
+                tickFormatter={(value: number) => {
+                  return dateFormat(value)
+                }}
+              />
+              <YAxis
+                yAxisId='left'
+                type="number"
+                orientation='left'
+                scale={'linear'}
+                domain={[bottomLeft, topLeft]}
+              />
+              <YAxis
+                yAxisId='right'
+                type="number"
+                orientation='right'
+                scale={'linear'}
+                domain={[bottomRight, topRight]}
+                allowDataOverflow
+              />
+              <Legend verticalAlign="top" height={36} />
+              <Tooltip content={CustomTooltip}/>
+              {data_points && Ut.isArray(data_points.feeds) && data_points.feeds && data_points.feeds.length > 0 ? (
                 
-              ])
-            ) : (null) }
-            {refAreaLeft && refAreaRight ? (
-              <ReferenceArea yAxisId="left" x1={refAreaLeft} x2={refAreaRight} stroke="#8884d8" strokeOpacity={0.6} />
-            ) : null}
-          </ComposedChart>
-        </ResponsiveContainer>
+                data_points.feeds.map((item, index) => [
+                    <Area
+                      key={`${index}_range`}
+                      legendType='none'
+                      type="linear"
+                      dataKey={`${item.feed_id}_range`}
+                      yAxisId={item.location}
+                      stroke="none"
+                      fill="#ccc"
+                      dot={false}
+                      activeDot={false}
+                      connectNulls={connect_nulls}
+                      opacity={0.4}
+                      animationDuration={300}
+                    />,
+                    <Line
+                      key={`${index}_line`}
+                      
+                      connectNulls={connect_nulls}
+                      dataKey={item.feed_id}
+                      yAxisId={item.location}
+                      type="linear"
+                      stroke="#8884d8"
+                      strokeWidth={2}
+                      dot={false}
+                      animationDuration={300}
+                    />
+
+                  
+                ])
+              ) : (null) }
+              {refAreaLeft && refAreaRight ? (
+                <ReferenceArea yAxisId="left" x1={refAreaLeft} x2={refAreaRight} stroke="#8884d8" strokeOpacity={0.6} />
+              ) : null}
+            </ComposedChart>
+          </ResponsiveContainer>
+        </div>
+        <div className='flex justify-between px-4'>
+          <ChartInfo
+            currentDomain={getCurrentDomain(data_points?.data, left, right)}
+          />
+        </div> 
       </div>
     </>
     
