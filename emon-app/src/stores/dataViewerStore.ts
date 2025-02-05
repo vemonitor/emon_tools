@@ -327,14 +327,40 @@ DataViewerStore
         return{ time_start: state.time_start + Math.ceil(( state.time_window) * state.nav_graph.move_level) }
       }, undefined, 'DataViewer/go_after'),
       go_start: () => set((state) => {
-        state.zoom_out_view()
-        const zoom = setZoom.get_interval_by_window(state.time_window)
-        return{ time_start: state.time_start }
+        if(state.selected_feeds.length > 0){
+          const currents = state.selected_feeds.filter(item => item.meta.start_time === state.time_start)
+          if(currents.length > 0){
+            const nexts = state.selected_feeds.filter(item => item.meta.start_time !== state.time_start)
+            if(nexts.length > 0){
+              return {
+                time_start: nexts[0].meta.start_time
+              }
+            }
+            return {}
+          }
+          return {
+            time_start: state.selected_feeds[0].meta.start_time
+          }
+        }
+        return {}
       }, undefined, 'DataViewer/go_start'),
       go_end: () => set((state) => {
-        state.zoom_out_view()
-        const zoom = setZoom.get_interval_by_window(state.time_window)
-        return{ time_start: state.time_start + state.time_start }
+        if(state.selected_feeds.length > 0){
+          const currents = state.selected_feeds.filter(item => item.meta.end_time === state.time_start + state.time_window)
+          if(currents.length > 0){
+            const nexts = state.selected_feeds.filter(item => item.meta.end_time !== state.time_start + state.time_window)
+            if(nexts.length > 0){
+              return {
+                time_start: nexts[0].meta.end_time - state.time_window
+              }
+            }
+            return {}
+          }
+          return {
+            time_start: state.selected_feeds[0].meta.end_time - state.time_window
+          }
+        }
+        return {}
       }, undefined, 'DataViewer/go_end'),
       zoom_in: () => set((state) => {
         state.zoom_out_view()
