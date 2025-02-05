@@ -301,7 +301,7 @@ DataViewerStore
       go_back: () => set((state) => {
         if(state.can_zoom_view === true){
           if(Ut.isNumber(state.selector.left)){
-            const move = Math.ceil(Number(state.selector.left) * 25 / 100)
+            const move = Math.ceil(Number(state.selector.left) * state.nav_graph.move_level)
             return {selector: {
               ...initialSelector,
               left: Number(state.selector.left) - move,
@@ -310,14 +310,12 @@ DataViewerStore
           }
           return {}
         }
-        state.zoom_out_view()
-        const zoom = setZoom.get_interval_by_window(state.time_window)
-        return{ time_start: state.time_start - zoom.moveBy }
+        return{ time_start: state.time_start - Math.ceil(( state.time_window) * state.nav_graph.move_level) }
       }, undefined, 'DataViewer/go_back'),
       go_after: () => set((state) => {
         if(state.can_zoom_view === true){
           if(Ut.isNumber(state.selector.right)){
-            const move = Math.ceil(Number(state.selector.right) * 25 / 100)
+            const move = Math.ceil(Number(state.selector.right) * state.nav_graph.move_level)
             return {selector: {
               ...initialSelector,
               left: Number(state.selector.left) - move,
@@ -326,9 +324,7 @@ DataViewerStore
           }
           return {}
         }
-        state.zoom_out_view()
-        const zoom = setZoom.get_interval_by_window(state.time_window)
-        return{ time_start: state.time_start + zoom.moveBy }
+        return{ time_start: state.time_start + Math.ceil(( state.time_window) * state.nav_graph.move_level) }
       }, undefined, 'DataViewer/go_after'),
       go_start: () => set((state) => {
         state.zoom_out_view()
