@@ -11,7 +11,7 @@ import {
 } from "@/components/ui/select";
 import { Separator } from '@/components/ui/separator';
 import { Toggle } from '@/components/ui/toggle';
-import { setZoom, useDataViewer } from '@/stores/dataViewerStore';
+import { GraphHelper } from '@/helpers/graphHelper';
 import clsx from 'clsx';
 import { ArrowLeftFromLine, ArrowLeftToLine, ArrowRightFromLine, ArrowRightToLine, ChartSpline, Eye, RotateCw, SearchCode, Unplug, ZoomIn, ZoomOut } from 'lucide-react';
 
@@ -221,7 +221,7 @@ export function ZoomSelector({
       >
       </Input>
       <Select
-        value={setZoom.get_zoom_by_window(time_window).time_window.toString()}
+        value={GraphHelper.get_zoom_by_window(time_window).time_window.toString()}
         onValueChange={handleSelectChange}
       >
         <SelectTrigger className="w-[180px]">
@@ -230,8 +230,8 @@ export function ZoomSelector({
         <SelectContent className={classBody}>
           <SelectGroup>
             <SelectLabel>Zoom</SelectLabel>
-            {setZoom.get_static_zooms()
-              .filter(val => val.time_window >= 1800 && val.time_window <= 62899200)
+            {GraphHelper.get_static_zooms()
+              //.filter(val => val.time_window >= 1800 && val.time_window <= 62899200)
               .map((val, index) => {
                 return (<SelectItem key={index} value={val.time_window.toString()}>{val.label}</SelectItem>)
               })
