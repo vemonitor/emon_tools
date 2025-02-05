@@ -217,7 +217,8 @@ DataViewerStore
             can_zoom_out: true
           },
           time_start: refAreaLeft,
-          time_window: time_window
+          time_window: time_window,
+          interval: zoom.interval
         }
       }, undefined, 'DataViewer/zoom_graph'),
       reset_graph: () => set(() => (
