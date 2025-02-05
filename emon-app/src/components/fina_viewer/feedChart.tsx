@@ -35,6 +35,40 @@ type FeedLineChartProps = {
   classBody?: string;
 }
 
+const getCurrentDomain = (data: GraphDataProps[], left: number, right: number) => {
+  if (!data || !data.length ) {return [];}
+  const is_domain = !(!Ut.isNumber(left) && !Ut.isNumber(right))
+  return is_domain ? [new Date(left * 1000), new Date(right * 1000)] : [new Date(data[0].date * 1000), new Date(data[data.length - 1].date * 1000)];
+}
+
+const getTicks = (data: GraphDataProps[], left: number, right: number) => {
+	if (!data || !data.length ) {return [];}
+  const domain = getCurrentDomain(data, left, right);
+  const scale = scaleTime().domain(domain).range([0, 1]);
+  const ticks = scale.ticks(48)///timeMinute.every(60)); //scale.ticks(timeMinute.every(20));
+  
+  return ticks.map((entry: Date) => entry.getTime() / 1000);
+};
+
+const formatMillisecond = utcFormat(".%L"),
+    formatSecond = utcFormat("%I:%M:%S"),
+    formatMinute = utcFormat("%a %d %I:%M:%S"),
+    formatHour = utcFormat("%a %d %H:%M"),
+    formatDay = utcFormat("%b %a %d %H"),
+    formatWeek = utcFormat("%b %d"),
+    formatMonth = utcFormat("%B"),
+    formatYear = utcFormat("%Y");
+const dateFormat = (time: number) => {
+  const date = new Date(time * 1000)
+	return (utcSecond(date) < date ? formatMillisecond
+      : utcMinute(date) < date ? formatSecond
+      : utcHour(date) < date ? formatMinute
+      : utcDay(date) < date ? formatHour
+      : utcMonth(date) < date ? (utcWeek(date) < date ? formatDay : formatWeek)
+      : utcYear(date) < date ? formatMonth
+      : formatYear)(date);
+};
+
 export function FeedLineChart({
   data_points,
   time_start,
