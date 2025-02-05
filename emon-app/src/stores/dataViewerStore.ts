@@ -363,7 +363,7 @@ DataViewerStore
         return {}
       }, undefined, 'DataViewer/go_end'),
       zoom_in: () => set((state) => {
-        state.zoom_out_view()
+        const move = Math.ceil(state.time_window * state.nav_graph.zoom_level)
         const zoom = GraphHelper.zoom_in(state.time_window - move)
         return ({
           nav_graph: {
@@ -377,7 +377,7 @@ DataViewerStore
         })
       }, undefined, 'DataViewer/zoom_in'),
       zoom_out: () => set((state) => {
-        state.zoom_out_view()
+        const move = Math.ceil(state.time_window * state.nav_graph.zoom_level)
         const zoom = GraphHelper.zoom_out(state.time_window + move)
         return ({
           nav_graph: {
