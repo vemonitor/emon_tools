@@ -183,12 +183,14 @@ export function FeedLineChart({
               label="Date"
               domain={[left, right]}
               allowDataOverflow
+              includeHidden
               height={200}
               angle={45}
               scale={'time'}
+              ticks={getTicks(data_points?.data, left, right)}///data_points?.data, interval)}
               textAnchor="start"
               tickFormatter={(value: number) => {
-                return setZoom.get_value_date_by_window(value, time_window)
+                return dateFormat(value)
               }}
             />
             <YAxis
