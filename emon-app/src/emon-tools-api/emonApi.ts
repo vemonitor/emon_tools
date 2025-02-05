@@ -1,5 +1,5 @@
-import Ut from '@/utils/utils';
-import { getWithFetch } from '../utils/fetcherWithFetch';
+import Ut from '@/helpers/utils';
+import { getWithFetch } from '../helpers/fetcher';
 import { yearsToDays } from 'date-fns';
 
 
