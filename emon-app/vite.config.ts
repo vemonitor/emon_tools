@@ -11,6 +11,7 @@ export default defineConfig({
       "@": path.resolve(__dirname, "./src"),
     },
   },
+  envDir: "../env",
   test: {
     globals: true,             // Enables global variables like describe, it, and expect
     environment: 'jsdom',      // Use jsdom to simulate a browser environment
