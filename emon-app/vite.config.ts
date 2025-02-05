@@ -11,4 +11,11 @@ export default defineConfig({
       "@": path.resolve(__dirname, "./src"),
     },
   },
+  test: {
+    globals: true,             // Enables global variables like describe, it, and expect
+    environment: 'jsdom',      // Use jsdom to simulate a browser environment
+    setupFiles: './src/setupTests.ts', // Optional: A setup file for extending matchers, etc.
+    // You can also add include/exclude settings if needed:
+    include: ['**/*.{test,spec}.{ts,tsx}'],
+  },
 })
