@@ -1,14 +1,8 @@
-import Ut from '@/utils/utils';
-import { getWithFetch } from '../utils/fetcherWithFetch';
+import Ut from '@/helpers/utils';
+import { getWithFetch } from '../helpers/fetcher';
 import { UseQueryResult } from '@tanstack/react-query';
 import { GraphDataProps, GraphFeedProps, GraphLocationProps, LineChartDataProps } from '@/components/fina_viewer/feedChart';
-import { FinaSourceProps, SelectedFileItem } from '@/stores/dataViewerStore';
-
-
-
-export type DataViewerProps = {
-  source: FinaSourceProps
-}
+import { FinaSourceProps, SelectedFileItem } from '@/lib/graphTypes';
 
 export interface ExecQueriesParams {
   file_name: string;
@@ -32,18 +26,8 @@ export type combineResultsOut = {
   error: any[]
 }
 
-export type FeedMetaResponse = {
-  success: boolean,
-  feed_id: number,
-  data: FeedMetaOut[]
-}
 
-export type FeedMetaOut = {
-  start_time: number,
-  end_time: number,
-  npoints: number,
-  interval: number
-}
+
 
 export const getFinaFiles = (source: FinaSourceProps) => {
     return {
