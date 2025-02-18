@@ -1,24 +1,23 @@
 """
 Common utilities for Fina Files processing.
 """
-from enum import Enum
 from typing import List
 from typing import Optional
 from typing import Union
 import logging
 import math
 import numpy as np
+import datetime as dt
+from emon_tools.emon_fina.fina_models import OutputAverageEnum
+from emon_tools.emon_fina.fina_models import OutputType
+from emon_tools.emon_fina.fina_models import FinaByDateParamsModel
+from emon_tools.emon_fina.fina_models import FinaByTimeParamsModel
+from emon_tools.emon_fina.fina_services import FinaOutputData
 from emon_tools.emon_fina.fina_utils import Utils as Ut
 from emon_tools.emon_fina.fina_reader import FinaReader
 
 logging.basicConfig()
 et_logger = logging.getLogger(__name__)
-
-
-class StatsType(Enum):
-    """Remove Nan Method Enum"""
-    VALUES = "values"
-    INTEGRITY = "integrity"
 
 
 class FinaData:
@@ -43,12 +42,7 @@ class FinaData:
 
     def _read_direct_values(
         self,
-        start: int,
-        step: int,
-        npts: int,
-        interval: int,
-        window: int,
-        set_pos: bool
+        props: FinaByTimeParamsModel
     ) -> np.ndarray:
         """
         Read raw values when the step interval is less than or equal
@@ -77,182 +71,360 @@ class FinaData:
             - Values are read in chunks determined
               by `calculate_optimal_chunk_size`.
         """
-        result = np.full(npts, np.nan)
-        self.end = start + (npts - 1) * step
-        start_pos = (start - self.meta.start_time) // interval
+        if props.output_type in (
+            OutputType.VALUES_MIN_MAX,
+            OutputType.TIME_SERIES_MIN_MAX
+        ):
+            raise ValueError(
+                "Invalid output type, only 'VALUES' and 'TIME_SERIES' "
+                "can be selected when interval is same as meta interval."
+            )
+        # initialise reader props
+        self.reader.initialise_reader(
+            meta=self.meta,
+            props=props,
+            auto_pos=False
+        )
 
-        reader_props = {
-            "npoints": self.meta.npoints,
-            "start_pos": start_pos,
-            "chunk_size": self.calculate_optimal_chunk_size(window=window),
-            "window": window,
-            "set_pos": set_pos,
-        }
-
-        nb_filled = 0
-        for _, values in self.reader.read_file(**reader_props):
+        # Initialize result storage and day boundaries
+        nb_filled, result = self._initialize_result()
+        for _, values in self.reader.read_file():
             available = values.shape[0]
-            remaining = npts - nb_filled
+            remaining = self.reader.props.window_max - nb_filled
 
             if remaining <= 0:
                 break
 
             to_copy = min(available, remaining)
-            result[nb_filled:nb_filled + to_copy] = values[:to_copy]
+            result[nb_filled:nb_filled + to_copy] = values[:to_copy].reshape(
+                (-1, 1))
             nb_filled += to_copy
-
-        self.start, self.step, self.lines = start, step, result.size
+        self.start = self.reader.props.search.start_time
+        self.step = self.reader.props.search.time_interval
+        self.lines = result.size
+        if props.output_type == OutputType.TIME_SERIES:
+            result = np.column_stack((self.timestamps(), result))
         return result
 
-    def _read_averaged_values(
+    def _process_chunk(
         self,
-        start: int,
-        step: int,
-        npts: int,
-        interval: int,
-        window: int,
-        with_stats: bool = False
+        values: np.ndarray,
+        current_step_start: int,
+        min_value: Optional[Union[int, float]],
+        max_value: Optional[Union[int, float]],
+        output_type: OutputType = OutputType.VALUES
     ) -> np.ndarray:
         """
-        Read and aggregate values over the given step intervals,
-        computing the minimum, mean, and maximum of the values within
-        each interval. Unlike earlier versions, the provided start time
-        is used as given (without alignment), and aggregation is done
-        for every step window. The first and last windows may be incomplete,
-        but statistics will be computed for the available samples.
+        Process data for a single step by filtering and computing statistics.
 
         Parameters:
-            start (int): Start time in seconds from the feed's start time.
-                        This value is used as provided.
-            step (int): Step interval in seconds for the data aggregation.
-                        (For example, 60 seconds for per-minute stats.)
-            npts (int): Number of aggregated data points (windows) to produce.
-            interval (int): Metadata interval in seconds.
-            window (int):
-                Total time window in seconds
-                (used for determining the optimal chunk size).
-            with_stats (bool):
-                If activated, compute statistics from aggregated data points.
-                return value as [min, value, max]
+            values (np.ndarray): Array of data values for the current step.
+            current_step_start (int): Start time of the current step.
+            min_value (Optional[Union[int, float]]):
+                Minimum valid value for filtering.
+            max_value (Optional[Union[int, float]]):
+                Maximum valid value for filtering.
+            output_type (OutputType):
+                Type of statistics to compute. Defaults to OutputType.VALUES.
+
         Returns:
-            np.ndarray: A NumPy array of shape (npts, 3) where each row
-                        contains [min_value, averaged_value, max_value]. Any
-                        window with no data will be left as NaN.
+            np.ndarray: Computed statistics for the current step.
         """
-        # ----------------------------------------------------------------
-        # 1. Determine the sample grouping for each aggregation window.
-        # ----------------------------------------------------------------
-        # The number of samples that ideally form a full step window.
-        step_factor = step // interval
+        filtered_values = Ut.filter_values_by_range(
+            values.copy(), min_value, max_value)
 
-        # Determine the reading starting position.
-        # (This is computed from the provided start value without alignment.)
-        start_pos = (start - self.meta.start_time) // interval
+        if output_type == OutputType.VALUES_MIN_MAX:
+            return FinaOutputData.get_values_stats(
+                values=filtered_values,
+                day_start=current_step_start,
+                with_stats=True,
+                with_time=False
+            )
 
-        # Compute the effective end time (for informational purposes).
-        self.end = start + ((npts - 1) * step)
+        if output_type == OutputType.TIME_SERIES:
+            return FinaOutputData.get_values_stats(
+                values=filtered_values,
+                day_start=current_step_start,
+                with_stats=False
+            )
 
-        # For the very first window, determine how many samples to use.
-        # If the provided start does not fall exactly on a step boundary,
-        # the first window will be incomplete.
-        offset_samples = (start - self.meta.start_time) // interval
-        remainder = offset_samples % step_factor
-        if remainder != 0:
-            first_window_needed = step_factor - remainder
-        else:
-            first_window_needed = step_factor
+        if output_type == OutputType.TIME_SERIES_MIN_MAX:
+            return FinaOutputData.get_values_stats(
+                values=filtered_values,
+                day_start=current_step_start,
+                with_stats=True
+            )
 
-        # ----------------------------------------------------------------
-        # 2. Initialize result array and buffer.
-        # ----------------------------------------------------------------
-        nb_cols = 1
-        if with_stats is True:
-            nb_cols = 3
-        result = np.full((npts, nb_cols), np.nan, dtype=np.float64)
-        # Use an explicitly empty array.
-        buffer = np.array([], dtype=np.float64)
+        if output_type == OutputType.INTEGRITY:
+            return FinaOutputData.get_integrity_stats(
+                values=filtered_values,
+                day_start=current_step_start
+            )
+        # By default return OutputType.VALUES
+        return FinaOutputData.get_values_stats(
+            values=filtered_values,
+            day_start=current_step_start,
+            with_stats=False,
+            with_time=False
+        )
 
-        # Compute an optimal chunk size.
-        # We use the step_factor as the divisor so that the chunk size is a
-        # multiple of the expected full-window sample count.
-        chunk_size = self.calculate_optimal_chunk_size(
-            window, divisor=step_factor)
+    def _trim_results(self, result):
+        """
+        Trim the result array to include only processed data.
 
-        windows_filled = 0
+        Parameters:
+            result (np.ndarray):
+                Array of computed results with potential NaN entries.
 
-        # Prepare reader properties.
-        reader_props = {
-            "npoints": self.meta.npoints,
-            "start_pos": start_pos,
-            "chunk_size": chunk_size,
-            "window": window,
-            "set_pos": True,
-        }
+        Returns:
+            List[List[Union[float, int]]]:
+                Trimmed result array as a list of lists.
+        """
+        finite_mask = np.isfinite(result[:, 0])
+        if not finite_mask.any():
+            return result
 
-        # ----------------------------------------------------------------
-        # 3. Read data in chunks and process windows sequentially.
-        # ----------------------------------------------------------------
-        for _, values in self.reader.read_file(**reader_props):
-            if values.size == 0:
-                continue  # Skip empty reads.
+        last_valid_index = len(result) - np.argmax(finite_mask[::-1]) - 1
+        return result[:last_valid_index + 1]
 
-            # Append new values to the buffer.
-            buffer = np.concatenate((buffer, values))
+    def _round_results(
+        self,
+        result: np.ndarray,
+        n_decimals: Optional[int] = 3
+    ):
+        """
+        Round the result array to the specified number of decimal places.
 
-            # Process the first window (if not already done).
-            if windows_filled == 0 and buffer.size > 0:
-                if buffer.size >= first_window_needed:
-                    current_window = buffer[:first_window_needed]
-                    # Compute statistics even if the window is incomplete.
-                    avg_val = np.nanmean(current_window)
-                    if with_stats is True:
-                        min_val = np.nanmin(current_window)
-                        max_val = np.nanmax(current_window)
-                        result[windows_filled, :] = [min_val, avg_val, max_val]
-                    else:
-                        result[windows_filled, :] = [avg_val]
-                    windows_filled += 1
-                    buffer = buffer[first_window_needed:]
-                # (If there isn’t enough data yet, wait for the next chunk.)
+        Parameters:
+            result (np.ndarray): Array of computed results to be rounded.
+            n_decimals (Optional[int]): Number of decimal places to round to.
+            Defaults to 3.
 
-            # Process subsequent full windows.
-            while windows_filled > 0\
-                    and windows_filled < npts and buffer.size >= step_factor:
-                current_window = buffer[:step_factor]
-                avg_val = np.nanmean(current_window)
-                if with_stats is True:
-                    min_val = np.nanmin(current_window)
-                    max_val = np.nanmax(current_window)
-                    result[windows_filled, :] = [min_val, avg_val, max_val]
-                else:
-                    result[windows_filled, :] = [avg_val]
-                windows_filled += 1
-                buffer = buffer[step_factor:]
-                # If we've produced all required windows, break out.
-                if windows_filled >= npts:
-                    break
-
-            if windows_filled >= npts:
-                break
-
-        # ----------------------------------------------------------------
-        # 4. Finalize processing: if the file ended but
-        #    a partial window remains, compute stats for the partial window.
-        # ----------------------------------------------------------------
-        if windows_filled < npts and buffer.size > 0:
-            current_window = buffer  # Use all remaining samples.
-            avg_val = np.nanmean(current_window)
-            if with_stats is True:
-                min_val = np.nanmin(current_window)
-                max_val = np.nanmax(current_window)
-                result[windows_filled, :] = [min_val, avg_val, max_val]
-            else:
-                result[windows_filled, :] = [avg_val]
-            windows_filled += 1
-
-        # (Any remaining windows beyond the available data remain as NaN.)
-        self.start, self.step, self.lines = start, step, npts
+        Returns:
+            np.ndarray: Rounded result array.
+        """
+        if n_decimals is not None:
+            # Apply rounding/flooring only to the data columns
+            if n_decimals == 0:
+                result[:] = np.floor(result[:]).astype(int)
+            elif n_decimals > 0:
+                result[:] = np.around(result[:], decimals=n_decimals)
         return result
+
+    def _initialize_result(
+        self
+    ):
+        """
+        Initialize the result array and calculate points per step.
+
+        Parameters:
+            window_search (int): Number of selected points to process.
+
+        Returns:
+            A numpy array initialized with NaN values to store results.
+        """
+        output_type = self.reader.props.search.output_type
+        average_output = self.reader.props.search.output_average
+        start_search = self.reader.props.start_search
+
+        window_max = self.reader.props.window_max
+        window_search = self.reader.props.window_search
+
+        block_size = self.reader.props.block_size
+        # npts_total = math.ceil(window_max / block_size)
+        npts_total = window_max // block_size
+        # if average_output == OutputAverageEnum.PARTIAL:
+        #    start = math.ceil(start_search / block_size)
+        #    end = window_max - window_search
+        #    npts_total -= abs(start + end)
+
+        array = FinaOutputData.init_stats(
+            output_type=output_type,
+            block_size=block_size
+        )
+        nb_cols = 1
+        if block_size > 1:
+            nb_cols = len(array)
+        result = np.full((npts_total, nb_cols), array)
+        steps = self.reader.props.get_initial_output_step()
+        if steps > 0:
+            for i in range(steps):
+                result[i, 0] = self.reader.props.current_start
+                self.reader.props.update_step_boundaries()
+        return steps, result
+
+    @staticmethod
+    def rechape_by_rows(
+        values: np.array,
+        block_size: int,
+        current_size: int,
+        output_average: OutputAverageEnum,
+        rest_array: np.array
+    ):
+        """
+        Reshape a 1D numpy array into a 2D array with a specified number
+        of columns, and return the remaining elements as a separate 1D array.
+
+        If the provided rest_array is non-empty, it is concatenated
+        with a copy of the values array before reshaping.
+        This ensures that the original input array remains unchanged.
+
+        Parameters:
+            values (np.array): The input 1D numpy array to be reshaped.
+            N (int): The number of columns for the reshaped 2D array.
+            rest_array (np.array):
+                An array containing leftover elements
+                from a previous operation.
+
+        Returns:
+            tuple:
+                A tuple containing the reshaped 2D numpy array
+                and the remaining 1D numpy array.
+        """
+        # Work on a copy to avoid modifying the original array.
+        values_copy = values.copy()
+
+        # If rest_array is non-empty, concatenate it with the copied values.
+        if rest_array is not None and rest_array.size > 0:
+            combined = np.concatenate((rest_array, values_copy))
+        else:
+            combined = values_copy
+
+        if block_size != current_size:
+            if output_average == OutputAverageEnum.COMPLETE:
+                return np.array([]), combined[current_size:]
+            if output_average == OutputAverageEnum.PARTIAL:
+                diff = block_size - current_size
+                tmp = np.full((1, block_size), [np.nan])
+                tmp[:, diff:] = combined[:current_size]
+                return tmp, combined[current_size:]
+            if output_average == OutputAverageEnum.AS_IS:
+                diff = block_size - current_size
+                tmp = np.full((1, block_size), [np.nan])
+                tmp[:, diff:] = combined[:current_size]
+                return tmp, combined[current_size:]
+        # Determine the number of complete rows that can be formed.
+        num_full_rows = len(combined) // block_size
+
+        # Create the 2D array from the first num_full_rows * N elements.
+        array_2d = combined[:num_full_rows * block_size].reshape(
+            num_full_rows, block_size)
+
+        # Extract the remaining elements as the new rest_array.
+        new_rest_array = combined[num_full_rows * block_size:]
+
+        return array_2d, new_rest_array
+
+    def _get_averaged_values(
+        self,
+        props: FinaByTimeParamsModel
+    ) -> List[List[Union[float, int]]]:
+        """
+        Compute daily statistics from PhpFina file data.
+
+        props Parameters:
+            start_time (Optional[int]):
+                Start time in seconds from the beginning of the file.
+                Defaults to 0.
+            steps_window (int):
+                Number of steps to process. Use -1 to process all data.
+                Defaults to -1.
+            max_size (int):
+                Maximum number of data points to process in one call.
+                Defaults to 5,000,000.
+            min_value (Optional[Union[int, float]]):
+                Minimum valid value for filtering.
+            max_value (Optional[Union[int, float]]):
+                Maximum valid value for filtering.
+            output_type (OutputType):
+                Type of statistics to compute. Defaults to OutputType.VALUES.
+
+        Returns:
+            List[List[Union[float, int]]]:
+                A list of daily statistics where each entry contains:
+                - OutputType.VALUES:
+                    [
+                        day_start, min_value, mean_value, max_value
+                    ].
+                - OutputType.INTEGRITY:
+                    [
+                        day_start, finite_count, total_count
+                    ].
+        """
+        # initialise reader props
+        self.reader.initialise_reader(
+            meta=self.meta,
+            props=props,
+            auto_pos=False
+        )
+        # Initialize result storage and day boundaries
+        steps, result = self._initialize_result()
+        nb_result = result.shape[0]
+        # ToDo: init start nan's if any
+        # Process data in chunks
+        rest_array = None
+        for _, values in self.reader.read_file():
+
+            if values.shape[0] <= 0:
+                break
+            current_steps, rest_array = self.rechape_by_rows(
+                values=values,
+                block_size=self.reader.props.block_size,
+                current_size=self.reader.props.current_window,
+                output_average=self.reader.props.search.output_average,
+                rest_array=rest_array
+            )
+            if current_steps.shape[0] > 0:
+                for i in range(current_steps.shape[0]):
+                    if steps >= nb_result:
+                        break
+                    result[steps] = self._process_chunk(
+                        values=current_steps[i],
+                        current_step_start=self.reader.props.current_start,
+                        min_value=props.min_value,
+                        max_value=props.max_value,
+                        output_type=props.output_type
+                    )
+
+                    # Update step boundaries for next iteration
+                    steps += 1
+                    # update reader params
+                    self.reader.props.update_step_boundaries()
+            else:
+                self.reader.props.update_step_boundaries()
+            # else:
+                # update reader params
+            #    self.reader.props.iter_update_after()
+            self.reader.props.get_chunk_size(
+                bypass_min=False
+            )
+            self.reader.props.iter_update_after()
+
+        if rest_array.shape[0] > 0:
+            current_steps, rest_array = self.rechape_by_rows(
+                values=rest_array,
+                block_size=self.reader.props.block_size,
+                current_size=self.reader.props.current_window,
+                output_average=self.reader.props.search.output_average,
+                rest_array=None
+            )
+            for i in range(current_steps.shape[0]):
+                if steps >= nb_result:
+                    break
+                result[steps] = self._process_chunk(
+                    values=current_steps[i],
+                    current_step_start=self.reader.props.current_start,
+                    min_value=props.min_value,
+                    max_value=props.max_value,
+                    output_type=props.output_type
+                )
+
+                # Update step boundaries for next iteration
+                steps += 1
+                # update reader params
+                self.reader.props.update_step_boundaries()
+        # Trim and return results
+        return self._trim_results(result)
 
     def reset(self):
         """
@@ -281,6 +453,7 @@ class FinaData:
         self.start: Optional[int] = None
         self.end: Optional[int] = None
         self.step: Optional[int] = None
+        self.reader.props = None
 
     def timescale(self) -> np.ndarray:
         """
@@ -338,11 +511,7 @@ class FinaData:
 
     def read_fina_values(
         self,
-        start: int,
-        step: int,
-        window: int,
-        set_pos: bool = True,
-        with_stats: bool = False
+        props: FinaByTimeParamsModel
     ) -> np.ndarray:
         """
         Read values from the Fina data file, either directly or averaged,
@@ -377,38 +546,27 @@ class FinaData:
               averaging within step intervals is performed
               for efficiency and clarity.
         """
-        if start >= self.meta.end_time:
+        if props.start_time >= self.meta.end_time:
             raise ValueError(
                 "Invalid start value. "
                 "Start must be less than the feed's end time "
                 "defined by start_time + (npoints * interval) from metadata."
             )
-
         interval = self.meta.interval
-        window = min(window, self.length)
-        step = max(step, interval)
-        npts = window // step
-
+        # window = min(window, self.length)
+        step = max(props.time_interval, interval)
+        # npts = window // step
         if step <= interval:
             return self._read_direct_values(
-                start,
-                step,
-                npts,
-                interval,
-                window,
-                set_pos
+                props=props
             )
 
-        return self._read_averaged_values(
-            start, step, npts, interval, window, with_stats)
+        return self._get_averaged_values(
+            props=props)
 
     def get_fina_values(
         self,
-        start: int,
-        step: int,
-        window: int,
-        n_decimals: Optional[int] = 3,
-        with_stats: bool = False
+        props: FinaByTimeParamsModel
     ) -> np.ndarray:
         """
         Retrieve data values from the Fina data file
@@ -443,70 +601,20 @@ class FinaData:
             If the `start` time is invalid or exceeds the feed's end time.
         """
         result = self.read_fina_values(
-            start=start, step=step, window=window, with_stats=with_stats)
-        if n_decimals is not None:
-            # Apply rounding/flooring only to the data columns
-            if n_decimals == 0:
-                result[:] = np.floor(result[:]).astype(int)
-            elif n_decimals > 0:
-                result[:] = np.around(result[:], decimals=n_decimals)
+            props=props
+        )
+        # if n_decimals is not None:
+        #    # Apply rounding/flooring only to the data columns
+        #    if n_decimals == 0:
+        #        result[:] = np.floor(result[:]).astype(int)
+        #    elif n_decimals > 0:
+        #        result[:] = np.around(result[:], decimals=n_decimals)
 
         return result
 
-    def get_fina_time_series(
+    def get_data_by_date(
         self,
-        start: int,
-        step: int,
-        window: int,
-        n_decimals: Optional[int] = 3,
-        with_stats: bool = False
-    ) -> np.ndarray:
-        """
-        Retrieve a 2D time series array of timestamps and Fina values.
-
-        Depending on the output of self.get_fina_values, the returned array
-        has one of the following formats:
-        - [[time, value]] if get_fina_values returns a 1D array or a
-            single-column 2D array.
-        - [[time, min_value, value, max_value]] if get_fina_values returns
-            a 2D array with 3 columns.
-
-        Parameters:
-            start (int): Start time in seconds from the feed's start time.
-            step (int): Step interval in seconds for data retrieval.
-            window (int): Total time window in seconds to retrieve data.
-
-        Returns:
-            np.ndarray:
-                A 2D NumPy array with shape (n, 2) or (n, 4) where the first
-                column contains timestamps and the subsequent columns contain
-                the Fina values.
-        """
-        values = self.get_fina_values(
-            start=start,
-            step=step,
-            window=window,
-            n_decimals=n_decimals,
-            with_stats=with_stats)
-        times = self.timestamps()
-
-        if values.ndim == 1 or values.shape[1] == 1:
-            if values.ndim == 2:
-                values = values.ravel()
-            result = np.column_stack((times, values))
-        elif values.ndim == 2 and values.shape[1] == 3:
-            result = np.column_stack((times, values))
-        else:
-            raise ValueError("Unexpected shape for values array")
-        return result
-
-    def get_fina_values_by_date(
-        self,
-        start_date: str,
-        end_date: str,
-        step: int,
-        date_format: str = "%Y-%m-%d %H:%M:%S",
-        with_stats: bool = False
+        props: FinaByDateParamsModel
     ) -> np.ndarray:
         """
         Retrieve values from the Fina data file
@@ -533,26 +641,24 @@ class FinaData:
             - This method is useful for aligning data retrieval
               with specific time periods.
         """
-        start, window = Ut.get_window_by_dates(
-            start_date=start_date,
-            end_date=end_date,
-            interval=self.meta.interval,
-            date_format=date_format,
+        start_dt = Ut.get_utc_datetime_from_string(
+            dt_value=props.start_date,
+            date_format=props.date_format,
+            timezone=dt.timezone.utc
         )
 
         return self.get_fina_values(
-            start=start,
-            step=step,
-            window=window,
-            with_stats=with_stats
+            props=FinaByTimeParamsModel(
+                start_time=int(start_dt.timestamp()),
+                time_window=props.time_window,
+                time_interval=props.time_interval
+            )
         )
 
-    def get_fina_time_series_by_date(self,
-                                     start_date: str,
-                                     end_date: str,
-                                     step: int,
-                                     date_format: str = "%Y-%m-%d %H:%M:%S"
-                                     ) -> np.ndarray:
+    def get_data_by_date_range(
+        self,
+        props: FinaByDateParamsModel
+    ) -> np.ndarray:
         """
         Retrieve a 2D time series array of timestamps
         and values for a specific date range.
@@ -580,602 +686,17 @@ class FinaData:
             - Useful for generating aligned time series data
               for specific date ranges.
         """
-        values = self.get_fina_values_by_date(
-            start_date=start_date,
-            end_date=end_date,
-            step=step,
-            date_format=date_format
-        )
-        times = self.timestamps()
-
-        if values.ndim == 1 or values.shape[1] == 1:
-            if values.ndim == 2:
-                values = values.ravel()
-            result = np.column_stack((times, values))
-        elif values.ndim == 2 and values.shape[1] == 3:
-            result = np.column_stack((times, values))
-        else:
-            raise ValueError("Unexpected shape for values array")
-        return result
-
-    def calculate_optimal_chunk_size(
-        self,
-        window: int,
-        min_chunk_size: int = 256,
-        scale_factor: float = 1.5,
-        divisor: Optional[int] = None
-    ) -> int:
-        """
-        Compute the optimal chunk size for processing data
-        within the given constraints.
-
-        This version favors a target chunk size of 4096
-        (a common efficient I/O size)when possible.
-        It then ensures the computed chunk size is within
-        [min_chunk_size, self.reader.CHUNK_SIZE_LIMIT]
-        and (if provided) is a multiple of `divisor`.
-
-        Parameters:
-            window (int):
-                The total size (e.g. number of data points) of the window.
-            min_chunk_size (int):
-                Minimum allowable chunk size. Defaults to 256.
-            scale_factor (float):
-                Factor used in legacy calculations
-                (retained here for compatibility).
-                Defaults to 1.5.
-            divisor (Optional[int]):
-                Optional divisor to ensure the chunk size
-                is a multiple of this value.
-
-        Returns:
-            int: The computed optimal chunk size.
-
-        Raises:
-            ValueError:
-                If any input parameter is invalid, such as negative values,
-                or if min_chunk_size exceeds the maximum allowed chunk size.
-
-        Notes:
-            - If `divisor` is provided, the chunk size is adjusted
-            to the nearest multiple of `divisor`
-            (using FinaData.calculate_nearest_divisible)
-            within the given limits.
-            - The effective chunk size is the smaller of 4096
-            and the window size (if the window is very small),
-            then clamped to the allowed [min_chunk_size, max_chunk_size] range.
-        """
-        # Get the maximum allowed chunk size from the reader.
-        max_chunk_size: int = self.reader.CHUNK_SIZE_LIMIT
-
-        # Validate input parameters.
-        window = Ut.validate_integer(window, "window size", positive=True)
-        min_chunk_size = Ut.validate_integer(
-            min_chunk_size, "Minimum chunk size", positive=True)
-        scale_factor = Ut.validate_number(
-            scale_factor, "Scale factor", positive=True)
-
-        if min_chunk_size > max_chunk_size:
-            raise ValueError(
-                "min_chunk_size must be less than "
-                "or equal to the maximum chunk size."
-            )
-
-        # Favor 4096 as the target chunk size if possible.
-        # Also, if the window is very small, use window instead.
-        target = min(4096, window)
-        # Ensure the target is not below min_chunk_size
-        # or above max_chunk_size.
-        target = max(target, min_chunk_size)
-        target = min(target, max_chunk_size)
-
-        # If a divisor is provided, adjust target to the nearest value
-        # that is divisible by it.
-        if divisor is not None:
-            divisor = Ut.validate_integer(divisor, "divisor", positive=True)
-            target = FinaData.calculate_nearest_divisible(
-                value=target,
-                divisor=divisor,
-                min_value=min_chunk_size,
-                max_value=max_chunk_size
-            )
-            # Ensure that the final candidate is at least
-            # as large as the divisor.
-            if target < divisor:
-                target = divisor
-
-        return target
-
-    @staticmethod
-    def calculate_nearest_divisible(
-        value: int,
-        divisor: int,
-        min_value: int,
-        max_value: int
-    ) -> int:
-        """
-        Adjust a value to the nearest multiple
-        of a divisor within given limits.
-
-        This method ensures that the adjusted value is divisible
-        by the specified divisor while remaining
-        within the provided minimum and maximum limits.
-
-        Parameters:
-            value (int): The initial value to adjust.
-            divisor (int): The divisor to make the value divisible by.
-            min_value (int): Minimum allowable value.
-            max_value (int): Maximum allowable value.
-
-        Returns:
-            int:
-                The adjusted value, guaranteed to be divisible by `divisor`
-                and within limits.
-
-        Notes:
-            - The method prioritizes adherence to limits
-              over exact divisibility if conflicts arise.
-            - Useful for ensuring efficient chunking in data processing.
-        """
-        remainder = value % divisor
-        if remainder > 0:
-            value += divisor - remainder
-
-        # Ensure the adjusted value is within limits
-        if value > max_value:
-            value = max_value - (max_value % divisor)
-        elif value < min_value:
-            value = min_value + (
-                divisor - (min_value % divisor)
-            ) if min_value % divisor != 0 else min_value
-
-        return value
-
-
-class FinaStats:
-    """FinaStats class for analyzing FinaReader data efficiently."""
-
-    def __init__(self, feed_id: int, data_dir: str):
-        self.reader = FinaReader(feed_id, data_dir)
-        self.meta = self.reader.read_meta()
-
-    def _validate_and_prepare_params(
-        self,
-        start_time: int,
-        steps_window: int,
-        max_size: int
-    ):
-        """
-        Validate input parameters and prepare
-        the start point and selected points.
-
-        Parameters:
-            start_time (int):
-                The start time in seconds from the beginning of the file.
-            steps_window (int):
-                Number of steps to process. Use -1 for all data.
-            max_size (int): Maximum allowed number of steps to process.
-
-        Returns:
-            Tuple[int, int]:
-                The start point (in steps) and the number of selected points.
-
-        Raises:
-            ValueError:
-                If the start time exceeds the file's end time
-                or if the selected points exceed max_size.
-        """
-        start_time = Ut.validate_integer(
-            start_time, "Start time", non_neg=True)
-
-        max_size = Ut.validate_integer(
-            max_size, "Max size", positive=True)
-
-        file_start_time = self.meta.start_time
-        interval = self.meta.interval
-        total_points = self.meta.npoints
-
-        start_point = max(0, (start_time - file_start_time) // interval)
-        if steps_window == -1:
-            steps_window = total_points - start_point
-        else:
-            steps_window = Ut.validate_integer(
-                steps_window, "Window steps", positive=True)
-
-        if start_point >= total_points:
-            raise ValueError(
-                f"Start time ({start_time}) exceeds file "
-                f"end time ({self.meta.end_time}).")
-
-        selected_points = min(steps_window, total_points - start_point)
-        if selected_points > max_size:
-            raise ValueError(
-                f"Requested steps ({selected_points}) exceed "
-                f"max_size ({max_size}).")
-
-        return start_point, selected_points
-
-    def _initialize_result(
-        self,
-        selected_points: int,
-        stats_type: StatsType = StatsType.VALUES
-    ):
-        """
-        Initialize the result array and calculate points per day.
-
-        Parameters:
-            selected_points (int): Number of selected points to process.
-
-        Returns:
-            A numpy array initialized with NaN values to store results.
-        """
-        interval = self.meta.interval
-        npts_day = math.ceil(86400 / interval)  # Points per day
-        npts_total = math.ceil(selected_points / npts_day) + 1
-        array = FinaStats.init_stats(
-            stats_type=stats_type
-        )
-        result = np.full((npts_total, len(array)), array)
-        return result
-
-    def _get_initial_day_boundaries(self, start_point: int):
-        """
-        Compute the initial start and end times of the first day boundary.
-
-        Parameters:
-            start_time (int):
-                The start time in seconds from the beginning of the file.
-
-        Returns:
-            Tuple[int, int]:
-                The current day start time and the next day start time.
-        """
-        file_start_time = self.meta.start_time
-        interval = self.meta.interval
-
-        current_day_start = Ut.get_start_day(
-            file_start_time + start_point * interval)
-        next_day_start = current_day_start + 86400
-        return current_day_start, next_day_start
-
-    def _get_chunk_size(
-        self,
-        current_day_start,
-        next_day_start,
-        is_first=False
-    ):
-        """
-        Compute the chunk_size of the current day.
-
-        Parameters:
-            start_time (int):
-                The start time in seconds from the beginning of the file.
-
-        Returns:
-            Tuple[int, int]:
-                The current day start time and the next day start time.
-        """
-        if is_first:
-            init_start = max(self.meta.start_time, current_day_start)
-            chunk_size = int(
-                (next_day_start - init_start) / self.meta.interval)
-        else:
-            chunk_size = int(
-                (next_day_start - current_day_start) / self.meta.interval)
-        return max(chunk_size, self.reader.CHUNK_SIZE_LIMIT)
-
-    def _validate_chunk(self, positions, next_day_start):
-        """
-        Validate the chunk of data to ensure it fits
-        within the current day boundary.
-
-        Parameters:
-            positions (np.ndarray): Array of positions for the current chunk.
-            next_day_start (int): Start time of the next day.
-
-        Raises:
-            ValueError:
-                If the chunk contains data beyond the current day's boundary.
-        """
-        timestamps = self.meta.start_time + (positions * self.meta.interval)
-        if timestamps[-1] >= next_day_start:
-            raise ValueError(
-                f"Reader Error: Last timestamp {timestamps[-1]} "
-                f"exceeds day boundary {next_day_start}."
-            )
-
-    def _process_day(
-        self,
-        values: np.ndarray,
-        current_day_start: int,
-        min_value: Optional[Union[int, float]],
-        max_value: Optional[Union[int, float]],
-        stats_type: StatsType = StatsType.VALUES
-    ) -> np.ndarray:
-        """
-        Process data for a single day by filtering and computing statistics.
-
-        Parameters:
-            values (np.ndarray): Array of data values for the current day.
-            current_day_start (int): Start time of the current day.
-            min_value (Optional[Union[int, float]]):
-                Minimum valid value for filtering.
-            max_value (Optional[Union[int, float]]):
-                Maximum valid value for filtering.
-            stats_type (StatsType):
-                Type of statistics to compute. Defaults to StatsType.VALUES.
-
-        Returns:
-            np.ndarray: Computed statistics for the current day.
-        """
-        filtered_values = Ut.filter_values_by_range(
-            values.copy(), min_value, max_value)
-        if stats_type == StatsType.INTEGRITY:
-            return self.get_integrity_stats(filtered_values, current_day_start)
-        return self.get_values_stats(filtered_values, current_day_start)
-
-    def _update_day_boundaries(self, next_day_start):
-        """
-        Update the day boundaries for the next iteration.
-
-        Parameters:
-            current_day_start (int): Start time of the current day.
-
-        Returns:
-            Tuple[int, int]:
-                Updated current day start time and next day start time.
-        """
-        return next_day_start, next_day_start + 86400
-
-    def _trim_results(self, result):
-        """
-        Trim the result array to include only processed data.
-
-        Parameters:
-            result (np.ndarray):
-                Array of computed results with potential NaN entries.
-
-        Returns:
-            List[List[Union[float, int]]]:
-                Trimmed result array as a list of lists.
-        """
-        finite_mask = np.isfinite(result[:, 0])
-        if not finite_mask.any():
-            return result.tolist()
-
-        last_valid_index = len(result) - np.argmax(finite_mask[::-1]) - 1
-        return result[:last_valid_index + 1].tolist()
-
-    def get_stats(
-        self,
-        start_time: Optional[int] = 0,
-        steps_window: int = -1,
-        max_size: int = 5_000_000,
-        min_value: Optional[Union[int, float]] = None,
-        max_value: Optional[Union[int, float]] = None,
-        stats_type: StatsType = StatsType.VALUES
-    ) -> List[List[Union[float, int]]]:
-        """
-        Compute daily statistics from PhpFina file data.
-
-        Parameters:
-            start_time (Optional[int]):
-                Start time in seconds from the beginning of the file.
-                Defaults to 0.
-            steps_window (int):
-                Number of steps to process. Use -1 to process all data.
-                Defaults to -1.
-            max_size (int):
-                Maximum number of data points to process in one call.
-                Defaults to 5,000,000.
-            min_value (Optional[Union[int, float]]):
-                Minimum valid value for filtering.
-            max_value (Optional[Union[int, float]]):
-                Maximum valid value for filtering.
-            stats_type (StatsType):
-                Type of statistics to compute. Defaults to StatsType.VALUES.
-
-        Returns:
-            List[List[Union[float, int]]]:
-                A list of daily statistics where each entry contains:
-                - StatsType.VALUES:
-                    [
-                        day_start, min_value, mean_value, max_value
-                    ].
-                - StatsType.INTEGRITY:
-                    [
-                        day_start, finite_count, total_count
-                    ].
-        """
-        # Prepare metadata and validate parameters
-        start_point, selected_points = self._validate_and_prepare_params(
-            start_time=start_time,
-            steps_window=steps_window,
-            max_size=max_size
+        start, window = Ut.get_window_by_dates(
+            start_date=props.start_date,
+            end_date=props.end_date,
+            interval=self.meta.interval,
+            date_format=props.date_format,
         )
 
-        # Initialize result storage and day boundaries
-        result = self._initialize_result(
-            selected_points=selected_points,
-            stats_type=stats_type
+        return self.get_fina_values(
+            props=FinaByTimeParamsModel(
+                start_time=start,
+                time_window=window,
+                time_interval=props.time_interval
+            )
         )
-        current_day_start, next_day_start = self._get_initial_day_boundaries(
-            start_point)
-        init_chunk = self._get_chunk_size(
-            current_day_start, next_day_start, True)
-
-        reader_props = {
-            "npoints": self.meta.npoints,
-            "start_pos": start_point,
-            "chunk_size": init_chunk,
-            "window": selected_points,
-            "set_pos": True
-        }
-
-        # Process data in chunks
-        days = 0
-        for positions, values in self.reader.read_file(**reader_props):
-            self._validate_chunk(positions, next_day_start)
-            result[days] = self._process_day(
-                values=values,
-                current_day_start=current_day_start,
-                min_value=min_value,
-                max_value=max_value,
-                stats_type=stats_type
-            )
-
-            # Update day boundaries for next iteration
-            days += 1
-            current_day_start, next_day_start = self._update_day_boundaries(
-                next_day_start)
-            self.reader.chunk_size = self._get_chunk_size(
-                current_day_start, next_day_start)
-        # Trim and return results
-        return self._trim_results(result)
-
-    def get_stats_by_date(
-        self,
-        start_date: Optional[str] = None,
-        end_date: Optional[str] = None,
-        date_format: str = "%Y-%m-%d %H:%M:%S",
-        max_size: int = 5_000_000,
-        min_value: Optional[Union[int, float]] = None,
-        max_value: Optional[Union[int, float]] = None,
-        stats_type: StatsType = StatsType.VALUES
-    ) -> List[List[Union[float, int]]]:
-        """
-        Compute daily statistics from PhpFina file data
-        for a specified date range.
-
-        Parameters:
-            start_date (str): Start date in the specified format.
-            end_date (str): End date in the specified format.
-            date_format (str):
-            Format of the input dates. Defaults to "%Y-%m-%d %H:%M:%S".
-            max_size (int):
-                Maximum number of data points to process in one call.
-                Defaults to 10,000.
-            min_value (Optional[Union[int, float]]):
-                Minimum valid value for filtering. Optional.
-            max_value (Optional[Union[int, float]]):
-                Maximum valid value for filtering. Optional.
-            stats_type (StatsType):
-                Type of statistics to compute. Defaults to StatsType.VALUES.
-
-        Returns:
-            List[List[Union[float, int]]]:
-                A list of daily statistics where each entry contains:
-                - StatsType.VALUES:
-                    [
-                        day_start, min_value, mean_value, max_value
-                    ].
-                - StatsType.INTEGRITY:
-                    [
-                        day_start, finite_count, total_count
-                    ].
-
-        Raises:
-            ValueError:
-                If the start or end date
-                cannot be converted to valid timestamps.
-            ValueError:
-                If the computed steps for the date range exceed max_size.
-        """
-        start, window = 0, -1
-        if start_date is not None or end_date is not None:
-            # Calculate the start time and number of steps
-            # based on the provided date range.
-            if start_date is None:
-                start_date = Ut.get_string_datetime_from_timestamp(
-                    self.meta.start_time)
-
-            if end_date is None:
-                end_date = Ut.get_string_datetime_from_timestamp(
-                    self.meta.end_time)
-
-            start, window = Ut.get_window_by_dates(
-                start_date=start_date,
-                end_date=end_date,
-                interval=self.meta.interval,
-                date_format=date_format,
-            )
-
-        # Use the get_stats method with the computed parameters.
-        return self.get_stats(
-            start_time=start,
-            steps_window=window,
-            max_size=max_size,
-            min_value=min_value,
-            max_value=max_value,
-            stats_type=stats_type
-        )
-
-    @staticmethod
-    def init_stats(
-        day_start: Union[float, int] = np.nan,
-        stats_type: StatsType = StatsType.VALUES
-    ) -> List[Union[float, int]]:
-        """Initialyse stats array values."""
-        if stats_type == StatsType.INTEGRITY:
-            return [day_start, np.nan, np.nan]
-        return [day_start, np.nan, np.nan, np.nan]
-
-    @staticmethod
-    def get_integrity_stats(
-        values: np.ndarray,
-        day_start: float
-    ) -> List[Union[float, int]]:
-        """
-        Compute statistics for a single day's data.
-
-        Parameters:
-            values (np.ndarray): Array of values for the day.
-            day_start (float): Start-of-day timestamp.
-
-        Returns:
-            List[Union[float, int]]: Computed statistics for the day.
-        """
-        if values.shape[0] == 0:
-            return FinaStats.init_stats(
-                day_start=day_start,
-                stats_type=StatsType.INTEGRITY
-            )
-
-        nb_total = values.shape[0]
-        nb_finite = np.isfinite(values).sum()
-
-        stats = [
-            nb_finite,
-            nb_total,
-        ]
-        return [day_start] + stats
-
-    @staticmethod
-    def get_values_stats(
-        values: np.ndarray,
-        day_start: float
-    ) -> List[Union[float, int]]:
-        """
-        Compute statistics for a single day's data.
-
-        Parameters:
-            values (np.ndarray): Array of values for the day.
-            day_start (float): Start-of-day timestamp.
-
-        Returns:
-            List[Union[float, int]]: Computed statistics for the day.
-        """
-        if values.shape[0] == 0:
-            return FinaStats.init_stats(
-                day_start=day_start,
-                stats_type=StatsType.VALUES
-            )
-
-        nb_finite = np.isfinite(values).sum()
-
-        stats = [
-            np.nanmin(values) if nb_finite > 0 else np.nan,
-            np.nanmean(values) if nb_finite > 0 else np.nan,
-            np.nanmax(values) if nb_finite > 0 else np.nan
-        ]
-        return [day_start] + stats

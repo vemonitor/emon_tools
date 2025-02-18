@@ -153,6 +153,47 @@ class TestUtils:
         with pytest.raises(ValueError, match=match_error):
             Utils.validate_timestamp(1000000000, "test_field")
 
+    @pytest.mark.parametrize(
+        "timestamp, interval, expected",
+        [
+            (
+                1700000000, 10,
+                1700000000
+            ),
+            (
+                1700000009, 10,
+                1700000000
+            ),
+            (
+                1700000011, 10,
+                1700000010
+            ),
+            (
+                1700000011, 20,
+                1700000000
+            ),
+            (
+                1700000011, 30,
+                1700000010
+            ),
+            (
+                1700000000, 86400,
+                1699920000
+            ),
+        ],
+    )
+    def test_get_start_of_interval_valid(
+        self,
+        timestamp,
+        interval,
+        expected
+    ):
+        """Test get_start_of_interval with a valid timestamp."""
+        result = Utils.get_start_of_interval(
+            timestamp,
+            interval=interval)
+        assert result == expected
+
     def test_get_start_day_valid(self):
         """Test get_start_day with a valid timestamp."""
         timestamp = 1700000000  # Corresponds to a known date
@@ -191,7 +232,7 @@ class TestUtils:
         """Test get_utc_datetime_from_string with valid input."""
         date_str = "2023-11-14 10:00:00"
         result = Utils.get_utc_datetime_from_string(date_str)
-        expected = dt.datetime(2023, 11, 14, 10, 0, 0, tzinfo=dt.timezone.utc)
+        expected = dt.datetime(2023, 11, 14, 10, 0)
         assert result == expected
 
     def test_get_utc_datetime_from_string_invalid_format(self):

@@ -33,14 +33,14 @@ License:
     MIT License
 """
 from typing import Optional
-from typing import List
-from typing import Union
 import numpy as np
 import pandas as pd
-from emon_tools.emon_fina.fina_utils import Utils as Ut
+from emon_tools.emon_fina.fina_services import FinaOutputData
 from emon_tools.emon_fina.emon_fina import FinaData
-from emon_tools.emon_fina.emon_fina import FinaStats
-from emon_tools.emon_fina.emon_fina import StatsType
+from emon_tools.emon_fina.fina_models import FinaByTimeParamsModel
+from emon_tools.emon_fina.fina_models import FinaByDateParamsModel
+from emon_tools.emon_fina.fina_models import FinaByDateRangeParamsModel
+from emon_tools.emon_fina.fina_models import OutputType
 
 
 class FinaDataFrame(FinaData):
@@ -57,22 +57,10 @@ class FinaDataFrame(FinaData):
             Static method to convert arrays of time and values
             into a Pandas DataFrame.
     """
-    def __init__(self, feed_id: int, data_dir: str):
-        """
-        Initialize the FinaDataFrame object with a FinaReader instance.
 
-        Parameters:
-            feed_id (int): Unique identifier for the feed.
-            data_dir (str): Directory path to the Fina data files.
-        """
-        FinaData.__init__(self, feed_id=feed_id, data_dir=data_dir)
-
-    def get_fina_df_time_series(
+    def get_df_data(
         self,
-        start: int,
-        step: int,
-        window: int,
-        with_stats: bool = False
+        props: FinaByTimeParamsModel
     ) -> pd.DataFrame:
         """
         Retrieve time series data within a specified time window
@@ -94,17 +82,14 @@ class FinaDataFrame(FinaData):
         Example:
             >>> fina_data.get_fina_time_series(start=0, step=60, window=3600)
         """
-        values = self.read_fina_values(
-            start=start, step=step, window=window, with_stats=with_stats)
-        return self.set_data_frame(self.timestamps(), values)
+        data = self.read_fina_values(
+            props=props
+        )
+        return self.set_data_frame(data, props.output_type)
 
-    def get_fina_time_series_by_date(
+    def get_df_data_by_date(
         self,
-        start_date: str,
-        end_date: str,
-        step: int,
-        date_format: str = "%Y-%m-%d %H:%M:%S",
-        with_stats: bool = False
+        props: FinaByDateParamsModel
     ) -> pd.DataFrame:
         """
         Retrieve time series data by specifying a date range
@@ -131,24 +116,52 @@ class FinaDataFrame(FinaData):
                 "2023-01-02 00:00:00",
                 step=60)
         """
-        start_dt = Ut.get_utc_datetime_from_string(start_date, date_format)
-        end_dt = Ut.get_utc_datetime_from_string(end_date, date_format)
+        data = self.get_data_by_date(
+            props=props
+        )
 
-        start = int(start_dt.timestamp())
-        window = int(end_dt.timestamp() - start)
+        return self.set_data_frame(data, props.output_type)
 
-        values = self.get_fina_values(
-            start=start,
-            step=step,
-            window=window,
-            with_stats=with_stats)
+    def get_df_data_by_date_range(
+        self,
+        props: FinaByDateRangeParamsModel
+    ) -> pd.DataFrame:
+        """
+        Retrieve time series data by specifying a date range
+        and convert it to a Pandas DataFrame.
 
-        return self.set_data_frame(self.timestamps(), values)
+        Parameters:
+            start_date (str): The start date as a string.
+            end_date (str): The end date as a string.
+            step (int): The interval between data points in seconds.
+            date_format (str, optional):
+                The format of the input date strings.
+                Defaults to "%Y-%m-%d %H:%M:%S".
+
+        Returns:
+            pd.DataFrame:
+                A DataFrame with time as the index and data values as a column.
+
+        Raises:
+            ValueError: If the parsed start or end date is invalid.
+
+        Example:
+            >>> fina_data.get_fina_time_series_by_date(
+                "2023-01-01 00:00:00",
+                "2023-01-02 00:00:00",
+                step=60)
+        """
+        data = self.get_data_by_date_range(
+            props=props
+        )
+
+        return self.set_data_frame(data, props.output_type)
 
     @staticmethod
-    def set_data_frame(times: np.ndarray,
-                       values: np.ndarray
-                       ) -> Optional["pd.DataFrame"]:
+    def set_data_frame(
+        data: np.ndarray,
+        output_type: OutputType
+    ) -> Optional["pd.DataFrame"]:
         """
         Convert arrays of time and values into a Pandas DataFrame.
 
@@ -171,197 +184,38 @@ class FinaDataFrame(FinaData):
             >>> values = np.array([1.0, 2.0, 3.0])
             >>> FinaDataFrame.set_data_frame(times, values)
         """
-        if not isinstance(times, np.ndarray)\
-                or not isinstance(values, np.ndarray):
-            raise ValueError("Times and Values must be a numpy ndarray.")
+        if not isinstance(data, np.ndarray):
+            raise ValueError("data must be a numpy ndarray.")
 
-        if not times.shape[0] == values.shape[0]:
-            raise ValueError("Times and Values must have same shape.")
-        nb_shape = len(values.shape)
-        if nb_shape == 1:
-            cols = {"values": values}
-        elif nb_shape == 2 and values.shape[1] == 1:
-            cols = {"values": values[:, 0]}
-        elif nb_shape == 2 and values.shape[1] == 3:
-            cols = {
-                "min": values[:, 0],
-                "values": values[:, 1],
-                "max": values[:, 2]
-            }
+        if not isinstance(output_type, OutputType):
+            raise ValueError("output_type must be an OutputType instance.")
+
+        # Get columns labels for current output_type
+        cols = FinaOutputData.get_columns(output_type)
+        is_defined_cols = len(data.shape) == 2\
+            and data.shape[1] == len(cols)
+        is_one_col = len(data.shape) == 1\
+            and len(cols) == 1
+        if not is_defined_cols and not is_one_col:
+            raise ValueError(
+                "Invalid data columns. Data missing or corrupted."
+            )
+        if data.shape[0] > 0:
+            if 'time' in cols:
+                df = pd.DataFrame(
+                    data,
+                    columns=cols,
+                    index=pd.to_datetime(data[:, 0], unit="s", utc=False)
+                )
+                df.index.name = "time"
+            else:
+                df = pd.DataFrame(
+                    data,
+                    columns=cols
+                )
         else:
-            raise ValueError("Invalid shape Values. Data missing or corrupted.")
-        df = pd.DataFrame(
-            {"values": cols},
-            index=pd.to_datetime(times, unit="s", utc=True)
-        )
-        df.index.name = "times"
+            df = pd.DataFrame(
+                [],
+                columns=cols
+            )
         return df
-
-
-class FinaDfStats(FinaStats):
-    """
-    Extension of FinaStats with methods to compute
-    and return statistics as Pandas DataFrames.
-
-    Methods:
-        - get_df_stats:
-            Compute daily statistics and return them as a Pandas DataFrame.
-        - get_df_stats_by_date:
-            Compute statistics for a specific date range
-            and return as a DataFrame.
-        - get_stats_labels: Get column labels for the statistics DataFrame.
-        - get_integrity_labels: Get column labels for integrity stats.
-        - get_values_labels: Get column labels for value stats.
-    """
-    def get_df_stats(
-        self,
-        start_time: Optional[int] = 0,
-        steps_window: int = -1,
-        max_size: int = 10_000,
-        min_value: Optional[Union[int, float]] = None,
-        max_value: Optional[Union[int, float]] = None,
-        stats_type: StatsType = StatsType.VALUES
-    ) -> List[List[Union[float, int]]]:
-        """
-        Compute statistics for data within a specified range
-        and return them as a Pandas DataFrame.
-
-        Parameters:
-            start_time (Optional[int]):
-                The start time in seconds (Unix timestamp). Defaults to 0.
-            steps_window (int):
-                The number of steps in the window. Defaults to -1 (all data).
-            max_size (int): Maximum size of the dataset. Defaults to 10,000.
-            min_value (Optional[Union[int, float]]):
-                Minimum valid value for filtering. Defaults to None.
-            max_value (Optional[Union[int, float]]):
-                Maximum valid value for filtering. Defaults to None.
-            stats_type (StatsType):
-                Type of statistics to compute. Defaults to StatsType.VALUES.
-
-        Returns:
-            pd.DataFrame:
-                A DataFrame containing computed statistics
-                with time as the index.
-
-        Example:
-            >>> stats_df = fina_stats.get_df_stats(
-                start_time=0,
-                steps_window=3600,
-                stats_type=StatsType.VALUES)
-        """
-        df = pd.DataFrame(
-            self.get_stats(
-                start_time=start_time,
-                steps_window=steps_window,
-                max_size=max_size,
-                min_value=min_value,
-                max_value=max_value,
-                stats_type=stats_type
-            ),
-            columns=self.get_stats_labels(stats_type=stats_type)
-        )
-        return df.set_index(pd.to_datetime(df['time'], unit='s', utc=True))
-
-    def get_df_stats_by_date(
-        self,
-        start_date: str,
-        end_date: str,
-        date_format: str = "%Y-%m-%d %H:%M:%S",
-        max_size: int = 10_000,
-        min_value: Optional[Union[int, float]] = None,
-        max_value: Optional[Union[int, float]] = None,
-        stats_type: StatsType = StatsType.VALUES
-    ) -> List[List[Union[float, int]]]:
-        """
-        Compute statistics for data within a specified date range
-        and return them as a Pandas DataFrame.
-
-        Parameters:
-            start_date (str): The start date as a string.
-            end_date (str): The end date as a string.
-            date_format (str, optional):
-                The format of the input date strings.
-                Defaults to "%Y-%m-%d %H:%M:%S".
-            max_size (int): Maximum size of the dataset. Defaults to 10,000.
-            min_value (Optional[Union[int, float]]):
-                Minimum valid value for filtering. Defaults to None.
-            max_value (Optional[Union[int, float]]):
-                Maximum valid value for filtering. Defaults to None.
-            stats_type (StatsType):
-                Type of statistics to compute. Defaults to StatsType.VALUES.
-
-        Returns:
-            pd.DataFrame:
-                A DataFrame containing computed statistics
-                with time as the index.
-
-        Example:
-            >>> stats_df = fina_stats.get_df_stats_by_date(
-                "2023-01-01 00:00:00",
-                "2023-01-02 00:00:00")
-        """
-        df = pd.DataFrame(
-            self.get_stats_by_date(
-                start_date=start_date,
-                end_date=end_date,
-                date_format=date_format,
-                max_size=max_size,
-                min_value=min_value,
-                max_value=max_value
-            ),
-            columns=self.get_stats_labels(stats_type=stats_type)
-        )
-        return df.set_index(pd.to_datetime(df['time'], unit='s', utc=True))
-
-    @staticmethod
-    def get_stats_labels(
-        stats_type: StatsType = StatsType.VALUES
-    ) -> List[str]:
-        """
-        Get the column labels for the statistics DataFrame
-        based on the type of statistics.
-
-        Parameters:
-            stats_type (StatsType):
-                The type of statistics (VALUES or INTEGRITY).
-
-        Returns:
-            List[str]: A list of column labels for the DataFrame.
-
-        Example:
-            >>> FinaDfStats.get_stats_labels(stats_type=StatsType.VALUES)
-        """
-        if stats_type == StatsType.VALUES:
-            return FinaDfStats.get_values_labels()
-        return FinaDfStats.get_integrity_labels()
-
-    @staticmethod
-    def get_integrity_labels():
-        """
-        Get column labels for integrity statistics DataFrame.
-
-        Returns:
-            List[str]: A list of column labels for integrity stats.
-
-        Example:
-            >>> FinaDfStats.get_integrity_labels()
-        """
-        return [
-            'time', 'nb_finite', 'nb_total'
-        ]
-
-    @staticmethod
-    def get_values_labels():
-        """
-        Get column labels for value statistics DataFrame.
-
-        Returns:
-            List[str]: A list of column labels for value stats.
-
-        Example:
-            >>> FinaDfStats.get_values_labels()
-        """
-        return [
-            'time', 'min', 'mean', 'max'
-        ]

@@ -1,13 +1,21 @@
 """FinaData Unit Tests"""
 # pylint: disable=unused-argument,protected-access
-
+from unittest.mock import MagicMock
 from unittest.mock import patch, mock_open
 from struct import pack
 import datetime as dt
 import numpy as np
 import pytest
 from emon_tools.emon_fina.emon_fina import FinaData
+from emon_tools.emon_fina.fina_models import FinaByDateParamsModel
+from emon_tools.emon_fina.fina_models import FinaByDateRangeParamsModel
+from emon_tools.emon_fina.fina_models import FinaByTimeParamsModel
+from emon_tools.emon_fina.fina_models import OutputAverageEnum
+from emon_tools.emon_fina.fina_models import OutputType
+from emon_tools.emon_fina.fina_models import TimeRefEnum
+from emon_tools.emon_fina.fina_services import FileReaderProps, FinaMeta
 from emon_tools.emon_fina.fina_utils import Utils
+from tests.emon_fina.fina_data_test import EmonFinaDataTest
 
 
 class TestFinaData:
@@ -48,6 +56,49 @@ class TestFinaData:
             data_dir=tmp_path_override
         )
 
+    @pytest.fixture
+    def mock_reader_base(self):
+        """Fixture to mock the FinaReader."""
+        mock_reader = MagicMock()
+        # Two days of data at 10-second intervals
+        return mock_reader
+
+    @pytest.fixture
+    def mock_reader_meta(self):
+        """Fixture to mock the FinaReader."""
+        mock_reader = MagicMock()
+        # Two days of data at 10-second intervals
+        mock_reader.read_meta.return_value = FinaMeta(
+            **EmonFinaDataTest.get_fina_meta()
+        )
+        mock_reader.DEFAULT_CHUNK_SIZE = 1024
+        mock_reader.CHUNK_SIZE_LIMIT = 4096
+        return mock_reader
+
+    @pytest.fixture
+    def mock_reader(self):
+        """Fixture to mock the FinaReader."""
+        mock_reader = MagicMock()
+        # Two days of data at 10-second intervals
+        mock_reader.read_meta.return_value = FinaMeta(
+            **EmonFinaDataTest.get_fina_meta()
+        )
+        reader_props = FileReaderProps(
+            meta=FinaMeta(
+                **EmonFinaDataTest.get_fina_meta()
+            ),
+            search=FinaByTimeParamsModel(
+                start_time=EmonFinaDataTest.get_time_start(),
+                time_interval=10,
+                time_window=3600
+            )
+        )
+        reader_props.initialise_reader()
+        mock_reader.props = reader_props
+        mock_reader.DEFAULT_CHUNK_SIZE = 1024
+        mock_reader.CHUNK_SIZE_LIMIT = 4096
+        return mock_reader
+
     @patch("builtins.open",
            new_callable=mock_open,
            read_data=pack("<2I", 10, 1575981140))
@@ -81,172 +132,435 @@ class TestFinaData:
                 ValueError, match="Error: Invalid PhpFina directory path."):
             FinaData(feed_id=1, data_dir="/invalid_dir")
 
-    @patch("builtins.open",
-           new_callable=mock_open,
-           read_data=pack("<f", 42.0) * 10)
-    @patch("emon_tools.emon_fina.fina_reader.isfile", return_value=True)
-    @patch("emon_tools.emon_fina.fina_reader.getsize", return_value=400)
-    @patch("emon_tools.emon_fina.fina_reader.mmap.mmap", autospec=True)
+    @pytest.mark.parametrize(
+        "kwargs, expected",
+        [
+            (
+                {
+                    "start_time": int(Utils.get_start_day(1575981140)),
+                    "time_window": 3600,
+                    "time_interval": 60
+                },
+                60
+            ),
+            (
+                {
+                    "start_time": int(Utils.get_start_day(1575981140)),
+                    "time_window": 3600,
+                    "time_interval": 30
+                },
+                120
+            ),
+        ],
+    )
+    def test_get_averaged_values(
+        self,
+        kwargs,
+        expected,
+        mock_reader_meta
+    ):
+        """
+        Test FinaData _get_averaged_values method.
+        """
+        search = FinaByTimeParamsModel(**kwargs)
+        mock_reader_meta.read_file.return_value = [
+            (
+                np.arange(0, 360, 1),  # Positions
+                np.arange(20, 20 + 360, dtype=float),  # Values
+            )
+        ]  # Mocked data
+        reader_props = FileReaderProps(
+            meta=FinaMeta(
+                **EmonFinaDataTest.get_fina_meta()
+            ),
+            search=search
+        )
+        reader_props.initialise_reader()
+        mock_reader_meta.props = reader_props
+        monkeypatch = pytest.MonkeyPatch()
+        monkeypatch.setattr(
+            "emon_tools.emon_fina.emon_fina.FinaReader",
+            lambda *args,
+            **kwargs: mock_reader_meta
+        )
+        fdtm = FinaData(feed_id=1, data_dir="mock_dir")
+        result = fdtm._get_averaged_values(search)
+        assert result.shape[0] == expected
+
+    @pytest.mark.parametrize(
+        "kwargs, expected",
+        [
+            (
+                {
+                    "start_time": int(Utils.get_start_day(1575981140)),
+                    "time_window": 3600,
+                    "time_interval": 10
+                },
+                360
+            ),
+            (
+                {
+                    "start_time": int(Utils.get_start_day(1575981140)),
+                    "time_window": 100,
+                    "time_interval": 10
+                },
+                10
+            ),
+        ],
+    )
     def test_read_direct_values_no_remaining(
         self,
-        mock_mmap,
-        mock_isfile,
-        mock_getsize,
-        mock_open_file,
-        fdt
+        kwargs,
+        expected,
+        mock_reader_meta
     ):
         """
         Test _read_direct_values when remaining points become zero.
         """
-        start, step, npts, interval, window = 0, 10, 5, 10, 50
-        fdt.meta = type("Meta", (), {"start_time": 0, "npoints": 10})
-        fdt.reader = type("Reader", (), {
-            "read_file": lambda **kwargs: iter([
-                (0, np.array([1, 2, 3, 4, 5])),
-                (5, np.array([6, 7, 8, 9, 10]))
-            ])
-        })
+        search = FinaByTimeParamsModel(**kwargs)
+        mock_reader_meta.read_file.return_value = [
+            (
+                np.arange(0, 360, 1),  # Positions
+                np.arange(20, 20 + 360, dtype=float),  # Values
+            )
+        ]  # Mocked data
+        reader_props = FileReaderProps(
+            meta=FinaMeta(
+                **EmonFinaDataTest.get_fina_meta()
+            ),
+            search=search
+        )
+        reader_props.initialise_reader()
+        mock_reader_meta.props = reader_props
+        monkeypatch = pytest.MonkeyPatch()
+        monkeypatch.setattr(
+            "emon_tools.emon_fina.emon_fina.FinaReader",
+            lambda *args,
+            **kwargs: mock_reader_meta
+        )
+        fdtm = FinaData(feed_id=1, data_dir="mock_dir")
+        result = fdtm._read_direct_values(search)
+        assert result.shape[0] == expected
 
-        # Mock the mmap object
-        mock_mmap_instance = mock_mmap.return_value.__enter__.return_value
-
-        def mock_getitem(slice_obj):
-            size = (slice_obj.stop - slice_obj.start) // 4
-            return pack("<f", 42.0) * size
-
-        mock_mmap_instance.__getitem__.side_effect = mock_getitem
-        fdt.reader.CHUNK_SIZE_LIMIT = 4096
-        result = fdt._read_direct_values(
-            start, step, npts, interval, window, set_pos=True)
-        assert result.tolist() == [1, 2, 3, 4, 5]
-
-    @patch("builtins.open",
-           new_callable=mock_open,
-           read_data=pack("<f", 42.0) * 10)
-    @patch("emon_tools.emon_fina.fina_reader.isfile", return_value=True)
-    @patch("emon_tools.emon_fina.fina_reader.getsize", return_value=400)
-    @patch("emon_tools.emon_fina.fina_reader.mmap.mmap", autospec=True)
-    def test_read_averaged_values_empty_values(
+    @pytest.mark.parametrize(
+        "kwargs, expected",
+        [
+            (
+                {
+                    "start_time": int(Utils.get_start_day(1575981140)),
+                    "time_window": 3600,
+                    "time_interval": 60
+                },
+                60
+            ),
+        ],
+    )
+    def test_get_averaged_values_empty_values(
         self,
-        mock_mmap,
-        mock_isfile,
-        mock_getsize,
-        mock_open_file,
-        fdt
+        kwargs,
+        expected,
+        mock_reader_meta
     ):
         """
         Test _read_averaged_values when a chunk of values is empty.
         """
-        start, step, npts, interval, window = 0, 20, 3, 10, 60
-        fdt.meta = type("Meta", (), {"start_time": 0, "npoints": 10})
-        fdt.reader = type("Reader", (), {
-            "read_file": lambda **kwargs: iter([
-                (0, np.array([])),  # Empty chunk
-                (10, np.array([1, 2, 3, 4, 5, 6]))
-            ])
-        })
+        # start, step, npts, interval, window = 0, 20, 3, 10, 60
+        search = FinaByTimeParamsModel(**kwargs)
+        mock_reader_meta.read_file.return_value = [
+            (
+                np.arange(0, 360, 1),  # Positions
+                np.full((360, 1), np.nan, dtype=float),  # Values
+            )
+        ]  # Mocked data
+        reader_props = FileReaderProps(
+            meta=FinaMeta(
+                **EmonFinaDataTest.get_fina_meta()
+            ),
+            search=search
+        )
+        reader_props.initialise_reader()
+        mock_reader_meta.props = reader_props
+        monkeypatch = pytest.MonkeyPatch()
+        monkeypatch.setattr(
+            "emon_tools.emon_fina.emon_fina.FinaReader",
+            lambda *args,
+            **kwargs: mock_reader_meta
+        )
+        fdtm = FinaData(feed_id=1, data_dir="mock_dir")
+        result = fdtm._get_averaged_values(search)
+        assert result.shape[0] == expected
+        assert np.isnan(result[:, 1]).size == expected
 
-        # Mock the mmap object
-        mock_mmap_instance = mock_mmap.return_value.__enter__.return_value
-
-        def mock_getitem(slice_obj):
-            size = (slice_obj.stop - slice_obj.start) // 4
-            return pack("<f", 42.0) * size
-
-        mock_mmap_instance.__getitem__.side_effect = mock_getitem
-        fdt.reader.CHUNK_SIZE_LIMIT = 4096
-        result = fdt._read_averaged_values(
-            start, step, npts, interval, window)
-        assert result.shape[1] == 1
-        assert result[:, 0].tolist() == [1.5, 3.5, 5.5]
-        result = fdt._read_averaged_values(
-            start, step, npts, interval, window, with_stats=True)
-        assert result.shape[1] == 3
-        assert result[:, 0].tolist() == [1.0, 3.0, 5.0]
-        assert result[:, 1].tolist() == [1.5, 3.5, 5.5]
-        assert result[:, 2].tolist() == [2.0, 4.0, 6.0]
-
-    @patch("builtins.open",
-           new_callable=mock_open,
-           read_data=pack("<f", 42.0) * 10)
-    @patch("emon_tools.emon_fina.fina_reader.isfile", return_value=True)
-    @patch("emon_tools.emon_fina.fina_reader.getsize", return_value=400)
-    @patch("emon_tools.emon_fina.fina_reader.mmap.mmap", autospec=True)
-    def test_read_averaged_values_no_remaining(
+    @pytest.mark.parametrize(
+        "kwargs, expected",
+        [
+            (
+                {
+                    "start_time": int(Utils.get_start_day(1575981140)),
+                    "time_window": 3600,
+                    "time_interval": 60,
+                    "output_type": OutputType.VALUES
+                },
+                (60, 1)
+            ),
+            (
+                {
+                    "start_time": int(Utils.get_start_day(1575981140)),
+                    "time_window": 3600,
+                    "time_interval": 60,
+                    "output_type": OutputType.VALUES_MIN_MAX
+                },
+                (60, 3)
+            ),
+            (
+                {
+                    "start_time": int(Utils.get_start_day(1575981140)),
+                    "time_window": 3600,
+                    "time_interval": 60,
+                    "output_type": OutputType.TIME_SERIES
+                },
+                (60, 2)
+            ),
+            (
+                {
+                    "start_time": int(Utils.get_start_day(1575981140)),
+                    "time_window": 3600,
+                    "time_interval": 60,
+                    "output_type": OutputType.TIME_SERIES_MIN_MAX
+                },
+                (60, 4)
+            ),
+            (
+                {
+                    "start_time": int(Utils.get_start_day(1575981140)),
+                    "time_window": 3600,
+                    "time_interval": 60,
+                    "output_type": OutputType.INTEGRITY
+                },
+                (60, 3)
+            ),
+        ],
+    )
+    def test_get_averaged_output_type(
         self,
-        mock_mmap,
-        mock_isfile,
-        mock_getsize,
-        mock_open_file,
-        fdt
+        kwargs,
+        expected,
+        mock_reader_meta
     ):
         """
         Test _read_averaged_values when remaining points become zero.
         """
-        start, step, npts, interval, window = 0, 20, 2, 10, 40
-        fdt.meta = type("Meta", (), {"start_time": 0, "npoints": 10})
-        fdt.reader = type("Reader", (), {
-            "read_file": lambda **kwargs: iter([
-                (0, np.array([1, 2, 3, 4, 5, 6])),
-                (10, np.array([7, 8, 9, 10, 11, 12]))
-            ])
-        })
+        # start, step, npts, interval, window = 0, 20, 2, 10, 40
+        search = FinaByTimeParamsModel(**kwargs)
+        mock_reader_meta.read_file.return_value = [
+            (
+                np.arange(0, 360, 1),  # Positions
+                np.arange(20, 20 + 360, dtype=float),  # Values
+            )
+        ]  # Mocked data
+        reader_props = FileReaderProps(
+            meta=FinaMeta(
+                **EmonFinaDataTest.get_fina_meta()
+            ),
+            search=search
+        )
+        reader_props.initialise_reader()
+        mock_reader_meta.props = reader_props
+        monkeypatch = pytest.MonkeyPatch()
+        monkeypatch.setattr(
+            "emon_tools.emon_fina.emon_fina.FinaReader",
+            lambda *args,
+            **kwargs: mock_reader_meta
+        )
+        fdtm = FinaData(feed_id=1, data_dir="mock_dir")
+        result = fdtm._get_averaged_values(search)
+        assert result.shape == expected
 
-        # Mock the mmap object
-        mock_mmap_instance = mock_mmap.return_value.__enter__.return_value
-
-        def mock_getitem(slice_obj):
-            size = (slice_obj.stop - slice_obj.start) // 4
-            return pack("<f", 42.0) * size
-
-        mock_mmap_instance.__getitem__.side_effect = mock_getitem
-        fdt.reader.CHUNK_SIZE_LIMIT = 4096
-        result = fdt._read_averaged_values(
-            start, step, npts, interval, window)
-        assert result[:, 0].tolist() == [1.5, 3.5]
-        result = fdt._read_averaged_values(
-            start, step, npts, interval, window, with_stats=True)
-        assert result.shape[1] == 3
-        assert result[:, 0].tolist() == [1.0, 3.0]
-        assert result[:, 1].tolist() == [1.5, 3.5]
-        assert result[:, 2].tolist() == [2.0, 4.0]
-
-    @patch("builtins.open",
-           new_callable=mock_open,
-           read_data=pack("<f", 42.0) * 10)
-    @patch("emon_tools.emon_fina.fina_reader.isfile", return_value=True)
-    @patch("emon_tools.emon_fina.fina_reader.getsize", return_value=400)
-    @patch("emon_tools.emon_fina.fina_reader.mmap.mmap", autospec=True)
-    def test_read_averaged_values_nan_fallback(
+    @pytest.mark.parametrize(
+        "kwargs, expected",
+        [
+            (  # 0
+                {
+                    "start_time": EmonFinaDataTest.get_time_start_2(),
+                    "time_window": 3600,
+                    "time_interval": 60,
+                    "output_average": OutputAverageEnum.COMPLETE,
+                    "time_ref_start": TimeRefEnum.BY_TIME
+                },
+                59
+            ),
+            (  # 1
+                {
+                    "start_time": EmonFinaDataTest.get_time_start_2(),
+                    "time_window": 3600,
+                    "time_interval": 60,
+                    "output_average": OutputAverageEnum.COMPLETE,
+                    "time_ref_start": TimeRefEnum.BY_SEARCH
+                },
+                60
+            ),
+            (  # 2
+                {
+                    "start_time": EmonFinaDataTest.get_time_start_2() - 142,
+                    "time_window": 3600,
+                    "time_interval": 60,
+                    "output_average": OutputAverageEnum.COMPLETE,
+                    "time_ref_start": TimeRefEnum.BY_TIME
+                },
+                59
+            ),
+            (  # 3
+                {
+                    "start_time": EmonFinaDataTest.get_time_start_2() - 142,
+                    "time_window": 3600,
+                    "time_interval": 60,
+                    "output_average": OutputAverageEnum.COMPLETE,
+                    "time_ref_start": TimeRefEnum.BY_SEARCH
+                },
+                59
+            ),
+            (  # 4
+                {
+                    "start_time": EmonFinaDataTest.get_time_start_2() - 120,
+                    "time_window": 3600,
+                    "time_interval": 60,
+                    "output_average": OutputAverageEnum.COMPLETE,
+                    "time_ref_start": TimeRefEnum.BY_SEARCH
+                },
+                60
+            ),
+            (  # 5
+                {
+                    "start_time": EmonFinaDataTest.get_time_start_2() - 142,
+                    "time_window": 3600,
+                    "time_interval": 60,
+                    "output_average": OutputAverageEnum.PARTIAL,
+                    "time_ref_start": TimeRefEnum.BY_TIME
+                },
+                59
+            ),
+            (  # 6
+                {
+                    "start_time": EmonFinaDataTest.get_time_start_2() - 142,
+                    "time_window": 3600,
+                    "time_interval": 60,
+                    "output_average": OutputAverageEnum.PARTIAL,
+                    "time_ref_start": TimeRefEnum.BY_SEARCH
+                },
+                59
+            ),
+            (  # 7
+                {
+                    "start_time": EmonFinaDataTest.get_time_start_2() - 142,
+                    "time_window": 3600,
+                    "time_interval": 60,
+                    "output_average": OutputAverageEnum.AS_IS,
+                    "time_ref_start": TimeRefEnum.BY_TIME
+                },
+                57
+            ),
+            (  # 8
+                {
+                    "start_time": EmonFinaDataTest.get_time_start_2() - 142,
+                    "time_window": 3600,
+                    "time_interval": 60,
+                    "output_average": OutputAverageEnum.AS_IS,
+                    "time_ref_start": TimeRefEnum.BY_SEARCH
+                },
+                57
+            ),
+        ],
+    )
+    def test_get_averaged_values_output_average(
         self,
-        mock_mmap,
-        mock_isfile,
-        mock_getsize,
-        mock_open_file,
-        fdt
+        kwargs,
+        expected,
+        mock_reader_base
     ):
         """
         Test _read_averaged_values when reshaped_values is empty.
         """
-        start, step, npts, interval, window = 0, 20, 3, 10, 60
-        fdt.meta = type("Meta", (), {"start_time": 0, "npoints": 10})
-        fdt.reader = type("Reader", (), {
-            "read_file": lambda **kwargs: iter([
-                (0, np.array([np.nan] * 6))  # All NaN values
-            ])
-        })
+        # start, step, npts, interval, window = 0, 20, 3, 10, 60
+        search = FinaByTimeParamsModel(**kwargs)
+        mock_reader_base.read_meta.return_value = FinaMeta(
+            **EmonFinaDataTest.get_fina_meta_slim()
+        )
 
-        # Mock the mmap object
-        mock_mmap_instance = mock_mmap.return_value.__enter__.return_value
+        mock_reader_base.read_file.return_value = [
+            (
+                np.arange(0, 360, 1),  # Positions
+                np.arange(20, 20 + 360, dtype=float),  # Values
+            )
+        ]  # Mocked data
+        reader_props = FileReaderProps(
+            meta=FinaMeta(
+                **EmonFinaDataTest.get_fina_meta_slim()
+            ),
+            search=search
+        )
+        reader_props.initialise_reader()
+        mock_reader_base.props = reader_props
+        monkeypatch = pytest.MonkeyPatch()
+        monkeypatch.setattr(
+            "emon_tools.emon_fina.emon_fina.FinaReader",
+            lambda *args,
+            **kwargs: mock_reader_base
+        )
+        fdtm = FinaData(feed_id=1, data_dir="mock_dir")
+        result = fdtm._get_averaged_values(search)
+        assert result.shape[0] == expected
 
-        def mock_getitem(slice_obj):
-            size = (slice_obj.stop - slice_obj.start) // 4
-            return pack("<f", 42.0) * size
-
-        mock_mmap_instance.__getitem__.side_effect = mock_getitem
-        fdt.reader.CHUNK_SIZE_LIMIT = 4096
-        result = fdt._read_averaged_values(start, step, npts, interval, window)
-        assert np.isnan(result).all()
+    @pytest.mark.parametrize(
+        "kwargs, expected",
+        [
+            (
+                {
+                    "start_time": 1575936012,
+                    "time_window": 3600,
+                    "time_interval": 60,
+                    "time_ref_start": TimeRefEnum.BY_TIME
+                },
+                (59, [1575936010.0, 1575936070.0, 1575936130.0])
+            ),
+            (
+                {
+                    "start_time": 1575936012,
+                    "time_window": 3600,
+                    "time_interval": 60,
+                    "time_ref_start": TimeRefEnum.BY_SEARCH
+                },
+                (59, [1575936010.0, 1575936070.0, 1575936130.0])
+            ),
+        ],
+    )
+    def test_get_averaged_values_time_ref_start(
+        self,
+        kwargs,
+        expected,
+        mock_reader
+    ):
+        """
+        Test _read_averaged_values when reshaped_values is empty.
+        """
+        search = FinaByTimeParamsModel(**kwargs)
+        mock_reader.read_file.return_value = [
+            (
+                np.arange(0, 360, 1),  # Positions
+                np.arange(20, 20 + 360, dtype=float),  # Values
+            )
+        ]  # Mocked data
+        mock_reader.props.search = search
+        mock_reader.props.initialise_reader()
+        monkeypatch = pytest.MonkeyPatch()
+        monkeypatch.setattr(
+            "emon_tools.emon_fina.emon_fina.FinaReader",
+            lambda *args,
+            **kwargs: mock_reader
+        )
+        fdtm = FinaData(feed_id=1, data_dir="mock_dir")
+        result = fdtm._get_averaged_values(search)
+        assert result.shape[0] == expected[0]
+        assert result[0: 3, 0].tolist() == expected[1]
 
     def test_reset(self, fdt):
         """Test the reset method for FinaData."""
@@ -302,352 +616,248 @@ class TestFinaData:
         assert ts.max() == 1700000090
         assert ts.mean() == 1700000045
 
-    @patch("builtins.open",
-           new_callable=mock_open,
-           read_data=pack("<f", 42.0) * 10)
-    @patch("emon_tools.emon_fina.fina_reader.isfile", return_value=True)
-    @patch("emon_tools.emon_fina.fina_reader.getsize", return_value=400)
-    @patch("emon_tools.emon_fina.fina_reader.mmap.mmap", autospec=True)
+    @pytest.mark.parametrize(
+        "kwargs, expected",
+        [
+            (
+                {
+                    "start_time": 1575981140,
+                    "time_window": 3600,
+                    "time_interval": 10
+                },
+                360
+            ),
+            (
+                {
+                    "start_time": 1575981140,
+                    "time_window": 3600,
+                    "time_interval": 20
+                },
+                180
+            ),
+        ],
+    )
     def test_read_fina_values(
         self,
-        mock_mmap,
-        mock_isfile,
-        mock_getsize,
-        mock_open_file,
-        fdt
+        kwargs,
+        expected,
+        mock_reader_meta
     ):
         """
         Test the read_fina_values method for reading raw data values.
         """
-        with pytest.raises(ValueError, match=r"^Invalid start value.*"):
-            fdt.read_fina_values(
-                start=1575983130,
-                step=10,
-                window=100
+        search = FinaByTimeParamsModel(**kwargs)
+        mock_reader_meta.read_file.return_value = [
+            (
+                np.arange(0, 360, 1),  # Positions
+                np.arange(20, 20 + 360, dtype=float),  # Values
             )
-        # Mock the mmap object
-        mock_mmap_instance = mock_mmap.return_value.__enter__.return_value
-
-        # Handle slice inputs to mimic actual mmap slicing behavior
-        def mock_getitem(slice_obj):
-            if isinstance(slice_obj, slice):
-                # Calculate the position based on the slice start
-                # Number of floats
-                size = (slice_obj.stop - slice_obj.start) // 4
-                return pack("<f", 42.0) * size
-            raise ValueError("Invalid slice input")
-
-        mock_mmap_instance.__getitem__.side_effect = mock_getitem
-
-        # Run the read_file method
-        data = fdt.read_fina_values(
-            start=1575981140,
-            step=10,
-            window=100
+        ]  # Mocked data
+        reader_props = FileReaderProps(
+            meta=FinaMeta(
+                **EmonFinaDataTest.get_fina_meta_slim()
+            ),
+            search=search
         )
-
-        assert data.shape[0] == 10
-
-        # Run the read_file method
-        data = fdt.read_fina_values(
-            start=1575981140,
-            step=20,
-            window=100
+        reader_props.initialise_reader()
+        mock_reader_meta.props = reader_props
+        monkeypatch = pytest.MonkeyPatch()
+        monkeypatch.setattr(
+            "emon_tools.emon_fina.emon_fina.FinaReader",
+            lambda *args,
+            **kwargs: mock_reader_meta
         )
+        fdtm = FinaData(feed_id=1, data_dir="mock_dir")
+        # Run the read_file method
+        data = fdtm.read_fina_values(search)
 
-        assert data.shape[0] == 5
+        assert data.shape[0] == expected
 
-    @patch("builtins.open",
-           new_callable=mock_open,
-           read_data=pack("<f", 42.0) * 10)
-    @patch("emon_tools.emon_fina.fina_reader.isfile", return_value=True)
-    @patch("emon_tools.emon_fina.fina_reader.getsize", return_value=400)
-    @patch("emon_tools.emon_fina.fina_reader.mmap.mmap", autospec=True)
+    @pytest.mark.parametrize(
+        "kwargs, expected",
+        [
+            (
+                {
+                    "start_time": 1575981140,
+                    "time_window": 3600,
+                    "time_interval": 10
+                },
+                360
+            ),
+            (
+                {
+                    "start_time": 1575981140,
+                    "time_window": 3600,
+                    "time_interval": 20
+                },
+                180
+            ),
+        ],
+    )
     def test_get_fina_values(
         self,
-        mock_mmap,
-        mock_isfile,
-        mock_getsize,
-        mock_open_file,
-        fdt
+        kwargs,
+        expected,
+        mock_reader_meta
     ):
         """
         Test get_fina_values method.
         """
-        with pytest.raises(ValueError, match=r"^Invalid start value.*"):
-            fdt.read_fina_values(
-                start=1575983130,
-                step=10,
-                window=400
+        search = FinaByTimeParamsModel(**kwargs)
+        mock_reader_meta.read_file.return_value = [
+            (
+                np.arange(0, 360, 1),  # Positions
+                np.arange(20, 20 + 360, dtype=float),  # Values
             )
-        # Mock the mmap object
-        mock_mmap_instance = mock_mmap.return_value.__enter__.return_value
-
-        # Handle slice inputs to mimic actual mmap slicing behavior
-        def mock_getitem(slice_obj):
-            if isinstance(slice_obj, slice):
-                # Calculate the position based on the slice start
-                # Number of floats
-                size = (slice_obj.stop - slice_obj.start) // 4
-                return pack("<f", 42.0) * size
-            raise ValueError("Invalid slice input")
-
-        mock_mmap_instance.__getitem__.side_effect = mock_getitem
-
-        # Run the read_file method
-        data = fdt.get_fina_values(
-            start=1575981140,
-            step=10,
-            window=100
+        ]  # Mocked data
+        reader_props = FileReaderProps(
+            meta=FinaMeta(
+                **EmonFinaDataTest.get_fina_meta_slim()
+            ),
+            search=search
         )
-
-        assert data.shape[0] == 10
-
-        # Run the read_file method
-        data = fdt.get_fina_values(
-            start=1575981140,
-            step=20,
-            window=100
+        reader_props.initialise_reader()
+        mock_reader_meta.props = reader_props
+        monkeypatch = pytest.MonkeyPatch()
+        monkeypatch.setattr(
+            "emon_tools.emon_fina.emon_fina.FinaReader",
+            lambda *args,
+            **kwargs: mock_reader_meta
         )
+        fdtm = FinaData(feed_id=1, data_dir="mock_dir")
+        # Run the read_file method
+        data = fdtm.get_fina_values(search)
 
-        assert data.shape[0] == 5
+        assert data.shape[0] == expected
 
-    @patch("builtins.open",
-           new_callable=mock_open,
-           read_data=pack("<f", 42.0) * 10)
-    @patch("emon_tools.emon_fina.fina_reader.isfile", return_value=True)
-    @patch("emon_tools.emon_fina.fina_reader.getsize", return_value=400)
-    @patch("emon_tools.emon_fina.fina_reader.mmap.mmap", autospec=True)
-    def test_get_fina_time_series(
+    @pytest.mark.parametrize(
+        "kwargs, expected",
+        [
+            (
+                {
+                    "start_time": 1575981140,
+                    "time_window": 3600,
+                    "time_interval": 10
+                },
+                360
+            ),
+            (
+                {
+                    "start_time": 1575981140,
+                    "time_window": 3600,
+                    "time_interval": 20
+                },
+                179
+            ),
+        ],
+    )
+    def test_get_data_by_date(
         self,
-        mock_mmap,
-        mock_isfile,
-        mock_getsize,
-        mock_open_file,
-        fdt
-    ):
-        """
-        Test get_fina_time_series method.
-        """
-        with pytest.raises(ValueError, match=r"^Invalid start value.*"):
-            fdt.get_fina_time_series(
-                start=1575983130,
-                step=10,
-                window=400
-            )
-        # Mock the mmap object
-        mock_mmap_instance = mock_mmap.return_value.__enter__.return_value
-
-        # Handle slice inputs to mimic actual mmap slicing behavior
-        def mock_getitem(slice_obj):
-            if isinstance(slice_obj, slice):
-                # Calculate the position based on the slice start
-                # Number of floats
-                size = (slice_obj.stop - slice_obj.start) // 4
-                return pack("<f", 42.0) * size
-            raise ValueError("Invalid slice input")
-
-        mock_mmap_instance.__getitem__.side_effect = mock_getitem
-
-        # Run the read_file method
-        data = fdt.get_fina_time_series(
-            start=1575981140,
-            step=10,
-            window=100
-        )
-        assert isinstance(data, np.ndarray)
-        assert data.shape[0] == 10
-
-        # Run the read_file method
-        data = fdt.get_fina_time_series(
-            start=1575981140,
-            step=20,
-            window=100
-        )
-
-        assert isinstance(data, np.ndarray)
-        assert data.shape[0] == 5
-
-    @patch("builtins.open",
-           new_callable=mock_open,
-           read_data=pack("<f", 42.0) * 10)
-    @patch("emon_tools.emon_fina.fina_reader.isfile", return_value=True)
-    @patch("emon_tools.emon_fina.fina_reader.getsize", return_value=400)
-    @patch("emon_tools.emon_fina.fina_reader.mmap.mmap", autospec=True)
-    def test_get_fina_values_by_date(
-        self,
-        mock_mmap,
-        mock_isfile,
-        mock_getsize,
-        mock_open_file,
-        fdt
+        kwargs,
+        expected,
+        mock_reader_meta
     ):
         """
         Test get_fina_values_by_date method.
         """
-        start, end = Utils.get_dates_interval_from_timestamp(
-            start=1575983130,
-            window=400
+        start, _ = Utils.get_dates_interval_from_timestamp(
+            start=kwargs.get('start_time'),
+            window=kwargs.get('time_window')
         )
-        with pytest.raises(ValueError, match=r"^Invalid start value.*"):
-            fdt.get_fina_values_by_date(
-                start_date=start,
-                end_date=end,
-                step=10
+        del kwargs['start_time']
+        kwargs['start_date'] = start
+        search = FinaByDateParamsModel(**kwargs)
+        mock_reader_meta.read_file.return_value = [
+            (
+                np.arange(0, 360, 1),  # Positions
+                np.arange(20, 20 + 360, dtype=float),  # Values
             )
-        # Mock the mmap object
-        mock_mmap_instance = mock_mmap.return_value.__enter__.return_value
-
-        # Handle slice inputs to mimic actual mmap slicing behavior
-        def mock_getitem(slice_obj):
-            if isinstance(slice_obj, slice):
-                # Calculate the position based on the slice start
-                # Number of floats
-                size = (slice_obj.stop - slice_obj.start) // 4
-                return pack("<f", 42.0) * size
-            raise ValueError("Invalid slice input")
-
-        mock_mmap_instance.__getitem__.side_effect = mock_getitem
-
-        # Run the read_file method
-        start, end = Utils.get_dates_interval_from_timestamp(
-            start=1575981140,
-            window=100
+        ]  # Mocked data
+        reader_props = FileReaderProps(
+            meta=FinaMeta(
+                **EmonFinaDataTest.get_fina_meta_slim()
+            ),
+            search=search
         )
-        data = fdt.get_fina_values_by_date(
-            start_date=start,
-            end_date=end,
-            step=10
+        reader_props.initialise_reader()
+        mock_reader_meta.props = reader_props
+        monkeypatch = pytest.MonkeyPatch()
+        monkeypatch.setattr(
+            "emon_tools.emon_fina.emon_fina.FinaReader",
+            lambda *args,
+            **kwargs: mock_reader_meta
         )
+        fdtm = FinaData(feed_id=1, data_dir="mock_dir")
+
+        data = fdtm.get_data_by_date(search)
 
         assert isinstance(data, np.ndarray)
-        assert data.shape[0] == 10
+        assert data.shape[0] == expected
 
-        # Run the read_file method
-        data = fdt.get_fina_values_by_date(
-            start_date=start,
-            end_date=end,
-            step=20
-        )
-
-        assert isinstance(data, np.ndarray)
-        assert data.shape[0] == 5
-
-    @patch("builtins.open",
-           new_callable=mock_open,
-           read_data=pack("<f", 42.0) * 10)
-    @patch("emon_tools.emon_fina.fina_reader.isfile", return_value=True)
-    @patch("emon_tools.emon_fina.fina_reader.getsize", return_value=400)
-    @patch("emon_tools.emon_fina.fina_reader.mmap.mmap", autospec=True)
-    def test_get_fina_time_series_by_date(
+    @pytest.mark.parametrize(
+        "kwargs, expected",
+        [
+            (
+                {
+                    "start_time": 1575981140,
+                    "time_window": 3600,
+                    "time_interval": 10
+                },
+                360
+            ),
+            (
+                {
+                    "start_time": 1575981140,
+                    "time_window": 3600,
+                    "time_interval": 20
+                },
+                179
+            ),
+        ],
+    )
+    def test_get_data_by_date_range(
         self,
-        mock_mmap,
-        mock_isfile,
-        mock_getsize,
-        mock_open_file,
-        fdt
+        kwargs,
+        expected,
+        mock_reader_meta
     ):
         """
-        Test get_fina_values_by_date method.
-        """
+        Test get_data_by_date_range method.
+        """        
+        # Run the read_file method
         start, end = Utils.get_dates_interval_from_timestamp(
-            start=1575983130,
-            window=400
+            start=kwargs.get('start_time'),
+            window=kwargs.get('time_window')
         )
-        with pytest.raises(
-                ValueError,
-                match=r"Invalid start value. Start must be less than .*"):
-            fdt.get_fina_time_series_by_date(
-                start_date=start,
-                end_date=end,
-                step=10
+        del kwargs['start_time']
+        del kwargs['time_window']
+        kwargs['start_date'] = start
+        kwargs['end_date'] = end
+        search = FinaByDateRangeParamsModel(**kwargs)
+        mock_reader_meta.read_file.return_value = [
+            (
+                np.arange(0, 360, 1),  # Positions
+                np.arange(20, 20 + 360, dtype=float),  # Values
             )
-        # Mock the mmap object
-        mock_mmap_instance = mock_mmap.return_value.__enter__.return_value
-
-        # Handle slice inputs to mimic actual mmap slicing behavior
-        def mock_getitem(slice_obj):
-            if isinstance(slice_obj, slice):
-                # Calculate the position based on the slice start
-                # Number of floats
-                size = (slice_obj.stop - slice_obj.start) // 4
-                return pack("<f", 42.0) * size
-            raise ValueError("Invalid slice input")
-
-        mock_mmap_instance.__getitem__.side_effect = mock_getitem
-
-        # Run the read_file method
-        start, end = Utils.get_dates_interval_from_timestamp(
-            start=1575981140,
-            window=100
+        ]  # Mocked data
+        reader_props = FileReaderProps(
+            meta=FinaMeta(
+                **EmonFinaDataTest.get_fina_meta_slim()
+            ),
+            search=search
         )
-        data = fdt.get_fina_time_series_by_date(
-            start_date=start,
-            end_date=end,
-            step=10
+        reader_props.initialise_reader()
+        mock_reader_meta.props = reader_props
+        monkeypatch = pytest.MonkeyPatch()
+        monkeypatch.setattr(
+            "emon_tools.emon_fina.emon_fina.FinaReader",
+            lambda *args,
+            **kwargs: mock_reader_meta
         )
+        fdtm = FinaData(feed_id=1, data_dir="mock_dir")
+        data = fdtm.get_data_by_date_range(search)
 
-        assert isinstance(data, np.ndarray)
-        assert data.shape[0] == 10
-
-        # Run the read_file method
-        data = fdt.get_fina_time_series_by_date(
-            start_date=start,
-            end_date=end,
-            step=20
-        )
-
-        assert isinstance(data, np.ndarray)
-        assert data.shape[0] == 5
-
-    def test_calculate_optimal_chunk_size(self, fdt):
-        """Test the calculate_optimal_chunk_size method."""
-        fdt.CHUNK_SIZE_LIMIT = 1024
-
-        # Test with valid parameters
-        assert fdt.calculate_optimal_chunk_size(
-            window=10000) == 4096
-        assert fdt.calculate_optimal_chunk_size(
-            window=10000, min_chunk_size=512) == 4096
-        assert fdt.calculate_optimal_chunk_size(
-            window=10000, scale_factor=2.0) == 4096
-        assert fdt.calculate_optimal_chunk_size(
-            window=10000, divisor=128) == 4096
-
-        # Test with invalid parameters
-        with pytest.raises(
-                ValueError, match="window size must be a positive integer."):
-            fdt.calculate_optimal_chunk_size(window=-1)
-        with pytest.raises(
-                ValueError,
-                match="Minimum chunk size must be a positive integer."):
-            fdt.calculate_optimal_chunk_size(window=10000, min_chunk_size=-1)
-        with pytest.raises(
-                ValueError, match="Scale factor must be a positive number."):
-            fdt.calculate_optimal_chunk_size(window=10000, scale_factor=-1.0)
-        with pytest.raises(
-                ValueError, match="divisor must be a positive integer."):
-            fdt.calculate_optimal_chunk_size(window=10000, divisor=-1)
-
-    def test_calculate_nearest_divisible(self):
-        """Test the calculate_nearest_divisible method."""
-        # Test with valid parameters
-        assert FinaData.calculate_nearest_divisible(
-            250, 128, 256, 1024) == 256
-        assert FinaData.calculate_nearest_divisible(
-            500, 128, 256, 1024) == 512
-        assert FinaData.calculate_nearest_divisible(
-            1000, 128, 256, 1024) == 1024
-        assert FinaData.calculate_nearest_divisible(
-            100, 128, 256, 1024) == 256
-
-        # Test with edge cases
-        assert FinaData.calculate_nearest_divisible(
-            1025, 128, 256, 1024) == 1024
-        assert FinaData.calculate_nearest_divisible(
-            255, 128, 256, 1024) == 256
-        assert FinaData.calculate_nearest_divisible(
-            0, 128, 256, 1024) == 256
+        assert data.shape[0] == expected
 
     @pytest.mark.parametrize(
         "dt_value, date_format, expected",
@@ -667,7 +877,11 @@ class TestFinaData:
         expected
     ):
         """Test valid inputs for get_utc_datetime_from_string."""
-        result = Utils.get_utc_datetime_from_string(dt_value, date_format)
+        result = Utils.get_utc_datetime_from_string(
+            dt_value=dt_value,
+            date_format=date_format,
+            timezone=dt.timezone.utc
+        )
         assert result == expected
 
     @pytest.mark.parametrize(

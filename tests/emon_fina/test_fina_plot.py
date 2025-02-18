@@ -11,6 +11,7 @@ from unittest.mock import patch
 import numpy as np
 import pandas as pd
 import pytest
+from emon_tools.emon_fina.fina_models import OutputType
 from emon_tools.emon_fina.fina_time_series import FinaDataFrame
 from emon_tools.emon_fina.fina_plot import PlotData
 from emon_tools.emon_fina.fina_plot import PlotStats
@@ -37,9 +38,9 @@ class TestPlotData:
         Provide a fixture for sample time and value data.
         """
         # Example timestamps
-        times = np.array([1640995200, 1640995300, 1640995400])
-        values = np.array([1.5, 2.3, 3.7])  # Example values
-        return FinaDataFrame.set_data_frame(times, values)
+        times = np.array([
+            [1640995200, 1.5], [1640995300, 2.3], [1640995400, 3.7]])
+        return FinaDataFrame.set_data_frame(times, OutputType.TIME_SERIES)
 
     @patch("emon_tools.emon_fina.fina_plot.plt.show")
     def test_plot_with_pandas(self, mock_show, sample_data_frame):

@@ -6,195 +6,17 @@ from os.path import abspath, splitext
 from os.path import join as path_join
 from struct import unpack
 from typing import Tuple
-from typing import Optional
 from typing import Generator
 import logging
 import mmap
-import math
-import datetime as dt
 import numpy as np
-
+from emon_tools.emon_fina.fina_models import FinaByTimeParamsModel
+from emon_tools.emon_fina.fina_models import FinaMetaModel
+from emon_tools.emon_fina.fina_services import FileReaderProps, FinaMeta
 from emon_tools.emon_fina.fina_utils import Utils as Ut
 
 logging.basicConfig()
 et_logger = logging.getLogger(__name__)
-
-
-class MetaData:
-    """
-    Class to manage metadata with validation, serialization,
-    and string representation.
-
-    Attributes:
-        interval (int): Interval between data points in seconds.
-        start_time (int): Start time as a UNIX timestamp.
-        npoints (int): Total number of data points.
-        end_time (int): End time as a UNIX timestamp.
-    """
-
-    def __init__(self,
-                 interval: int,
-                 start_time: int,
-                 npoints: int,
-                 end_time: int
-                 ):
-        """
-        Initialize the MetaData instance.
-
-        Parameters:
-            interval (int): Interval between data points in seconds.
-            start_time (int): Start time as a UNIX timestamp.
-            npoints (int): Total number of data points.
-            end_time (int): End time as a UNIX timestamp.
-
-        Raises:
-            ValueError:
-                If any parameter is invalid
-                or start_time is not less than end_time.
-        """
-        self.interval = interval
-        self.start_time = start_time
-        self.npoints = npoints
-        self.end_time = end_time
-
-    def _validate_date_order(self):
-        """
-        Ensure that start_time precedes end_time.
-
-        Raises:
-            ValueError: If start_time is not less than end_time.
-        """
-        if self._start_time > 0\
-                and self._start_time >= self._end_time:
-            raise ValueError("start_time must be less than end_time.")
-
-    @property
-    def interval(self) -> int:
-        """
-        Get the interval between data points in seconds.
-
-        Returns:
-            int: Interval in seconds.
-        """
-        return self._interval
-
-    @interval.setter
-    def interval(self, value: int):
-        """
-        Set the interval between data points in seconds.
-
-        Parameters:
-            value (int): Interval in seconds.
-
-        Raises:
-            ValueError: If the value is not a positive integer.
-        """
-        self._interval = Ut.validate_integer(
-            value,
-            "interval",
-            positive=True)
-
-    @property
-    def start_time(self) -> int:
-        """
-        Get the start time as a UNIX timestamp.
-
-        Returns:
-            int: Start time in seconds since the epoch.
-        """
-        return self._start_time
-
-    @start_time.setter
-    def start_time(self, value: int):
-        """
-        Set the start time as a UNIX timestamp.
-
-        Parameters:
-            value (int): Start time in seconds since the epoch.
-
-        Raises:
-            ValueError: If the value is not a positive integer.
-        """
-        self._start_time = Ut.validate_timestamp(value, "start_time")
-        if hasattr(self, "_end_time"):
-            self._validate_date_order()
-
-    @property
-    def npoints(self) -> int:
-        """
-        Get the total number of data points.
-
-        Returns:
-            int: Number of data points.
-        """
-        return self._npoints
-
-    @npoints.setter
-    def npoints(self, value: int):
-        """
-        Set the total number of data points.
-
-        Parameters:
-            value (int): Number of data points.
-
-        Raises:
-            ValueError: If the value is not a positive integer.
-        """
-        self._npoints = Ut.validate_integer(value, "npoints", non_neg=True)
-
-    @property
-    def end_time(self) -> int:
-        """
-        Get the end time as a UNIX timestamp.
-
-        Returns:
-            int: End time in seconds since the epoch.
-        """
-        return self._end_time
-
-    @end_time.setter
-    def end_time(self, value: int):
-        """
-        Set the end time as a UNIX timestamp.
-
-        Parameters:
-            value (int): End time in seconds since the epoch.
-
-        Raises:
-            ValueError: If the value is not a positive integer.
-        """
-        self._end_time = Ut.validate_timestamp(value, "end_time")
-        if hasattr(self, "_start_time"):
-            self._validate_date_order()
-
-    def calculate_nb_days(self) -> int:
-        """
-        Calculate the number of days covered by the data.
-
-        Returns:
-            int: Number of days.
-        """
-        start = dt.datetime.fromtimestamp(self._start_time, dt.timezone.utc)
-        end = dt.datetime.fromtimestamp(self._end_time, dt.timezone.utc)
-        delta = (end - start).total_seconds() / (3600 * 24)
-        return math.ceil(delta)
-
-    def serialize(self) -> dict:
-        """
-        Serialize the metadata into a dictionary.
-
-        Returns:
-            dict: Serialized metadata.
-        """
-        return {
-            "interval": self._interval,
-            "start_time": self._start_time,
-            "npoints": self._npoints,
-            "end_time": self._end_time,
-        }
-
-    def __str__(self) -> str:
-        return f"{self.serialize()}"
 
 
 class FinaReader:
@@ -209,7 +31,12 @@ class FinaReader:
 
     MAX_DATA_SIZE = 100 * 1024 * 1024  # 100 MB limit for files
     MAX_META_SIZE = 1024  # 1Kb limit for files
-    CHUNK_SIZE_LIMIT = 4096  # Max number of values to read in a chunk
+    # Prefered number of values to read in a chunk
+    # 4 B = 4096 bytes / 4 bytes = 1024 points
+    DEFAULT_CHUNK_SIZE = 1024
+    # Max number of values to read in a chunk
+    # 64 KB = 16384 bytes / 4 bytes = 4096 points
+    CHUNK_SIZE_LIMIT = 4096
     VALID_FILE_EXTENSIONS = {".dat", ".meta"}
 
     def __init__(self, feed_id: int, data_dir: str):
@@ -230,8 +57,7 @@ class FinaReader:
 
         self._feed_id = feed_id
         self._data_dir = data_dir
-        self._pos = 0
-        self._chunk_size = 0
+        self.props: FileReaderProps = None
 
     def _sanitize_path(self, filename: str) -> str:
         """
@@ -274,52 +100,6 @@ class FinaReader:
             raise FileNotFoundError(f"Data file does not exist: {file_path}")
         self._validate_file_size(file_path, self.MAX_DATA_SIZE)
         return file_path
-
-    def _validate_read_params(
-        self,
-        npoints: int,
-        start_pos: int,
-        chunk_size: int,
-        window: Optional[int],
-    ) -> int:
-        """
-        Validate read parameters and calculate total points to process.
-
-        Parameters:
-            npoints (int): Total number of points in the file.
-            start_pos (int): Starting position (index) in the file.
-            chunk_size (int): Number of values to read per chunk.
-            window (Optional[int]): Maximum number of points to read.
-
-        Returns:
-            int: Total points to process based on input parameters.
-
-        Raises:
-            ValueError: If parameters are invalid.
-        """
-        npoints = Ut.validate_integer(npoints, "npoints", positive=True)
-        self.chunk_size = Ut.validate_integer(
-            chunk_size,
-            "chunk_size",
-            positive=True)
-
-        if not isinstance(start_pos, int) or start_pos < 0:
-            raise ValueError(
-                f"start_pos ({start_pos}) "
-                "must be an integer upper or equal to zero.")
-
-        if start_pos >= npoints:
-            raise ValueError(
-                f"start_pos ({start_pos}) "
-                f"exceeds total npoints ({npoints}).")
-
-        if window is not None:
-            window = Ut.validate_integer(window, "window", positive=True)
-            total_points = min(npoints - start_pos, window)
-        else:
-            total_points = npoints - start_pos
-
-        return total_points
 
     @property
     def feed_id(self) -> int:
@@ -369,63 +149,12 @@ class FinaReader:
             raise ValueError("data_dir must be a valid directory.")
         self._data_dir = value
 
-    @property
-    def pos(self) -> str:
-        """
-        Get the current read position in the data file.
-
-        Returns:
-            int: Current read position.
-        """
-        return self._pos
-
-    @pos.setter
-    def pos(self, value: str):
-        """
-        Set the current read position in the data file.
-
-        Parameters:
-            value (int): Read position.
-
-        Raises:
-            ValueError: If the position is negative.
-        """
-        if value < 0:
-            raise ValueError("pos must be a positive integer.")
-        self._pos = value
-
-    @property
-    def chunk_size(self) -> str:
-        """
-        Get the current read chunk_size in the data file.
-
-        Returns:
-            int: Current read chunk_size.
-        """
-        return self._chunk_size
-
-    @chunk_size.setter
-    def chunk_size(self, value: str):
-        """
-        Set the current read chunk_size in the data file.
-
-        Parameters:
-            value (int): Read chunk_size.
-
-        Raises:
-            ValueError: If the chunk_size is negative.
-        """
-        self._chunk_size = max(
-            Ut.validate_integer(value, "chunk_size", positive=True),
-            self.CHUNK_SIZE_LIMIT
-        )
-
-    def read_meta(self) -> MetaData:
+    def read_meta(self) -> FinaMeta:
         """
         Read metadata from the .meta file.
 
         Returns:
-            MetaData: Metadata object.
+            FinaMeta: Metadata object.
 
         Raises:
             IOError: If there is an issue reading the meta file.
@@ -442,21 +171,38 @@ class FinaReader:
             npoints = data_size // 4
             end_time = 0
             if start_time > 0:
-                end_time = start_time + npoints * interval - interval
+                end_time = start_time + (npoints * interval) - interval
 
-            return MetaData(interval, start_time, npoints, end_time)
+            return FinaMeta(
+                interval=interval,
+                start_time=start_time,
+                end_time=end_time,
+                npoints=npoints,
+                size=data_size
+            )
         except Exception as e:
             raise IOError(
                 f"Error reading meta file: {e}"
             ) from e
 
-    def read_file(
+    def initialise_reader(
         self,
-        npoints: int,
-        start_pos: int = 0,
-        chunk_size: int = 1024,
-        window: Optional[int] = None,
-        set_pos: bool = True,
+        meta: FinaMetaModel,
+        props: FinaByTimeParamsModel,
+        auto_pos: bool = True
+    ):
+        """
+        Initialise reader props for read fina data on file
+        """
+        self.props = FileReaderProps(
+            meta=meta,
+            search=props,
+            auto_pos=auto_pos
+        )
+        self.props.initialise_reader()
+
+    def read_file(
+        self
     ) -> Generator[Tuple[np.ndarray, np.ndarray], None, None]:
         """
         Read data values from the .dat file in chunks.
@@ -482,37 +228,25 @@ class FinaReader:
             ValueError: If parameters are invalid or data reading fails.
             IOError: If file access fails.
         """
-        # Validate inputs and compute total points to read
-        total_points = self._validate_read_params(
-            npoints=npoints,
-            start_pos=start_pos,
-            chunk_size=chunk_size,
-            window=window
-        )
-
         data_path = self._get_data_path()
-        self._pos = start_pos
-
+        self.props.current_pos = self.props.start_pos
         try:
             with open(data_path, "rb") as file:
                 with mmap.mmap(
                         file.fileno(), 0, access=mmap.ACCESS_READ) as mm:
-                    while self._pos < start_pos + total_points:
+                    while self.props.has_remaining_points():
                         # Calculate current chunk size
-                        remaining_points = start_pos + total_points - self._pos
-                        current_chunk_size = min(
-                            self.chunk_size,
-                            remaining_points)
+                        current_chunk_size = self.props.iter_update_before()
 
                         # Compute offsets and read data
-                        offset = self._pos * 4
+                        offset = self.props.current_pos * 4
                         end_offset = offset + current_chunk_size * 4
                         chunk_data = mm[offset:end_offset]
 
                         if len(chunk_data) != current_chunk_size * 4:
                             raise ValueError(
                                 "Failed to read expected chunk "
-                                f"at position {self._pos}. "
+                                f"at position {self.props.current_pos}. "
                                 f"Expected {current_chunk_size * 4} bytes, "
                                 f"got {len(chunk_data)}."
                             )
@@ -520,13 +254,14 @@ class FinaReader:
                         # Convert to values and yield
                         values = np.frombuffer(chunk_data, dtype='<f4')
                         positions = np.arange(
-                            self._pos,
-                            self._pos + current_chunk_size)
+                            self.props.current_pos,
+                            self.props.current_pos + current_chunk_size)
                         yield positions, values
 
-                        # Increment position
-                        if set_pos:
-                            self._pos += current_chunk_size
+                        # Update reader props
+                        if self.props.auto_pos:
+                            self.props.update_step_boundaries()
+                            self.props.iter_update_after()
 
         except IOError as e:
             raise IOError(
