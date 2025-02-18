@@ -224,12 +224,7 @@ class FinaData:
             A numpy array initialized with NaN values to store results.
         """
         output_type = self.reader.props.search.output_type
-        average_output = self.reader.props.search.output_average
-        start_search = self.reader.props.start_search
-
         window_max = self.reader.props.window_max
-        window_search = self.reader.props.window_search
-
         block_size = self.reader.props.block_size
         # npts_total = math.ceil(window_max / block_size)
         npts_total = window_max // block_size
