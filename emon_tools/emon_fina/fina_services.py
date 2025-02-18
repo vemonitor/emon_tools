@@ -394,10 +394,10 @@ class FileReaderProps(FileReaderPropsModel):
         self.init_step_boundaries()
         self.calc_current_window_size()
         self.get_chunk_size(bypass_min=True)
-        # Ensure invariants: start_pos <= current_pos <= window_max.
-        assert self.start_pos <= self.current_pos <= self.window_max, (
+        # Ensure invariants: start_pos <= current_pos <= npoints.
+        assert self.start_pos <= self.current_pos <= self.meta.npoints, (
             f"Invariant violated: start_pos({self.start_pos}) <= "
-            f"current_pos({self.current_pos}) <= window_max({self.window_max})"
+            f"current_pos({self.current_pos}) <= npoints({self.meta.npoints})"
         )
 
     def iter_update_before(self) -> int:
@@ -431,9 +431,9 @@ class FileReaderProps(FileReaderPropsModel):
             return
         self.current_pos += increment
         # Reassert state invariant.
-        assert self.start_pos <= self.current_pos <= self.window_max, (
+        assert self.start_pos <= self.current_pos <= self.meta.npoints, (
             f"Invariant violated after update: start_pos({self.start_pos}) <= "
-            f"current_pos({self.current_pos}) <= window_max({self.window_max})"
+            f"current_pos({self.current_pos}) <= npoints({self.meta.npoints})"
         )
 
     @staticmethod
