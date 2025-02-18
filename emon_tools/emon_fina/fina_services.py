@@ -202,7 +202,9 @@ class FileReaderProps(FileReaderPropsModel):
             int: The updated number of remaining points.
         """
         self.remaining_points = self.calc_remaining_points(
-            window_max=self.window_max, current_pos=self.current_pos
+            window_max=self.window_max,
+            start_pos=self.start_pos,
+            current_pos=self.current_pos
         )
         return self.remaining_points
 
@@ -264,7 +266,9 @@ class FileReaderProps(FileReaderPropsModel):
         )
 
         self.remaining_points = self.calc_remaining_points(
-            window_max=self.window_max, current_pos=self.current_pos
+            window_max=self.window_max,
+            start_pos=self.start_pos,
+            current_pos=self.current_pos
         )
 
     def init_step_boundaries(self):
@@ -647,11 +651,15 @@ class FileReaderProps(FileReaderPropsModel):
         return window_max
 
     @staticmethod
-    def calc_remaining_points(window_max: int, current_pos: int) -> int:
+    def calc_remaining_points(
+        window_max: int,
+        start_pos: int,
+        current_pos: int
+    ) -> int:
         """
         Calculate the number of remaining file points in the current window.
         """
-        return max(0, window_max - current_pos)
+        return max(0, window_max - (current_pos - start_pos))
 
     @staticmethod
     def calc_time_correction(
