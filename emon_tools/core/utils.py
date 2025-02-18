@@ -236,6 +236,25 @@ class Utils:
         return dt_point.timestamp()
 
     @staticmethod
+    def get_start_of_interval(
+        timestamp: Union[int, float],
+        interval: Union[int, float]
+    ) -> float:
+        """
+        Get the start-of-inetrval timestamp for a given timestamp in UTC.
+
+        Parameters:
+            timestamp (Union[int, float]): The input UNIX timestamp.
+            interval (Union[int, float]): The interval.
+            timezone (Optional[dt.timezone]):
+                The timezone by defaut UTC (if None use current Locale).
+
+        Returns:
+            float: The start-of-inetrval timestamp in UTC.
+        """
+        return timestamp - (timestamp % interval)
+
+    @staticmethod
     def get_start_day(
         timestamp: Union[int, float],
         timezone: Optional[dt.timezone] = dt.timezone.utc
@@ -276,9 +295,11 @@ class Utils:
         return result.strftime(date_format)
 
     @staticmethod
-    def get_utc_datetime_from_string(dt_value: str,
-                                     date_format: str = "%Y-%m-%d %H:%M:%S"
-                                     ) -> dt.datetime:
+    def get_utc_datetime_from_string(
+        dt_value: str,
+        date_format: str = "%Y-%m-%d %H:%M:%S",
+        timezone: Optional[dt.timezone] = None
+    ) -> dt.datetime:
         """
         Convert a date string to a UTC datetime object.
 
@@ -299,7 +320,9 @@ class Utils:
 
         try:
             naive_datetime = dt.datetime.strptime(dt_value, date_format)
-            return naive_datetime.replace(tzinfo=dt.timezone.utc)
+            if isinstance(timezone, dt.timezone):
+                return naive_datetime.replace(tzinfo=timezone)
+            return naive_datetime
         except ValueError as e:
             raise ValueError(
                 f"Error parsing date '{dt_value}' "
@@ -310,7 +333,8 @@ class Utils:
     def get_dates_interval_from_timestamp(
         start: int,
         window: int,
-        date_format: str = "%Y-%m-%d %H:%M:%S"
+        date_format: str = "%Y-%m-%d %H:%M:%S",
+        timezone: Optional[dt.timezone] = dt.timezone.utc
     ) -> Tuple[str, str]:
         """
         Generate formatted start and end date strings
@@ -337,17 +361,22 @@ class Utils:
         if start < 0 or window < 0:
             raise ValueError("'start' and 'window' must be non-negative.")
 
-        start_dt = dt.datetime.fromtimestamp(start, tz=dt.timezone.utc)
+        if isinstance(timezone, dt.timezone):
+            start_dt = dt.datetime.fromtimestamp(start, tz=dt.timezone.utc)
+        else:
+            start_dt = dt.datetime.fromtimestamp(start)
         end_dt = start_dt + dt.timedelta(seconds=window)
 
         return start_dt.strftime(date_format), end_dt.strftime(date_format)
 
     @staticmethod
-    def get_window_by_dates(start_date: str,
-                            end_date: str,
-                            interval: int,
-                            date_format: str = "%Y-%m-%d %H:%M:%S"
-                            ) -> Tuple[int, int]:
+    def get_window_by_dates(
+        start_date: str,
+        end_date: str,
+        interval: int,
+        date_format: str = "%Y-%m-%d %H:%M:%S",
+        timezone: Optional[dt.timezone] = dt.timezone.utc
+    ) -> Tuple[int, int]:
         """
         Calculate the start timestamp and the number
         of intervals (window size) based on a date range.
@@ -372,8 +401,16 @@ class Utils:
                 If the `interval` is not a positive integer.
         """
         # Convert date strings to UTC datetime objects
-        start_dt = Utils.get_utc_datetime_from_string(start_date, date_format)
-        end_dt = Utils.get_utc_datetime_from_string(end_date, date_format)
+        start_dt = Utils.get_utc_datetime_from_string(
+            dt_value=start_date,
+            date_format=date_format,
+            timezone=timezone
+        )
+        end_dt = Utils.get_utc_datetime_from_string(
+            dt_value=end_date,
+            date_format=date_format,
+            timezone=timezone
+        )
 
         # Validate date range
         if start_dt >= end_dt:
