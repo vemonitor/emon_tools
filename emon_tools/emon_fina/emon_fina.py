@@ -83,7 +83,7 @@ class FinaData:
         self.reader.initialise_reader(
             meta=self.meta,
             props=props,
-            auto_pos=False
+            auto_pos=True
         )
 
         # Initialize result storage and day boundaries
