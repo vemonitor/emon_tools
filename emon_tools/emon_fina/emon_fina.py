@@ -288,16 +288,16 @@ class FinaData:
         if block_size != current_size:
             if output_average == OutputAverageEnum.COMPLETE:
                 return np.array([]), combined[current_size:]
-            if output_average == OutputAverageEnum.PARTIAL:
+            if output_average in (
+                OutputAverageEnum.PARTIAL,
+                OutputAverageEnum.AS_IS
+            ):
                 diff = block_size - current_size
-                tmp = np.full((1, block_size), [np.nan])
-                tmp[:, diff:] = combined[:current_size]
-                return tmp, combined[current_size:]
-            if output_average == OutputAverageEnum.AS_IS:
-                diff = block_size - current_size
-                tmp = np.full((1, block_size), [np.nan])
-                tmp[:, diff:] = combined[:current_size]
-                return tmp, combined[current_size:]
+                tmp = np.full((1, block_size), np.nan)
+                # Only assign as many elements as are available.
+                n = min(current_size, combined.size)
+                tmp[:, diff:diff+n] = combined[:n].reshape(1, -1)
+                return tmp, combined[n:]
         # Determine the number of complete rows that can be formed.
         num_full_rows = len(combined) // block_size
 
