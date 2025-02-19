@@ -114,7 +114,7 @@ class TestPlotStats:
         df = pd.DataFrame({
             "time": times,
             "min": mins,
-            "mean": means,
+            "values": means,
             "max": maxs
         })
         return df.set_index(pd.to_datetime(df['time'], unit='s', utc=True))
