@@ -47,7 +47,7 @@ class TestFinaDataFrame:
                     "time_window": 3600,
                     "time_interval": 10
                 },
-                360
+                359
             ),
             (
                 {
@@ -105,7 +105,7 @@ class TestFinaDataFrame:
                     "time_window": 3600,
                     "time_interval": 10
                 },
-                360
+                359
             ),
             (
                 {
@@ -130,6 +130,7 @@ class TestFinaDataFrame:
             start=kwargs['start_time'],
             window=kwargs['time_window']
         )
+        search_t = FinaByTimeParamsModel(**kwargs)
         del kwargs['start_time']
         kwargs['start_date'] = start
         search = FinaByDateParamsModel(**kwargs)
@@ -143,7 +144,7 @@ class TestFinaDataFrame:
             meta=FinaMeta(
                 **EmonFinaDataTest.get_fina_meta_slim()
             ),
-            search=search
+            search=search_t
         )
         reader_props.initialise_reader()
         mock_reader_meta.props = reader_props
@@ -168,7 +169,7 @@ class TestFinaDataFrame:
                     "time_window": 3600,
                     "time_interval": 10
                 },
-                360
+                359
             ),
             (
                 {
@@ -193,6 +194,7 @@ class TestFinaDataFrame:
             start=kwargs.get('start_time'),
             window=kwargs.get('time_window')
         )
+        search_t = FinaByTimeParamsModel(**kwargs)
         del kwargs['start_time']
         del kwargs['time_window']
         kwargs['start_date'] = start
@@ -208,7 +210,7 @@ class TestFinaDataFrame:
             meta=FinaMeta(
                 **EmonFinaDataTest.get_fina_meta_slim()
             ),
-            search=search
+            search=search_t
         )
         reader_props.initialise_reader()
         mock_reader_meta.props = reader_props
