@@ -3,8 +3,9 @@ import math
 import numpy as np
 from fastapi import APIRouter
 from pydantic import ValidationError
-from emon_tools.emon_fina.emon_fina import FinaData, FinaStats, StatsType
-from emon_tools.fastapi.utils.emon_fina import EmonFinaHelper
+from emon_tools.emon_fina.fina_models import FinaByTimeParamsModel, OutputType
+from emon_tools.emon_fina.emon_fina import FinaData
+from emon_tools.fastapi.utils.emon_fina_helper import EmonFinaHelper
 from emon_tools.fastapi.models.emon_fina import FileSourceModel
 from emon_tools.fastapi.models.emon_fina import GetFinaDataModel
 from emon_tools.fastapi.models.emon_fina import EmonFinaArgsModel
@@ -139,10 +140,12 @@ async def get_file_data(
                 and real_window > 0\
                 and interval > 0\
                 and real_start < fina.meta.end_time:
-            datas = fina.get_fina_time_series(
-                start=real_start,
-                step=interval,
-                window=real_window
+            datas = fina.get_fina_values(
+                FinaByTimeParamsModel(
+                    start_time=real_start,
+                    time_window=real_window,
+                    time_interval=interval,
+                )
             )
             if start < fina.meta.start_time:
                 nb_na = math.ceil((fina.meta.start_time - start) / interval)
@@ -189,7 +192,7 @@ async def get_file_stats(
             interval=interval,
             window=window
         )
-        fina = FinaStats(
+        fina = FinaData(
             feed_id=feed_id,
             data_dir=EmonFinaHelper.get_files_source(
                 source=source
@@ -201,11 +204,13 @@ async def get_file_stats(
             interval = fina.meta.interval
         if window <= 0:
             window = 3600 * 24
-        datas = fina.get_stats(
-            start_time=start,
-            steps_window=window,
-            max_size=3600 * 24 * 8900,
-            stats_type=StatsType.INTEGRITY
+        datas = fina.get_fina_values(
+            FinaByTimeParamsModel(
+                start_time=start,
+                time_window=window,
+                time_interval=interval,
+                output_type=OutputType.INTEGRITY
+            )
         )
         return {
             "success": True,
