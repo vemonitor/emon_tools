@@ -90,7 +90,7 @@ class FinaData:
         nb_filled, result = self._initialize_result()
         for _, values in self.reader.read_file():
             available = values.shape[0]
-            remaining = self.reader.props.window_max - nb_filled
+            remaining = self.reader.props.remaining_points
 
             if remaining <= 0:
                 break
@@ -99,7 +99,9 @@ class FinaData:
             result[nb_filled:nb_filled + to_copy] = values[:to_copy].reshape(
                 (-1, 1))
             nb_filled += to_copy
-        self.start = self.reader.props.search.start_time
+        self.start = (
+            self.reader.props.start_search * self.reader.props.search.time_interval
+        ) + self.meta.start_time
         self.step = self.reader.props.search.time_interval
         self.lines = result.size
         if props.output_type == OutputType.TIME_SERIES:
@@ -228,11 +230,9 @@ class FinaData:
         block_size = self.reader.props.block_size
         # npts_total = math.ceil(window_max / block_size)
         npts_total = window_max // block_size
-        # if average_output == OutputAverageEnum.PARTIAL:
-        #    start = math.ceil(start_search / block_size)
-        #    end = window_max - window_search
-        #    npts_total -= abs(start + end)
-
+        steps = self.reader.props.get_initial_output_step()
+        if steps > 0:
+            npts_total += steps
         array = FinaOutputData.init_stats(
             output_type=output_type,
             block_size=block_size
@@ -241,8 +241,8 @@ class FinaData:
         if block_size > 1:
             nb_cols = len(array)
         result = np.full((npts_total, nb_cols), array)
-        steps = self.reader.props.get_initial_output_step()
-        if steps > 0:
+
+        if steps > 0 and block_size > 1:
             for i in range(steps):
                 result[i, 0] = self.reader.props.current_start
                 self.reader.props.update_step_boundaries()
@@ -688,7 +688,7 @@ class FinaData:
             date_format=props.date_format,
         )
 
-        return self.get_fina_values(
+        return self.read_fina_values(
             props=FinaByTimeParamsModel(
                 start_time=start,
                 time_window=window,
