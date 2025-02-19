@@ -397,7 +397,7 @@ class TestFinaData:
                     "output_average": OutputAverageEnum.COMPLETE,
                     "time_ref_start": TimeRefEnum.BY_SEARCH
                 },
-                60
+                59
             ),
             (  # 2
                 {
@@ -407,7 +407,7 @@ class TestFinaData:
                     "output_average": OutputAverageEnum.COMPLETE,
                     "time_ref_start": TimeRefEnum.BY_TIME
                 },
-                59
+                57
             ),
             (  # 3
                 {
@@ -417,7 +417,7 @@ class TestFinaData:
                     "output_average": OutputAverageEnum.COMPLETE,
                     "time_ref_start": TimeRefEnum.BY_SEARCH
                 },
-                59
+                57
             ),
             (  # 4
                 {
@@ -427,7 +427,7 @@ class TestFinaData:
                     "output_average": OutputAverageEnum.COMPLETE,
                     "time_ref_start": TimeRefEnum.BY_SEARCH
                 },
-                60
+                58
             ),
             (  # 5
                 {
@@ -437,7 +437,7 @@ class TestFinaData:
                     "output_average": OutputAverageEnum.PARTIAL,
                     "time_ref_start": TimeRefEnum.BY_TIME
                 },
-                59
+                57
             ),
             (  # 6
                 {
@@ -447,7 +447,7 @@ class TestFinaData:
                     "output_average": OutputAverageEnum.PARTIAL,
                     "time_ref_start": TimeRefEnum.BY_SEARCH
                 },
-                59
+                57
             ),
             (  # 7
                 {
@@ -457,7 +457,7 @@ class TestFinaData:
                     "output_average": OutputAverageEnum.AS_IS,
                     "time_ref_start": TimeRefEnum.BY_TIME
                 },
-                57
+                59
             ),
             (  # 8
                 {
@@ -467,7 +467,7 @@ class TestFinaData:
                     "output_average": OutputAverageEnum.AS_IS,
                     "time_ref_start": TimeRefEnum.BY_SEARCH
                 },
-                57
+                59
             ),
         ],
     )
@@ -520,7 +520,7 @@ class TestFinaData:
                     "time_interval": 60,
                     "time_ref_start": TimeRefEnum.BY_TIME
                 },
-                (59, [1575936010.0, 1575936070.0, 1575936130.0])
+                (60, [1575936010.0, 1575936070.0, 1575936130.0])
             ),
             (
                 {
@@ -529,7 +529,7 @@ class TestFinaData:
                     "time_interval": 60,
                     "time_ref_start": TimeRefEnum.BY_SEARCH
                 },
-                (59, [1575936010.0, 1575936070.0, 1575936130.0])
+                (60, [1575936010.0, 1575936070.0, 1575936130.0])
             ),
         ],
     )
@@ -621,19 +621,19 @@ class TestFinaData:
         [
             (
                 {
-                    "start_time": 1575981140,
+                    "start_time": EmonFinaDataTest.get_time_start_2(),
                     "time_window": 3600,
                     "time_interval": 10
                 },
-                360
+                359
             ),
             (
                 {
-                    "start_time": 1575981140,
+                    "start_time": EmonFinaDataTest.get_time_start_2(),
                     "time_window": 3600,
                     "time_interval": 20
                 },
-                180
+                179
             ),
         ],
     )
@@ -678,19 +678,19 @@ class TestFinaData:
         [
             (
                 {
-                    "start_time": 1575981140,
+                    "start_time": EmonFinaDataTest.get_time_start_2(),
                     "time_window": 3600,
                     "time_interval": 10
                 },
-                360
+                359
             ),
             (
                 {
-                    "start_time": 1575981140,
+                    "start_time": EmonFinaDataTest.get_time_start_2(),
                     "time_window": 3600,
                     "time_interval": 20
                 },
-                180
+                179
             ),
         ],
     )
@@ -735,15 +735,15 @@ class TestFinaData:
         [
             (
                 {
-                    "start_time": 1575981140,
+                    "start_time": EmonFinaDataTest.get_time_start_2(),
                     "time_window": 3600,
                     "time_interval": 10
                 },
-                360
+                359
             ),
             (
                 {
-                    "start_time": 1575981140,
+                    "start_time": EmonFinaDataTest.get_time_start_2(),
                     "time_window": 3600,
                     "time_interval": 20
                 },
@@ -764,6 +764,7 @@ class TestFinaData:
             start=kwargs.get('start_time'),
             window=kwargs.get('time_window')
         )
+        search_t = FinaByTimeParamsModel(**kwargs)
         del kwargs['start_time']
         kwargs['start_date'] = start
         search = FinaByDateParamsModel(**kwargs)
@@ -777,7 +778,7 @@ class TestFinaData:
             meta=FinaMeta(
                 **EmonFinaDataTest.get_fina_meta_slim()
             ),
-            search=search
+            search=search_t
         )
         reader_props.initialise_reader()
         mock_reader_meta.props = reader_props
@@ -799,15 +800,15 @@ class TestFinaData:
         [
             (
                 {
-                    "start_time": 1575981140,
+                    "start_time": EmonFinaDataTest.get_time_start_2(),
                     "time_window": 3600,
                     "time_interval": 10
                 },
-                360
+                359
             ),
             (
                 {
-                    "start_time": 1575981140,
+                    "start_time": EmonFinaDataTest.get_time_start_2(),
                     "time_window": 3600,
                     "time_interval": 20
                 },
@@ -829,6 +830,7 @@ class TestFinaData:
             start=kwargs.get('start_time'),
             window=kwargs.get('time_window')
         )
+        search_t = FinaByTimeParamsModel(**kwargs)
         del kwargs['start_time']
         del kwargs['time_window']
         kwargs['start_date'] = start
@@ -844,7 +846,7 @@ class TestFinaData:
             meta=FinaMeta(
                 **EmonFinaDataTest.get_fina_meta_slim()
             ),
-            search=search
+            search=search_t
         )
         reader_props.initialise_reader()
         mock_reader_meta.props = reader_props
