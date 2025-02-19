@@ -19,8 +19,8 @@ class EmonFinaArgsModel(FileSourceModel):
 class GetFinaDataModel(EmonFinaArgsModel):
     """Get PhpFina data endpoint args"""
     start: Annotated[int, Field(
-        gte=0, default=0, title="Start time")]
+        ge=0, default=0, title="Start time")]
     interval: Annotated[int, Field(
-        gte=0, default=0, title="Interval time")]
+        ge=0, default=0, title="Interval time")]
     window: Annotated[int, Field(
-        gte=0, default=3600, title="Window time")]
+        ge=0, default=3600, title="Window time")]
