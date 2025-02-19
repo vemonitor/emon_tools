@@ -139,7 +139,7 @@ class PlotStats(FinaPlot):
                 data['max'],
                 alpha=0.2,
                 label='Daily values min-max range')
-            plt.plot(data.index, data['mean'], label='Daily mean values', lw=2)
+            plt.plot(data.index, data['values'], label='Daily mean values', lw=2)
         plt.title("Fina Stats Values")
         plt.ylabel("Daily Values")
         plt.xlabel("time")
