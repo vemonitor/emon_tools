@@ -189,8 +189,12 @@ class FileReaderProps(FileReaderPropsModel):
                 The absolute value of the product of start_search and interval.
         """
         i_step = 0
+        diff = self.search.start_time - self.meta.start_time
         if self.start_search < 0\
                 and abs(self.start_search) >= self.block_size:
+            i_step = abs(round(self.start_search / self.block_size))
+        elif diff < 0\
+                and self.search.output_average == OutputAverageEnum.AS_IS:
             i_step = abs(round(self.start_search / self.block_size))
         return i_step
 
@@ -258,12 +262,36 @@ class FileReaderProps(FileReaderPropsModel):
         )
 
         # Calculate the maximum points available in the window.
-        self.window_max = self.calc_window_max(
-            window_search=self.window_search,
-            npoints=self.meta.npoints,
-            start_pos=self.start_pos,
-            start_search=self.start_search
+        self.get_nearest_aligned_timestamp(
+            base_time=self.meta.start_time,
+            timestamp=self.search.start_time,
+            interval=self.meta.interval
         )
+        diff_min = self.search.start_time - self.meta.start_time
+        diff_max = self.search.start_time - self.meta.end_time
+        # nb_points
+        is_after = diff_max >= 0 and diff_max < self.search.time_window
+        if is_after:
+            self.window_max = diff_max
+        elif diff_min < 0:
+            self.window_max = max(
+                0,
+                (self.search.time_window + diff_min) // self.meta.interval
+            )
+        else:
+            self.window_max = max(
+                0,
+                min(
+                    abs(diff_max) // self.meta.interval,
+                    self.search.time_window // self.meta.interval
+                )
+            )
+        # self.window_max = self.calc_window_max(
+        #    window_search=self.window_search,
+        #    npoints=self.meta.npoints,
+        #    start_pos=self.start_pos,
+        #    start_search=self.start_search
+        # )
 
         self.remaining_points = self.calc_remaining_points(
             window_max=self.window_max,
@@ -386,10 +414,28 @@ class FileReaderProps(FileReaderPropsModel):
 
         return self.chunk_size
 
+    def initialise_search(self):
+        """
+        Initialize the reader properties and boundaries.
+        """
+        self.search.time_interval = self.get_nearest_valid_interval(
+            base_interval=self.meta.interval,
+            interval=self.search.time_interval
+        )
+        if self.search.start_time == 0:
+            self.search.start_time = self.meta.start_time
+        else:
+            self.search.start_time = self.get_nearest_aligned_timestamp(
+                base_time=self.meta.start_time,
+                timestamp=self.search.start_time,
+                interval=self.meta.interval
+            )
+
     def initialise_reader(self):
         """
         Initialize the reader properties and boundaries.
         """
+        self.initialise_search()
         self.init_read_props()
         self.init_step_boundaries()
         self.calc_current_window_size()
@@ -500,6 +546,44 @@ class FileReaderProps(FileReaderPropsModel):
             )
         n = round((timestamp - base_time) / interval)
         return base_time + n * interval
+
+    @staticmethod
+    def get_nearest_valid_interval(base_interval: int, interval: int) -> int:
+        """
+        Calculate the nearest valid interval
+        that is a multiple of 'base_interval' 
+        and is as close as possible to the provided 'interval'.
+        The result will always be greater than or equal to base_interval.
+
+        Args:
+            base_interval (int):
+                The fundamental interval that valid intervals
+                must be a multiple of.
+            interval (int):
+                The desired interval. Must be greater
+                than or equal to base_interval.
+
+        Returns:
+            int:
+                The nearest valid interval computed as n * base_interval,
+                where n is an integer chosen to minimize the difference
+                with 'interval'.
+
+        Raises:
+            ValueError:
+                If base_interval is zero or if interval is less
+                than base_interval.
+        """
+        if base_interval <= 0:
+            raise ValueError("Base interval must be greater than zero.")
+        if interval < base_interval:
+            raise ValueError(
+                "Interval must be greater than or equal to base_interval.")
+
+        n = round(interval / base_interval)
+        # Ensure that the result is not lower than base_interval.
+        valid_interval = max(n * base_interval, base_interval)
+        return valid_interval
 
     @staticmethod
     def calculate_nb_points(
