@@ -1,3 +1,4 @@
+import { FinaSourceProps } from '@/lib/graphTypes';
 import Pane from '../components/layout/pane'
 import { useDataViewer } from '../stores/dataViewerStore';
 import { ChartPane } from './lib/finaChartViever';
@@ -5,8 +6,12 @@ import { DataViewerList } from './lib/finaFilesViever';
 
 
 
-export function DataViewer() {
-  const source = useDataViewer((state) => state.source)
+export function DataViewer({
+  source_ref
+}: {
+  source_ref: FinaSourceProps
+}) {
+  //const source = useDataViewer((state) => state.source)
  
   return (
     <Pane
@@ -15,12 +20,12 @@ export function DataViewer() {
       <div className='grid grid-cols-8 h-full'>
         <div className='col-span-2 h-full'>
           <DataViewerList 
-            source={source}
+            source={source_ref}
           />
         </div>
         <div className='col-span-6 h-full'>
           <ChartPane
-            source={source}
+            source={source_ref}
             classBody='h-full'
           />
         </div>
