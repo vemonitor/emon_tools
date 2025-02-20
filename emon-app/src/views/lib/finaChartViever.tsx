@@ -48,7 +48,8 @@ export function FinaChartViewer({
     const time_start = useDataViewer((state) => state.time_start)
     const time_window = useDataViewer((state) => state.time_window)
     const interval = useDataViewer((state) => state.interval)
-    
+    const set_data_points = useDataViewer(useShallow((state) => state.set_data_points))
+
     const is_selected_feeds = Ut.isArray(selected_feeds)
     
     const has_selected_feeds = is_selected_feeds
@@ -128,10 +129,13 @@ export function ChartPane({
     <div className="w-full">
       <ChartTopMenu />
     </div>
-    <FinaChartViewer
-      source={source}
-      selected_feeds={selected_feeds}
-    />
+    <Suspense fallback={<GraphLoader />}>
+      <FinaChartViewer
+        source={source}
+        selected_feeds={selected_feeds}
+      />
+    </Suspense>
+    
   </div>
 
   )
