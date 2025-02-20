@@ -241,4 +241,23 @@ export class GraphHelper {
     }
     return result;
   }
+
+  static formatDuration(startDate: string | number | Date, endDate: string | number | Date) {
+    const start = new Date(startDate);
+    const end = new Date(endDate);
+    const diff = end.getTime() - start.getTime(); // difference in milliseconds
+  
+    const days = Math.floor(diff / (24 * 60 * 60 * 1000));
+    const hours = Math.floor((diff % (24 * 60 * 60 * 1000)) / (60 * 60 * 1000));
+    const minutes = Math.floor((diff % (60 * 60 * 1000)) / (60 * 1000));
+    const seconds = Math.floor((diff % (60 * 1000)) / 1000);
+  
+    const parts = [];
+    if (days > 0) parts.push(`${days} Day${days !== 1 ? 's' : ''}`);
+    if (hours > 0) parts.push(`${hours} Hour${hours !== 1 ? 's' : ''}`);
+    if (minutes > 0) parts.push(`${minutes} Minute${minutes !== 1 ? 's' : ''}`);
+    if (seconds > 0) parts.push(`${seconds} Second${seconds !== 1 ? 's' : ''}`);
+  
+    return parts.join(' ') || '0 Seconds';
+  }
 }
