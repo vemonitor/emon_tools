@@ -83,6 +83,7 @@ export const initialZoom = {
 
 type DataViewerStore = {
     selected_feeds: SelectedFileItem[],
+    data_points: LineChartDataProps,
     source: FinaSourceProps,
     time_start: number,
     time_window: number,
@@ -96,6 +97,7 @@ type DataViewerStore = {
     add_feed: (selected_item: SelectedFileItem) => void,
     remove_feed: (selected_item: SelectedFileItem) => void,
     reset_feeds: (file_name: string) => void,
+    set_data_points: (data_points: LineChartDataProps) => void,
     init_time_start: (time_start: number) => void,
     set_time_start: (time_start: number) => void,
     set_time_window: (time_window: number) => void,
@@ -127,6 +129,7 @@ DataViewerStore,
 DataViewerStore
 > = (set) => ({
       selected_feeds: [],
+      data_points: {data: [], feeds: []},
       source: 'archive',
       time_start: 0,
       time_window: 3600 * 24,
@@ -154,6 +157,12 @@ DataViewerStore
       reset_feeds: () => set(() => (
           { selected_feeds: [] }
       ), undefined, 'DataViewer/reset_feeds'),
+      set_data_points: (data_points: LineChartDataProps) => set(() => {
+          return {data_points: {
+            data: data_points.data,
+            feeds: data_points.feeds
+          }}
+      }, undefined, 'DataViewer/set_data_points'),
       init_time_start: (time_start: number) => set((state) => {
           if(state.time_start <= 0){
             return { time_start: time_start }
