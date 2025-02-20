@@ -1,16 +1,41 @@
-"""EmonFina Helper utils module"""
+"""
+EmonFina Helper utils module.
+
+This module provides helper functions for managing file sources and 
+file structures for EmonFina data. It includes utilities to retrieve 
+file source paths based on the given source type, validate source 
+directories, scan directories for files, and analyze file structures.
+"""
 from emon_tools.fastapi.utils.files import FilesHelper
 from emon_tools.emon_api.api_utils import Utils as Ut
 from emon_tools.fastapi.core.config import settings
 
 
 class EmonFinaHelper:
-    """Files Helper class"""
+    """
+    Helper class for EmonFina file operations.
+
+    This class provides static methods to retrieve file source paths,
+    validate directories, scan directories, and determine file 
+    structures for EmonFina data.
+    """
     @staticmethod
     def get_files_source(
         source: str
     ) -> str:
-        """Get files source path"""
+        """
+        Retrieve the file source path based on the provided source.
+
+        Parameters:
+            source (str):
+                The identifier for the file source. Valid options are
+                "emoncms" and "archive".
+
+        Returns:
+            str:
+                The file path associated with the provided source.
+                If the source is not recognized, returns None.
+        """
         result = None
         if source == "emoncms":
             result = settings.EMON_FINA_PATH
@@ -22,7 +47,19 @@ class EmonFinaHelper:
     def is_valid_files_source(
         source: str
     ) -> str:
-        """Get files source path"""
+        """
+        Validate if the file source directory exists and is readable.
+
+        Parameters:
+            source (str):
+                The identifier for the file source.
+
+        Returns:
+            dict:
+                A dictionary with a 'success' key indicating whether 
+                the directory is valid and a 'message' key providing 
+                additional information.
+        """
         result = {
             "success": False,
             "message": "Directory is not present.",
@@ -42,7 +79,26 @@ class EmonFinaHelper:
     def scan_fina_dir(
         source: str
     ):
-        """Scan files from path"""
+        """
+        Scan the file source directory for files and determine their 
+        structure.
+
+        Parameters:
+            source (str):
+                The identifier for the file source.
+
+        Returns:
+            dict:
+                A dictionary containing the scan results with the keys:
+                - "success": A boolean indicating if scanning was 
+                  successful.
+                - "file_path": The path that was scanned.
+                - "files": A list of '.dat' files found.
+                - "invalid": A list of files that are invalid based on 
+                  the expected structure.
+                If scanning fails, returns a dictionary with 'success' 
+                set to False and an error 'message'.
+        """
         result = {
             "success": False,
             "message": "Unable to scan emoncms fina directory.",
@@ -70,7 +126,20 @@ class EmonFinaHelper:
 
     @staticmethod
     def get_fina_files_structure(files: list):
-        """Get structure files"""
+        """
+        Separate files into '.dat' and '.meta' files based on their 
+        extensions.
+
+        Parameters:
+            files (list):
+                A list of filenames to analyze.
+
+        Returns:
+            tuple:
+                A tuple containing two lists:
+                - The first list contains filenames ending with '.dat'.
+                - The second list contains filenames ending with '.meta'.
+        """
         dat_files, meta_files = [], []
         if Ut.is_list(files, not_empty=True):
             dat_files, meta_files = [], []
@@ -89,7 +158,24 @@ class EmonFinaHelper:
         dat_files: list,
         meta_files: list
     ):
-        """Get structure files"""
+        """
+        Determine invalid files based on the pairing of '.dat' and 
+        '.meta' files.
+
+        Parameters:
+            dat_files (list):
+                A list of filenames with the '.dat' extension.
+            meta_files (list):
+                A list of filenames with the '.meta' extension.
+
+        Returns:
+            list:
+                A list of filenames that do not have a matching pair.
+                If both lists are present, returns files from the list 
+                with the greater count that do not have a corresponding 
+                pair in the other list. If only one type is present, 
+                returns a copy of that list.
+        """
         is_dat = Ut.is_list(dat_files, not_empty=True)
         is_meta = Ut.is_list(meta_files, not_empty=True)
         if is_dat and is_meta:
