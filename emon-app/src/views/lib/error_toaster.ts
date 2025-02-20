@@ -1,4 +1,4 @@
-import Ut from "@/utils/utils"
+import Ut from "@/helpers/utils"
 
 export type reqResultType = {[key: string]: string | boolean | number}
 export type errorType = {name: string, message: string}
