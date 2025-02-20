@@ -1,7 +1,41 @@
-PROJECT_NAME = "EmonTools"
-# Eg. http://127.0.0.1:8080
-EMONCMS_URL = "MY_EMONCMS_BASE_URL"
-# Emoncms write api key
-API_KEY = "MY_EMONCMS_WRITE_API_KEY"
-EMON_FINA_PATH = "/var/lib/phpfina"
-ARCHIVE_FINA_PATH = "./datas"
+# project envs
+# Domain
+# This would be set to the production domain with an env var on deployment
+# used by Traefik to transmit traffic and aqcuire TLS certificates
+DOMAIN="localhost"
+# To test the local Traefik config
+# DOMAIN=localhost.tiangolo.com
+
+# Used by the backend to generate links in emails to the frontend
+FRONTEND_HOST="http://localhost:5173"
+# In staging and production, set this env var to the frontend host, e.g.
+# FRONTEND_HOST=https://dashboard.example.com
+
+# Environment: local, staging, production
+ENVIRONMENT="local"
+
+PROJECT_NAME="EmonTools"
+STACK_NAME="full-stack-emontools-project"
+
+# Backend
+BACKEND_CORS_ORIGINS="http://localhost,http://localhost:5173,https://localhost,https://localhost:5173"
+SECRET_KEY= 
+FIRST_SUPERUSER=admin@example.com
+FIRST_SUPERUSER_PASSWORD=changethis
+
+# Mysql
+MYSQL_SERVER="127.0.0.1"
+MYSQL_PORT=3306
+MYSQL_DB="app"
+MYSQL_USER="emontools"
+MYSQL_PASSWORD=changethis
+
+# EmonCms envs
+# local emoncms instance
+EMONCMS_URL="http://127.0.0.1:8080"
+# emoncms apikey
+API_KEY=changethis
+# local phpfina paths
+EMON_FINA_PATH="/var/lib/phpfina"
+# phpfina archives directory
+ARCHIVE_FINA_PATH="./datas"
