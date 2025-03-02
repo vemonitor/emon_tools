@@ -11,7 +11,7 @@ from sqlmodel import Session, create_engine, select
 
 from emon_tools.fastapi import crud
 from emon_tools.fastapi.core.config import settings
-from emon_tools.fastapi.models.users import User, UserCreate
+from emon_tools.fastapi.models.db import User, UserCreate
 
 engine = create_engine(str(settings.SQLALCHEMY_DATABASE_URI))
 
