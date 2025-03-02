@@ -5,14 +5,14 @@ This module provides the configuration for Alembic to run database
 migrations in both offline and online modes. It sets up the logging,
 database engine, and migration context.
 """
+# pylint: disable=no-member
 from logging.config import fileConfig
 
 from sqlalchemy import engine_from_config
 from sqlalchemy import pool
 
 from alembic import context
-from sqlmodel import SQLModel
-from emon_tools.fastapi.models import *
+from emon_tools.fastapi.models.db import SQLModel
 from emon_tools.fastapi.core.config import settings
 
 # this is the Alembic Config object, which provides
