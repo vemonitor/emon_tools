@@ -2,24 +2,22 @@
 import secrets
 from pathlib import Path
 from os.path import join as join_path
+from urllib.parse import quote_plus
 import warnings
-from typing import Annotated, Any, Literal, Union
+from typing import Annotated, Any, Literal
 from pydantic import (
     AnyUrl,
     BeforeValidator,
     EmailStr,
     HttpUrl,
-    PostgresDsn,
     MySQLDsn,
     computed_field,
     model_validator,
 )
-from pydantic_core import MultiHostUrl
 from typing_extensions import Self
 from pydantic_settings import BaseSettings
 from pydantic_settings import SettingsConfigDict
-from urllib.parse import quote_plus
-
+# pylint: disable=invalid-name
 # ✅ Define the base directory as the root of the `emon_tools/` package
 # Moves up to `emon_tools/`
 BASE_DIR = Path(__file__).resolve().resolve().parents[3]
@@ -48,8 +46,12 @@ class Settings(BaseSettings):
     print("Env file path: %s", model_config)
     API_V1_STR: str = "/api/v1"
     SECRET_KEY: str = secrets.token_urlsafe(32)
-    # 60 minutes * 24 hours * 8 days = 8 days
-    ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24 * 8
+    TOKEN_ALGORITHM: str = "HS256"
+    # 30 minutes
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = 15
+    REFRESH_TOKEN_EXPIRE_MINUTES: int = 30
+    REFRESH_TOKEN_COOKIE_EXPIRE_SECONDS: int = 60 * 30
+
     FRONTEND_HOST: str = "http://localhost:5173"
     ENVIRONMENT: Literal["local", "staging", "production"] = "local"
 
@@ -81,10 +83,14 @@ class Settings(BaseSettings):
     # type: ignore[prop-decorator, C0103]
     @computed_field
     @property
-    def SQLALCHEMY_DATABASE_URI(self) -> MySQLDsn:  # Union[PostgresDsn, MySQLDsn]:
+    # Union[PostgresDsn, MySQLDsn]:
+    def SQLALCHEMY_DATABASE_URI(self) -> MySQLDsn:
         """Set SqlAlchemy db url"""
         encoded_password = quote_plus(self.MYSQL_PASSWORD)
-        return f"mysql://{self.MYSQL_USER}:{encoded_password}@{self.MYSQL_SERVER}:{self.MYSQL_PORT}/{self.MYSQL_DB}"
+        return (
+            f"mysql://{self.MYSQL_USER}:{encoded_password}@"
+            f"{self.MYSQL_SERVER}:{self.MYSQL_PORT}/{self.MYSQL_DB}"
+        )
 
     @computed_field  # type: ignore[prop-decorator]
     @property
