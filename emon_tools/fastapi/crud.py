@@ -7,11 +7,10 @@ from typing import Any
 from sqlmodel import Session, select
 
 from emon_tools.fastapi.core.security import get_password_hash, verify_password
-from emon_tools.fastapi.models.users import Item
-from emon_tools.fastapi.models.users import ItemCreate
-from emon_tools.fastapi.models.users import User
-from emon_tools.fastapi.models.users import UserCreate
-from emon_tools.fastapi.models.users import UserUpdate
+from emon_tools.fastapi.models.db import EmonHost, EmonHostCreate
+from emon_tools.fastapi.models.db import User
+from emon_tools.fastapi.models.db import UserCreate
+from emon_tools.fastapi.models.db import UserUpdate
 
 
 def create_user(*, session: Session, user_create: UserCreate) -> User:
@@ -76,6 +75,22 @@ def update_user(
     return db_user
 
 
+def get_user(*, session: Session, user_id: uuid.uuid4) -> User | None:
+    """
+    Retrieve a user from the database by their email address.
+
+    Args:
+        session (Session): The database session to use for the query.
+        email (str): The email address of the user to retrieve.
+
+    Returns:
+        User | None: The user object if found, otherwise None.
+    """
+    statement = select(User).where(User.id == user_id)
+    session_user = session.exec(statement).first()
+    return session_user
+
+
 def get_user_by_email(*, session: Session, email: str) -> User | None:
     """
     Retrieve a user from the database by their email address.
@@ -118,24 +133,24 @@ def authenticate(
     return db_user
 
 
-def create_item(
+def create_emon_host(
     *,
     session: Session,
-    item_in: ItemCreate,
+    item_in: EmonHostCreate,
     owner_id: uuid.UUID
-) -> Item:
+) -> EmonHost:
     """
-    Create a new item in the database.
+    Create a new EmonHost in the database.
 
     Args:
         session (Session): The database session to use for the operation.
-        item_in (ItemCreate): The data required to create a new item.
+        item_in (EmonHostCreate): The data required to create a new item.
         owner_id (uuid.UUID): The UUID of the owner of the item.
 
     Returns:
-        Item: The newly created item.
+        EmonHost: The newly created item.
     """
-    db_item = Item.model_validate(item_in, update={"owner_id": owner_id})
+    db_item = EmonHost.model_validate(item_in, update={"owner_id": owner_id})
     session.add(db_item)
     session.commit()
     session.refresh(db_item)
