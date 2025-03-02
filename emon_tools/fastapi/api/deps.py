@@ -15,10 +15,9 @@ from jwt.exceptions import InvalidTokenError
 from pydantic import ValidationError
 from sqlmodel import Session
 
-from emon_tools.fastapi.core import security
 from emon_tools.fastapi.core.config import settings
 from emon_tools.fastapi.core.db import engine
-from emon_tools.fastapi.models.users import TokenPayload, User
+from emon_tools.fastapi.models.db import TokenPayload, User
 
 reusable_oauth2 = OAuth2PasswordBearer(
     tokenUrl=f"{settings.API_V1_STR}/login/access-token"
@@ -65,7 +64,7 @@ def get_current_user(
     """
     try:
         payload = jwt.decode(
-            token, settings.SECRET_KEY, algorithms=[security.ALGORITHM]
+            token, settings.SECRET_KEY, algorithms=[settings.TOKEN_ALGORITHM]
         )
         token_data = TokenPayload(**payload)
     except (InvalidTokenError, ValidationError) as ex:
