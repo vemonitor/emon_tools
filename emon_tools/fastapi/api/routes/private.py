@@ -5,7 +5,7 @@ from pydantic import BaseModel
 
 from emon_tools.fastapi.api.deps import SessionDep
 from emon_tools.fastapi.core.security import get_password_hash
-from emon_tools.fastapi.models.users import (
+from emon_tools.fastapi.models.db import (
     User,
     UserPublic,
 )
@@ -14,6 +14,7 @@ router = APIRouter(tags=["private"], prefix="/private")
 
 
 class PrivateUserCreate(BaseModel):
+    """Private Create user"""
     email: str
     password: str
     full_name: str
@@ -25,7 +26,6 @@ def create_user(user_in: PrivateUserCreate, session: SessionDep) -> Any:
     """
     Create a new user.
     """
-
     user = User(
         email=user_in.email,
         full_name=user_in.full_name,
