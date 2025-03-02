@@ -6,7 +6,7 @@ export interface AuthContextType {
   isAuthenticated: boolean;
   login: (username: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
-  fetchWithAuth: (url: string, options?: RequestInit) => Promise<Response>;
+  fetchWithAuth: (input: RequestInfo, init?: RequestInit) => Promise<Response>;
 }
 
 export const AuthContext = createContext<AuthContextType | undefined>(undefined);
