@@ -137,6 +137,7 @@ class User(UserBase, table=True):
     )
     emonhost: list["EmonHost"] = Relationship(back_populates="owner")
     category: list["Category"] = Relationship(back_populates="owner")
+    datapath: list["DataPath"] = Relationship(back_populates="owner")
     archivefile: list["ArchiveFile"] = Relationship(back_populates="owner")
 
 
@@ -160,6 +161,151 @@ class UsersPublic(SQLModel):
         count (int): Total count of users.
     """
     data: list[UserPublic]
+    count: int
+
+
+# ---------------------------------------------------------------
+# ---------------------------------------------------------------
+# ------- DataPath
+# ---------------------------------------------------------------
+# ---------------------------------------------------------------
+# Shared properties
+class DataPathType(str, enum.Enum):
+    """
+    DataPath type Enum
+    """
+    ARCHIVED = "archives"
+    EMONCMS = "emoncms"
+
+
+class DataFileType(str, enum.Enum):
+    """
+    DataPath type Enum
+    """
+    FINA = "fina"
+
+
+class DataPathBase(SQLModel):
+    """
+    Base model for item properties.
+
+    This model defines the common attributes for item-related models.
+    """
+    name: str = Field(unique=True, min_length=1, max_length=40)
+    slug: str = Field(unique=True, min_length=1, max_length=40)
+    path_type: DataPathType = Field(
+        sa_column=sa.Column(
+            sa.Enum(DataPathType)
+        )
+    )
+    file_type: DataFileType = Field(
+        sa_column=sa.Column(
+            sa.Enum(DataFileType)
+        )
+    )
+    path: str = Field(min_length=1, max_length=90)
+    created_at: datetime | None = Field(
+        default=None,
+        sa_column=sa.Column(
+            sa.DateTime(timezone=True),
+            server_default=func.now()
+        )
+    )
+    updated_at: datetime | None = Field(
+        default=None,
+        sa_column=sa.Column(
+            sa.DateTime(timezone=True),
+            onupdate=func.now(),
+            server_default=func.now()
+        )
+    )
+
+
+class DataPathCreate(DataPathBase):
+    """
+    Model for DataPath registration via API.
+
+    Attributes:
+        email (EmailStr): The user's email address.
+        password (str): The user's password.
+        full_name (str | None): The user's full name.
+    """
+    @model_validator(mode="before")
+    @classmethod
+    def generate_slug(cls, values):
+        """Generate slug"""
+        if 'name' in values:
+            values["slug"] = slugify(values.get("name"))
+        return values
+
+
+# Properties to receive on item update
+# type: ignore
+class DataPathUpdate(DataPathBase):
+    """
+    Model for updating an Emon Host.
+
+    Inherits from EmonHostBase, with fields made optional for updates.
+    """
+    @model_validator(mode="before")
+    @classmethod
+    def generate_slug(cls, values):
+        """Generate slug"""
+        if 'name' in values:
+            values["slug"] = slugify(values.get("name"))
+        return values
+
+
+# Database model, database table inferred from class name
+class DataPath(DataPathBase, table=True):
+    """
+    Database model representing an archive group.
+    """
+    id: Optional[int] = Field(
+        default=None,
+        sa_column=sa.Column(
+            sa.Integer,
+            primary_key=True,
+            autoincrement=True,
+            unique=True,
+            index=True,
+        ),
+    )
+    owner_id: str = Field(foreign_key="user.id", nullable=False, max_length=36)
+    # Relationships
+    owner: Optional["User"] = Relationship(
+        back_populates="datapath"
+    )
+    emonhost: Optional["EmonHost"] = Relationship(
+        back_populates="datapath"
+    )
+    archivefile: list["ArchiveFile"] = Relationship(
+        back_populates="datapath"
+    )
+
+
+# Properties to return via API, id is always required
+class DataPathPublic(DataPathBase):
+    """
+    Public item model for API responses.
+
+    Inherits from DataPathBase and adds id and owner_id fields.
+    """
+    id: int
+    owner_id: uuid.UUID
+    path_type: str
+    file_type: str
+
+
+class DataPathsPublic(SQLModel):
+    """
+    Container model for multiple public item representations.
+
+    Attributes:
+        data (list[DataPathPublic]): List of public item models.
+        count (int): Total count of items.
+    """
+    data: list[DataPathPublic]
     count: int
 
 
@@ -236,8 +382,17 @@ class EmonHost(EmonHostBase, table=True):
         )
     )
     owner_id: str = Field(foreign_key="user.id", nullable=False, max_length=36)
+    datapath_id: int = Field(
+        default=None,
+        sa_column=sa.Column(
+            sa.Integer,
+            sa.ForeignKey("datapath.id")
+        )
+    )
 
     owner: User | None = Relationship(
+        back_populates="emonhost")
+    datapath: DataPath | None = Relationship(
         back_populates="emonhost")
     archivefile: list["ArchiveFile"] = Relationship(
         back_populates="emonhost")
@@ -252,6 +407,7 @@ class EmonHostPublic(EmonHostBase):
     """
     id: int
     owner_id: uuid.UUID
+    datapath: DataPath | None
 
 
 class EmonHostsPublic(SQLModel):
@@ -465,6 +621,7 @@ class ArchiveFileCreate(ArchiveFileBase):
             index=True,
         )
     )
+    datapath_id: int | None = Field(
         default=None,
         gt=0,
         sa_column=sa.Column(
@@ -506,6 +663,7 @@ class ArchiveFileUpdate(ArchiveFileBase):
             index=True,
         )
     )
+    datapath_id: int | None = Field(
         default=None,
         gt=0,
         sa_column=sa.Column(
@@ -555,10 +713,17 @@ class ArchiveFile(ArchiveFileBase, table=True):
         default=None,
         sa_column=sa.Column(
             sa.Integer,
-            sa.ForeignKey("archivegroup.id")
+            sa.ForeignKey("category.id")
         )
     )
-    emonhost_id: int = Field(
+    datapath_id: int = Field(
+        sa_column=sa.Column(
+            sa.Integer,
+            sa.ForeignKey("datapath.id")
+        )
+    )
+    emonhost_id: int | None = Field(
+        default=None,
         sa_column=sa.Column(
             sa.Integer,
             sa.ForeignKey("emonhost.id")
@@ -567,9 +732,9 @@ class ArchiveFile(ArchiveFileBase, table=True):
     owner: User | None = Relationship(back_populates="archivefile")
     category: Category | None = Relationship(
         back_populates="archivefile")
-    emonhost: EmonHost | None = Relationship(
+    datapath: DataPath | None = Relationship(
         back_populates="archivefile")
-    archivegroup: ArchiveGroup | None = Relationship(
+    emonhost: EmonHost | None = Relationship(
         back_populates="archivefile")
 
 
@@ -582,6 +747,8 @@ class ArchiveFilePublic(ArchiveFileBase):
     """
     id: int
     category: Category | None
+    datapath: DataPath | None
+    emonhost: EmonHost | None
     owner_id: uuid.UUID
 
 
