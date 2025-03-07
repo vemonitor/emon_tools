@@ -136,7 +136,7 @@ class User(UserBase, table=True):
         )
     )
     emonhost: list["EmonHost"] = Relationship(back_populates="owner")
-    archivegroup: list["ArchiveGroup"] = Relationship(back_populates="owner")
+    category: list["Category"] = Relationship(back_populates="owner")
     archivefile: list["ArchiveFile"] = Relationship(back_populates="owner")
 
 
@@ -268,11 +268,19 @@ class EmonHostsPublic(SQLModel):
 
 # ---------------------------------------------------------------
 # ---------------------------------------------------------------
-# ------- ArchiveGroup
+# ------- Category
 # ---------------------------------------------------------------
 # ---------------------------------------------------------------
 # Shared properties
-class ArchiveGroupBase(SQLModel):
+class CategoryType(str, enum.Enum):
+    """
+    Category type Enum
+    """
+    FINA_FILES = "fina_files"
+    FINA_PATHS = "fina_paths"
+
+
+class CategoryBase(SQLModel):
     """
     Base model for item properties.
 
@@ -280,6 +288,11 @@ class ArchiveGroupBase(SQLModel):
     """
     name: str = Field(unique=True, min_length=1, max_length=40)
     slug: str = Field(unique=True, min_length=1, max_length=40)
+    type: CategoryType = Field(
+        sa_column=sa.Column(
+            sa.Enum(CategoryType)
+        )
+    )
     created_at: datetime | None = Field(
         default=None,
         sa_column=sa.Column(
@@ -297,9 +310,9 @@ class ArchiveGroupBase(SQLModel):
     )
 
 
-class ArchiveGroupCreate(ArchiveGroupBase):
+class CategoryCreate(CategoryBase):
     """
-    Model for ArchiveGroup registration via API.
+    Model for Category registration via API.
 
     Attributes:
         email (EmailStr): The user's email address.
@@ -317,7 +330,7 @@ class ArchiveGroupCreate(ArchiveGroupBase):
 
 # Properties to receive on item update
 # type: ignore
-class ArchiveGroupUpdate(ArchiveGroupBase):
+class CategoryUpdate(CategoryBase):
     """
     Model for updating an Emon Host.
 
@@ -333,7 +346,7 @@ class ArchiveGroupUpdate(ArchiveGroupBase):
 
 
 # Database model, database table inferred from class name
-class ArchiveGroup(ArchiveGroupBase, table=True):
+class Category(CategoryBase, table=True):
     """
     Database model representing an archive group.
     """
@@ -350,33 +363,33 @@ class ArchiveGroup(ArchiveGroupBase, table=True):
     owner_id: str = Field(foreign_key="user.id", nullable=False, max_length=36)
     # Relationships
     owner: Optional["User"] = Relationship(
-        back_populates="archivegroup"
+        back_populates="category"
     )
     archivefile: list["ArchiveFile"] = Relationship(
-        back_populates="archivegroup"
+        back_populates="category"
     )
 
 
 # Properties to return via API, id is always required
-class ArchiveGroupPublic(ArchiveGroupBase):
+class CategoryPublic(CategoryBase):
     """
     Public item model for API responses.
 
-    Inherits from ArchiveGroupBase and adds id and owner_id fields.
+    Inherits from CategoryBase and adds id and owner_id fields.
     """
     id: int
     owner_id: uuid.UUID
 
 
-class ArchiveGroupsPublic(SQLModel):
+class CategorysPublic(SQLModel):
     """
     Container model for multiple public item representations.
 
     Attributes:
-        data (list[ArchiveGroupPublic]): List of public item models.
+        data (list[CategoryPublic]): List of public item models.
         count (int): Total count of items.
     """
-    data: list[ArchiveGroupPublic]
+    data: list[CategoryPublic]
     count: int
 
 
@@ -444,7 +457,14 @@ class ArchiveFileCreate(ArchiveFileBase):
         password (str): The user's password.
         full_name (str | None): The user's full name.
     """
-    archivegroup_id: int | None = Field(
+    category_id: int | None = Field(
+        default=None,
+        gt=0,
+        sa_column=sa.Column(
+            sa.Integer,
+            index=True,
+        )
+    )
         default=None,
         gt=0,
         sa_column=sa.Column(
@@ -478,7 +498,14 @@ class ArchiveFileUpdate(ArchiveFileBase):
 
     Inherits from EmonHostBase, with fields made optional for updates.
     """
-    archivegroup_id: int | None = Field(
+    category_id: int | None = Field(
+        default=None,
+        gt=0,
+        sa_column=sa.Column(
+            sa.Integer,
+            index=True,
+        )
+    )
         default=None,
         gt=0,
         sa_column=sa.Column(
@@ -524,7 +551,7 @@ class ArchiveFile(ArchiveFileBase, table=True):
         )
     )
     owner_id: str = Field(foreign_key="user.id", nullable=False, max_length=36)
-    archivegroup_id: int = Field(
+    category_id: int | None = Field(
         default=None,
         sa_column=sa.Column(
             sa.Integer,
@@ -538,6 +565,8 @@ class ArchiveFile(ArchiveFileBase, table=True):
         )
     )
     owner: User | None = Relationship(back_populates="archivefile")
+    category: Category | None = Relationship(
+        back_populates="archivefile")
     emonhost: EmonHost | None = Relationship(
         back_populates="archivefile")
     archivegroup: ArchiveGroup | None = Relationship(
@@ -552,8 +581,7 @@ class ArchiveFilePublic(ArchiveFileBase):
     Inherits from ArchiveFileBase and adds id and owner_id fields.
     """
     id: int
-    archivegroup_id: int | None
-    emonhost_id: int | None
+    category: Category | None
     owner_id: uuid.UUID
 
 
