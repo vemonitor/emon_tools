@@ -1,16 +1,26 @@
-from struct import pack
-from unittest.mock import MagicMock, patch, mock_open
-import pytest
+"""
+Unit tests for the FinaReader class.
 
-from emon_tools.emon_fina.fina_services import FileReaderProps, FinaMeta
-from emon_tools.emon_fina.fina_models import FinaByTimeParamsModel, FinaMetaModel
-from emon_tools.emon_fina.fina_utils import Utils as Ut
+Ensures full coverage, including security, file validation,
+and edge cases. Uses pytest best practices with TestClass
+and @pytest.mark.parametrize.
+"""
+from struct import pack
+from unittest.mock import patch, mock_open
+import pytest
 from emon_tools.emon_fina.fina_reader import FinaReader
+from emon_tools.emon_fina.fina_services import FileReaderProps, FinaMeta
+from emon_tools.emon_fina.fina_models import (
+    FinaByTimeParamsModel, FinaMetaModel
+)
 from tests.emon_fina.fina_data_test import EmonFinaDataTest
 
 
-
 class TestFinaReader:
+    """
+    Test suite for FinaReader class.
+    Ensures correct initialization, file handling, and data security.
+    """
     @pytest.fixture
     def tmp_path_override(self, tmp_path):
         """
@@ -23,52 +33,105 @@ class TestFinaReader:
 
     @pytest.fixture
     def valid_fina_reader(self, tmp_path_override):
+        """Fixture for initializing FinaReader with valid parameters."""
+        return FinaReader(file_name="testfile", data_dir=tmp_path_override)
+
+    @pytest.mark.parametrize(
+        "file_name, data_dir, expected_exception",
+        [
+            ("", "/valid/path", ValueError),
+            ("testfile", "", ValueError),
+            ("testfile", "/invalid/path?", ValueError),
+        ]
+    )
+    def test_init_invalid_params(self, file_name, data_dir, expected_exception):
         """
-        Provide a fixture for a valid FinaReader instance.
+        Test initialization with invalid parameters.
+        Ensures directory existence validation.
         """
-        feed_id = 1
-        return FinaReader(feed_id=feed_id, data_dir=tmp_path_override)
+        with pytest.raises(expected_exception):
+            FinaReader(file_name, data_dir)
+
+    @pytest.mark.parametrize(
+        "filename, expected_exception",
+        [
+            ("../outside/meta.meta", ValueError),
+            ("invalid.exe", ValueError),
+        ]
+    )
+    def test_sanitize_path_invalid(
+        self,
+        valid_fina_reader,
+        filename,
+        expected_exception
+    ):
+        """
+        Test _sanitize_path for invalid paths and extensions.
+        Ensures security against directory traversal attacks.
+        """
+        with pytest.raises(expected_exception):
+            valid_fina_reader._sanitize_path(filename)
+
+    def test_sanitize_path_valid(self, valid_fina_reader):
+        """Test _sanitize_path for valid file paths."""
+        with patch("emon_tools.emon_fina.fina_reader.isdir", return_value=True):
+            result = valid_fina_reader._sanitize_path("testfile.meta")
+            assert result.endswith("testfile.meta")
+
+    @pytest.mark.parametrize(
+        "file_size, limit, expected_exception",
+        [
+            (2048, 1024, ValueError),
+            (512, 1024, None),
+        ]
+    )
+    def test_validate_file_size(self, valid_fina_reader, file_size, limit,
+                                expected_exception):
+        """
+        Test _validate_file_size for valid and invalid sizes.
+        Ensures files do not exceed set limits.
+        """
+        with patch(
+            "emon_tools.emon_fina.fina_reader.getsize",
+            return_value=file_size
+        ):
+            if expected_exception:
+                with pytest.raises(expected_exception):
+                    valid_fina_reader._validate_file_size("testfile", limit)
+            else:
+                valid_fina_reader._validate_file_size("testfile", limit)
+
+    def test_get_meta_path_not_found(self, valid_fina_reader):
+        """Test _get_meta_path when meta file is missing."""
+        with patch(
+            "emon_tools.emon_fina.fina_reader.isfile",
+            return_value=False
+        ):
+            with pytest.raises(FileNotFoundError):
+                valid_fina_reader._get_meta_path()
+
+    def test_get_data_path_not_found(self, valid_fina_reader):
+        """Test _get_data_path when data file is missing."""
+        with patch(
+            "emon_tools.emon_fina.fina_reader.isfile",
+            return_value=False
+        ):
+            with pytest.raises(FileNotFoundError):
+                valid_fina_reader._get_data_path()
+
+    def test_read_meta_invalid_content(self, valid_fina_reader):
+        """Test read_meta for corrupted meta file."""
+        mock_file = mock_open(read_data=b"\x00" * 7)
+        with patch("builtins.open", mock_file), \
+             patch(
+                 "emon_tools.emon_fina.fina_reader.getsize",
+                 return_value=512), \
+             patch(
+                 "emon_tools.emon_fina.fina_reader.isfile",
+                 return_value=True):
+            with pytest.raises(OSError):
+                valid_fina_reader.read_meta()
     
-    def test_init_invalid_feed_id(self):
-        with pytest.raises(ValueError, match="feed_id must be a positive integer"):
-            FinaReader(-1, "/valid/path")
-
-    def test_init_invalid_data_dir(self):
-        with patch("emon_tools.emon_fina.fina_reader.isdir", return_value=False):
-            with pytest.raises(ValueError, match="Invalid PhpFina directory path"):
-                FinaReader(1, "/invalid/path")
-
-    @patch("emon_tools.emon_fina.fina_reader.isdir", return_value=True)
-    def test_sanitize_path(self, mock_isdir):
-        reader = FinaReader(1, "/data")
-        valid_file = "valid.dat"
-        invalid_file = "../invalid.dat"
-        
-        assert reader._sanitize_path(valid_file).startswith("/data")
-        
-        with pytest.raises(ValueError, match="Attempt to access files outside"):
-            reader._sanitize_path(invalid_file)
-
-    @patch("emon_tools.emon_fina.fina_reader.isdir", return_value=True)
-    def test_validate_file_size(self, mock_isdir):
-        reader = FinaReader(1, "/data")
-        with patch("emon_tools.emon_fina.fina_reader.getsize", return_value=2048):
-            reader._validate_file_size("/data/file", 4096)
-        with patch("emon_tools.emon_fina.fina_reader.getsize", return_value=8192):
-            with pytest.raises(ValueError, match="File size exceeds the limit"):
-                reader._validate_file_size("/data/file", 4096)
-
-    @patch("emon_tools.emon_fina.fina_reader.isdir", return_value=True)
-    def test_get_meta_path(self, mock_isdir):
-        reader = FinaReader(1, "/data")
-        with patch("emon_tools.emon_fina.fina_reader.isfile", return_value=True), \
-             patch("emon_tools.emon_fina.fina_reader.getsize", return_value=512):
-            assert reader._get_meta_path().endswith(".meta")
-        
-        with patch("emon_tools.emon_fina.fina_reader.isfile", return_value=False):
-            with pytest.raises(FileNotFoundError, match="Meta file does not exist"):
-                reader._get_meta_path()
-
     @patch("builtins.open",
            new_callable=mock_open,
            read_data=pack("<2I", 10, 1000000))
@@ -132,6 +195,50 @@ class TestFinaReader:
             valid_fina_reader._get_meta_path(),
             "rb"
         )
+
+    def test_initialise_reader(self, valid_fina_reader):
+        """Test initialise_reader sets props correctly."""
+        meta = FinaMeta(
+            interval=10,
+            start_time=1575981140,
+            end_time=1575981140 + 100,
+            npoints=10,
+            size=40
+        )
+        props = FinaByTimeParamsModel(
+            start_time=1575981140,
+            time_window=100,
+            time_interval=10
+        )
+        valid_fina_reader.initialise_reader(meta, props)
+        assert isinstance(valid_fina_reader.props, FileReaderProps)
+
+    def test_read_file_empty(self, valid_fina_reader):
+        """Test read_file handles empty files correctly."""
+        with patch(
+            "emon_tools.emon_fina.fina_reader.getsize",
+            return_value=0), \
+                patch("builtins.open", mock_open(read_data=b"")), \
+                patch(
+                 "emon_tools.emon_fina.fina_reader.isfile",
+                 return_value=True
+                ):
+            valid_fina_reader.initialise_reader(
+                FinaMetaModel(
+                    interval=1,
+                    start_time=0,
+                    end_time=1,
+                    npoints=0,
+                    size=0
+                ),
+                FinaByTimeParamsModel(
+                    start_time=1575981140,
+                    time_window=100,
+                    time_interval=10
+                )
+            )
+            with pytest.raises(ValueError):
+                list(valid_fina_reader.read_file())
 
     @patch(
         "builtins.open",

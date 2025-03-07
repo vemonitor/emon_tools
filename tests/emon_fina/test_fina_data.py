@@ -50,9 +50,9 @@ class TestFinaData:
         """
         Fixture to provide a valid FinaData instance for testing.
         """
-        feed_id = 1
+        file_name = "1"
         return FinaData(
-            feed_id=feed_id,
+            file_name=file_name,
             data_dir=tmp_path_override
         )
 
@@ -112,9 +112,9 @@ class TestFinaData:
         """
         Test initializing FinaData with valid parameters.
         """
-        data = FinaData(feed_id=1, data_dir=tmp_path_override)
-        assert data.reader.feed_id == 1
-        assert data.reader.data_dir == tmp_path_override
+        data = FinaData(file_name="1", data_dir=tmp_path_override)
+        assert data.reader.params.file_name == "1"
+        assert data.reader.params.data_dir == tmp_path_override
         assert data.meta.interval == 10
         assert data.meta.start_time == 1575981140
         assert data.meta.npoints == 100
@@ -125,12 +125,14 @@ class TestFinaData:
         Test FinaData initialization with invalid parameters.
         """
         with pytest.raises(
-                ValueError, match="feed_id must be a positive integer."):
-            FinaData(feed_id=-1, data_dir=tmp_path_override)
+                ValueError,
+                match=r"1 validation error for FinaReaderParamsModel.*"):
+            FinaData(file_name=-1, data_dir=tmp_path_override)
 
         with pytest.raises(
-                ValueError, match="Error: Invalid PhpFina directory path."):
-            FinaData(feed_id=1, data_dir="/invalid_dir")
+                OSError,
+                match=r"Error reading meta file: Directory do not exist.*"):
+            FinaData(file_name="1", data_dir="/invalid_dir")
 
     @pytest.mark.parametrize(
         "kwargs, expected",
@@ -183,7 +185,7 @@ class TestFinaData:
             lambda *args,
             **kwargs: mock_reader_meta
         )
-        fdtm = FinaData(feed_id=1, data_dir="mock_dir")
+        fdtm = FinaData(file_name="1", data_dir="mock_dir")
         result = fdtm._get_averaged_values(search)
         assert result.shape[0] == expected
 
@@ -238,7 +240,7 @@ class TestFinaData:
             lambda *args,
             **kwargs: mock_reader_meta
         )
-        fdtm = FinaData(feed_id=1, data_dir="mock_dir")
+        fdtm = FinaData(file_name="1", data_dir="mock_dir")
         result = fdtm._read_direct_values(search)
         assert result.shape[0] == expected
 
@@ -286,7 +288,7 @@ class TestFinaData:
             lambda *args,
             **kwargs: mock_reader_meta
         )
-        fdtm = FinaData(feed_id=1, data_dir="mock_dir")
+        fdtm = FinaData(file_name="1", data_dir="mock_dir")
         result = fdtm._get_averaged_values(search)
         assert result.shape[0] == expected
         assert np.isnan(result[:, 1]).size == expected
@@ -372,7 +374,7 @@ class TestFinaData:
             lambda *args,
             **kwargs: mock_reader_meta
         )
-        fdtm = FinaData(feed_id=1, data_dir="mock_dir")
+        fdtm = FinaData(file_name="1", data_dir="mock_dir")
         result = fdtm._get_averaged_values(search)
         assert result.shape == expected
 
@@ -506,7 +508,7 @@ class TestFinaData:
             lambda *args,
             **kwargs: mock_reader_base
         )
-        fdtm = FinaData(feed_id=1, data_dir="mock_dir")
+        fdtm = FinaData(file_name="1", data_dir="mock_dir")
         result = fdtm._get_averaged_values(search)
         assert result.shape[0] == expected
 
@@ -557,7 +559,7 @@ class TestFinaData:
             lambda *args,
             **kwargs: mock_reader
         )
-        fdtm = FinaData(feed_id=1, data_dir="mock_dir")
+        fdtm = FinaData(file_name="1", data_dir="mock_dir")
         result = fdtm._get_averaged_values(search)
         assert result.shape[0] == expected[0]
         assert result[0: 3, 0].tolist() == expected[1]
@@ -667,7 +669,7 @@ class TestFinaData:
             lambda *args,
             **kwargs: mock_reader_meta
         )
-        fdtm = FinaData(feed_id=1, data_dir="mock_dir")
+        fdtm = FinaData(file_name="1", data_dir="mock_dir")
         # Run the read_file method
         data = fdtm.read_fina_values(search)
 
@@ -724,7 +726,7 @@ class TestFinaData:
             lambda *args,
             **kwargs: mock_reader_meta
         )
-        fdtm = FinaData(feed_id=1, data_dir="mock_dir")
+        fdtm = FinaData(file_name="1", data_dir="mock_dir")
         # Run the read_file method
         data = fdtm.get_fina_values(search)
 
@@ -788,7 +790,7 @@ class TestFinaData:
             lambda *args,
             **kwargs: mock_reader_meta
         )
-        fdtm = FinaData(feed_id=1, data_dir="mock_dir")
+        fdtm = FinaData(file_name="1", data_dir="mock_dir")
 
         data = fdtm.get_data_by_date(search)
 
@@ -856,7 +858,7 @@ class TestFinaData:
             lambda *args,
             **kwargs: mock_reader_meta
         )
-        fdtm = FinaData(feed_id=1, data_dir="mock_dir")
+        fdtm = FinaData(file_name="1", data_dir="mock_dir")
         data = fdtm.get_data_by_date_range(search)
 
         assert data.shape[0] == expected

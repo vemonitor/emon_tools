@@ -89,7 +89,7 @@ class TestFinaDataFrame:
             lambda *args,
             **kwargs: mock_reader_meta
         )
-        fdtm = FinaDataFrame(feed_id=1, data_dir="mock_dir")
+        fdtm = FinaDataFrame(file_name="1", data_dir="mock_dir")
 
         # Run the read_file method
         data = fdtm.get_df_data(search)
@@ -154,7 +154,7 @@ class TestFinaDataFrame:
             lambda *args,
             **kwargs: mock_reader_meta
         )
-        fdtm = FinaDataFrame(feed_id=1, data_dir="mock_dir")
+        fdtm = FinaDataFrame(file_name="1", data_dir="mock_dir")
         data = fdtm.get_df_data_by_date(search)
 
         assert isinstance(data, pd.DataFrame)
@@ -220,7 +220,7 @@ class TestFinaDataFrame:
             lambda *args,
             **kwargs: mock_reader_meta
         )
-        fdtm = FinaDataFrame(feed_id=1, data_dir="mock_dir")
+        fdtm = FinaDataFrame(file_name="1", data_dir="mock_dir")
         data = fdtm.get_df_data_by_date_range(search)
 
         assert isinstance(data, pd.DataFrame)
