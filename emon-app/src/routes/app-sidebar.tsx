@@ -43,7 +43,7 @@ const navMain = [
     key_group: "dataViewer",
     title: "PhpFina Viewer",
     icon: ChartSpline,
-    isActive: true,
+    isActive: false,
     items: [
       {
         title: "Archived",
@@ -61,7 +61,7 @@ const navMain = [
     key_group: "emonHosts",
     title: "Emoncms Hosts",
     icon: Globe,
-    isActive: true,
+    isActive: false,
     items: [
       {
         title: "View list",
@@ -74,18 +74,34 @@ const navMain = [
     ],
   },
   {
-    key_group: "archiveGroup",
-    title: "Archive Group",
+    key_group: "category",
+    title: "Category",
     icon: Boxes,
-    isActive: true,
+    isActive: false,
     items: [
       {
         title: "View list",
-        url: "/archive-group",
+        url: "/category",
       },
       {
         title: "Add",
-        url: "/archive-group/add",
+        url: "/category/add",
+      }
+    ],
+  },
+  {
+    key_group: "dataPath",
+    title: "DataPath",
+    icon: Boxes,
+    isActive: false,
+    items: [
+      {
+        title: "View list",
+        url: "/data-path",
+      },
+      {
+        title: "Add",
+        url: "/data-path/add",
       }
     ],
   },
