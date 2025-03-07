@@ -578,7 +578,9 @@ class FileReaderProps(FileReaderPropsModel):
             raise ValueError("Base interval must be greater than zero.")
         if interval < base_interval:
             raise ValueError(
-                "Interval must be greater than or equal to base_interval.")
+                "Interval must be greater than or equal to base_interval. "
+                f"base_interval: {base_interval} - interval: {interval}"
+            )
 
         n = round(interval / base_interval)
         # Ensure that the result is not lower than base_interval.
