@@ -1,6 +1,6 @@
 from fastapi import APIRouter
 
-from emon_tools.fastapi.api.routes import login
+from emon_tools.fastapi.api.routes import data_path, fina_data, login
 from emon_tools.fastapi.api.routes import users
 from emon_tools.fastapi.api.routes import emon_fina
 from emon_tools.fastapi.api.routes import emon_hosts
@@ -14,4 +14,5 @@ api_router.include_router(emon_hosts.router)
 api_router.include_router(category.router)
 api_router.include_router(data_path.router)
 api_router.include_router(archive_file.router)
+api_router.include_router(fina_data.router)
 api_router.include_router(emon_fina.router)
