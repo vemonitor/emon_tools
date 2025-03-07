@@ -19,15 +19,20 @@ import AddEmonHost from "./emon-host/add";
 import ViewEmonHost from "./emon-host/view";
 import EditEmonHost from "./emon-host/edit";
 import ListEmonHost from "./emon-host/list";
-import ListArchiveGroup from "./archive-group/list";
-import AddArchiveGroup from "./archive-group/add";
-import EditArchiveGroup from "./archive-group/edit";
+import ListCategory from "./category/list";
+import AddCategory from "./category/add";
+import EditCategory from "./category/edit";
 import ListArchiveFile from "./archive-file/list";
 import AddArchiveFile from "./archive-file/add";
 import EditArchiveFile from "./archive-file/edit";
-import DeleteArchiveGroup from "./archive-group/delete";
+import DeleteCategory from "./category/delete";
 import DeleteEmonHost from "./emon-host/delete";
 import DeleteArchiveFile from "./archive-file/delete";
+import ListDataPath from "./data-path/list";
+import AddDataPath from "./data-path/add";
+import EditDataPath from "./data-path/edit";
+import DeleteDataPath from "./data-path/delete";
+import ViewDataPath from "./data-path/view";
 
 export const crudRoutes = [
   {
@@ -120,47 +125,76 @@ export const routes = [
         },
         {
           title: "View",
-          path: "view/:item_id",
+          path: "view/:host_id",
           element: ViewEmonHost,
         },
         {
           title: "Edit",
-          path: "edit/:item_id",
+          path: "edit/:host_id",
           element: EditEmonHost,
         },
         {
           title: "Delete",
-          path: "delete/:item_id",
+          path: "delete/:host_id",
           element: DeleteEmonHost,
         }
       ],
     },
     {
-      key_group: "archiveGroup",
-      title: "Archive Group",
+      key_group: "category",
+      title: "Category",
       icon: Boxes,
-      path: "/archive-group",
-      element: ListArchiveGroup,
+      path: "/category",
+      element: ListCategory,
       routes: [
         {
           title: "Add",
           path: "add",
-          element: AddArchiveGroup,
+          element: AddCategory,
         },
         {
           title: "View",
-          path: "view/:item_id",
-          element: ListArchiveGroup,
+          path: "view/:category_id",
+          element: ListCategory,
         },
         {
           title: "Edit",
-          path: "edit/:item_id",
-          element: EditArchiveGroup,
+          path: "edit/:category_id",
+          element: EditCategory,
         },
         {
           title: "Delete",
-          path: "delete/:item_id",
-          element: DeleteArchiveGroup,
+          path: "delete/:category_id",
+          element: DeleteCategory,
+        }
+      ],
+    },
+    {
+      key_group: "dataPath",
+      title: "Data Path",
+      icon: Boxes,
+      path: "/data-path",
+      element: ListDataPath,
+      routes: [
+        {
+          title: "Add",
+          path: "add",
+          element: AddDataPath,
+        },
+        {
+          title: "View",
+          path: "view/:path_id",
+          element: ViewDataPath,
+        },
+        {
+          title: "Edit",
+          path: "edit/:path_id",
+          element: EditDataPath,
+        },
+        {
+          title: "Delete",
+          path: "delete/:path_id",
+          element: DeleteDataPath,
         }
       ],
     },
@@ -178,17 +212,17 @@ export const routes = [
         },
         {
           title: "View",
-          path: "view/:item_id",
+          path: "view/:file_id",
           element: DataViewer,
         },
         {
           title: "Edit",
-          path: "edit/:item_id",
+          path: "edit/:file_id",
           element: EditArchiveFile,
         },
         {
           title: "Delete",
-          path: "delete/:item_id",
+          path: "delete/:file_id",
           element: DeleteArchiveFile,
         }
       ],
