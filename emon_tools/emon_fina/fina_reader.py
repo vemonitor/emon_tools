@@ -11,9 +11,10 @@ import logging
 import mmap
 import numpy as np
 from emon_tools.emon_fina.fina_models import FinaByTimeParamsModel
+from emon_tools.emon_fina.fina_models import FinaReaderParamsModel
 from emon_tools.emon_fina.fina_models import FinaMetaModel
-from emon_tools.emon_fina.fina_services import FileReaderProps, FinaMeta
-from emon_tools.emon_fina.fina_utils import Utils as Ut
+from emon_tools.emon_fina.fina_services import FileReaderProps
+from emon_tools.emon_fina.fina_services import FinaMeta
 
 logging.basicConfig()
 et_logger = logging.getLogger(__name__)
@@ -24,7 +25,7 @@ class FinaReader:
     Class to handle the reading of Fina data files and associated metadata.
 
     Attributes:
-        feed_id (int): Identifier for the data feed.
+        file_name (int): Fina File Name
         data_dir (str): Directory containing the Fina data files.
         pos (int): Current read position in the data file.
     """
@@ -39,24 +40,22 @@ class FinaReader:
     CHUNK_SIZE_LIMIT = 4096
     VALID_FILE_EXTENSIONS = {".dat", ".meta"}
 
-    def __init__(self, feed_id: int, data_dir: str):
+    def __init__(self, file_name: str, data_dir: str):
         """
         Initialize the FinaReader instance.
 
         Parameters:
-            feed_id (int): Identifier for the data feed.
+            file_name (int): Identifier for the data feed.
             data_dir (str): Directory containing the Fina data files.
 
         Raises:
-            ValueError: If feed_id is not positive or data_dir is invalid.
+            ValueError: If file_name is not positive or data_dir is invalid.
         """
-        if feed_id <= 0:
-            raise ValueError("Error: feed_id must be a positive integer.")
-        if not Ut.is_str(data_dir) or not isdir(data_dir):
-            raise ValueError("Error: Invalid PhpFina directory path.")
+        self.params = FinaReaderParamsModel(
+            file_name=file_name,
+            data_dir=data_dir
+        )
 
-        self._feed_id = feed_id
-        self._data_dir = data_dir
         self.props: FileReaderProps = None
 
     def _sanitize_path(self, filename: str) -> str:
@@ -64,8 +63,11 @@ class FinaReader:
         Ensure that the file path is within the allowed directory
         and has a valid extension.
         """
-        filepath = abspath(path_join(self._data_dir, filename))
-        if not filepath.startswith(self._data_dir):
+        if not isdir(self.params.data_dir):
+            raise ValueError(
+                "Directory do not exist or is not readable.")
+        filepath = abspath(path_join(self.params.data_dir, filename))
+        if not filepath.startswith(self.params.data_dir):
             raise ValueError(
                 "Attempt to access files outside the allowed directory.")
         if splitext(filepath)[1] not in self.VALID_FILE_EXTENSIONS:
@@ -83,7 +85,10 @@ class FinaReader:
                 f"{file_size} / {expected_size} bytes.")
 
     def _get_base_path(self) -> str:
-        return path_join(self._data_dir, str(self._feed_id))
+        return path_join(
+            self.params.data_dir,
+            self.params.file_name
+        )
 
     def _get_meta_path(self) -> str:
         file_path = f"{self._get_base_path()}.meta"
@@ -100,54 +105,6 @@ class FinaReader:
             raise FileNotFoundError(f"Data file does not exist: {file_path}")
         self._validate_file_size(file_path, self.MAX_DATA_SIZE)
         return file_path
-
-    @property
-    def feed_id(self) -> int:
-        """
-        Get the identifier for the data feed.
-
-        Returns:
-            int: Data feed identifier.
-        """
-        return self._feed_id
-
-    @feed_id.setter
-    def feed_id(self, value: int):
-        """
-        Set the identifier for the data feed.
-
-        Parameters:
-            value (int): Data feed identifier.
-
-        Raises:
-            ValueError: If the value is not a positive integer.
-        """
-        self._feed_id = Ut.validate_integer(value, "feed_id", positive=True)
-
-    @property
-    def data_dir(self) -> str:
-        """
-        Get the directory containing the Fina data files.
-
-        Returns:
-            str: Directory path.
-        """
-        return self._data_dir
-
-    @data_dir.setter
-    def data_dir(self, value: str):
-        """
-        Set the directory containing the Fina data files.
-
-        Parameters:
-            value (str): Directory path.
-
-        Raises:
-            ValueError: If the directory is invalid.
-        """
-        if not isdir(value):
-            raise ValueError("data_dir must be a valid directory.")
-        self._data_dir = value
 
     def read_meta(self) -> FinaMeta:
         """
