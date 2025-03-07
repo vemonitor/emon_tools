@@ -67,6 +67,28 @@ class TimeRefEnum(str, Enum):
     BY_SEARCH = "by_search"
 
 
+class FinaReaderParamsModel(BaseModel):
+    """Fina Reader Params Model Validation"""
+    data_dir: Annotated[
+        StrictStr,
+        Field(
+            min_length=1,
+            max_length=255,
+            pattern=r"^[A-Za-z0-9-_/\\.:]+$",
+            title="Fina File Name"
+        )
+    ]
+    file_name: Annotated[
+        StrictStr,
+        Field(
+            min_length=1,
+            max_length=60,
+            pattern=r"^[A-Za-z0-9-_]+$",
+            title="Fina File Name"
+        )
+    ]
+
+
 class FinaBaseParamsModel(BaseModel):
     """Fina Shared Params Model Validation"""
     model_config = ConfigDict(from_attributes=True)
