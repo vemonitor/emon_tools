@@ -18,15 +18,15 @@ const idSchemeOut = z.number()
 
 function DeleteEmonHost() {
   const { isAuthenticated, fetchWithAuth } = useAuth();
-  const { item_id } = useParams();
+  const { host_id } = useParams();
   const navigate = useNavigate();
   useEffect(() => {
     if (!isAuthenticated) {
       navigate("/login");
     }
   }, [isAuthenticated, navigate]);
-  idSchemeIn.parse(item_id);
-  const itemId = item_id ? parseInt(item_id) : 0
+  idSchemeIn.parse(host_id);
+  const itemId = host_id ? parseInt(host_id) : 0
   idSchemeOut.parse(itemId);
   const DeleteEmonHostAction = async (e: MouseEvent<HTMLButtonElement>) => {
     if(!itemId || itemId <= 0){

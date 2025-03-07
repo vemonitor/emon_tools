@@ -21,14 +21,26 @@ import { AddActionType, EmonHostEdit } from "@/lib/types";
 import { ComponentPropsWithoutRef, useEffect } from "react";
 import { useNavigate } from "react-router";
 import { useQueryClient } from "@tanstack/react-query";
+import ComboBox from "@/components/form/combo-box";
 
 export const FormScheme = z.object({
   name: z.string()
     .min(1)
     .max(15)
-    .regex(/^[A-Za-z0-9-_]+$/, {
+    .regex(/^[A-Za-z0-9-_ ]+$/, {
       message: 'Please enter a valid attribute (Only Alphabetical characters with accents and spaces are accepted)',
     }),
+  datapath_id: z.union(
+    [
+      z.null(),
+      z.string()
+        .regex(/^[0-9]+$/, {
+          message: 'Invalid Value must be an integer',
+        }),
+      z.number()
+        .positive()
+    ]
+  ),
   host: z.string()
     .url({ message: "Invalid url" })
     .min(1)
@@ -43,14 +55,15 @@ export const FormScheme = z.object({
 
 export type EmonHostFormType = z.infer<typeof FormScheme>;
 
-type FormFieldsProps = "name" | "host" | "api_key" | "root" | `root.${string}`;
+type FormFieldsProps = "name" | "host" | "api_key" | "datapath_id" | "root" | `root.${string}`;
 
 const initFormDefaults = (data?: EmonHostEdit) => {
   return {
     id: data?.id ? data.id : 0,
     name: data?.name ?? '',
     host: data?.host ?? '',
-    api_key: data?.api_key ?? ''
+    api_key: data?.api_key ?? '',
+    datapath_id: data?.datapath_id ?? ''
   }
 }
 
@@ -84,9 +97,9 @@ export function EmonHostForm({
 
     if (response && response.redirect) {
       form.reset();
-      queryClient.invalidateQueries({ queryKey: ['archive_group'] })
+      queryClient.invalidateQueries({ queryKey: ['category'] })
       if(data && data.id && data.id > 0){
-        queryClient.invalidateQueries({ queryKey: ['archive_group_edit', data.id] })
+        queryClient.invalidateQueries({ queryKey: ['category_edit', data.id] })
       }
       navigate(response.redirect);
     }
@@ -136,6 +149,23 @@ export function EmonHostForm({
                       </FormControl>
                       <FormMessage />
                     </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="datapath_id"
+                  render={({ field }) => (
+                    <ComboBox
+                      name="datapath_id"
+                      label="Data Path"
+                      description="Related Data Files Path."
+                      url="http://127.0.0.1:8000/api/v1/data_path/"
+                      queryKey={['data_path']}
+                      resultKeyLabel="name"
+                      resultKeyValue="id"
+                      form={form}
+                      field={field}
+                    />  
                   )}
                 />
                 <FormField

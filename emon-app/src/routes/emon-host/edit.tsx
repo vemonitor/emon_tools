@@ -6,7 +6,7 @@ import { useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 
 const AddEmonHostAction = async(
-  item_id: number,
+  host_id: number,
   values: EmonHostFormType,
   fetchWithAuth: (
     input: RequestInfo,
@@ -16,12 +16,12 @@ const AddEmonHostAction = async(
 
   const data = {
       ...values,
-      id: item_id
+      id: host_id
   }
 
   try {
     const response = await fetchWithAuth(
-      `http://127.0.0.1:8000/api/v1/emon_host/edit/${item_id}/`,
+      `http://127.0.0.1:8000/api/v1/emon_host/edit/${host_id}/`,
       {
         method: 'PUT',
         headers: {
@@ -52,7 +52,7 @@ const AddEmonHostAction = async(
 
 function EditEmonHost() {
   const { isAuthenticated, fetchWithAuth } = useAuth();
-  const { item_id } = useParams();
+  const { host_id } = useParams();
   const navigate = useNavigate();
   useEffect(() => {
       if (!isAuthenticated) {
@@ -62,12 +62,12 @@ function EditEmonHost() {
   
   const currentItem = useQuery(
     {
-      queryKey: ['emon_host', item_id],
+      queryKey: ['emon_host', host_id],
       retry: false,
       refetchOnMount: 'always',  // Always refetch when the component mounts
       queryFn: () =>
         fetchWithAuth(
-          `http://127.0.0.1:8000/api/v1/emon_host/get/${item_id}/`,
+          `http://127.0.0.1:8000/api/v1/emon_host/get/${host_id}/`,
           {
             method: 'GET',
           }
@@ -77,24 +77,19 @@ function EditEmonHost() {
   return (
     <div>
       {currentItem.isPending ? (
-        <div>Loading...</div>
+                      <div>Loading...</div>
+      ) : currentItem.isError || !currentItem.data || !currentItem.data.data ? (
+          <div>No data available: {currentItem.error ? currentItem.error.message : ''}</div>
       ) : (
-        <>
-          {currentItem.isError || !currentItem.data ? (
-            <div>No data available: {currentItem.error ? currentItem.error.message : ''}</div>
-          ) : (
-            <EmonHostForm
-              onSubmit={(values: EmonHostFormType) => AddEmonHostAction(
-                item_id,
-                values,
-                fetchWithAuth
-              )}
-              data={currentItem.data.data}
-            />
+        <EmonHostForm
+          onSubmit={(values: EmonHostFormType) => AddEmonHostAction(
+            host_id,
+            values,
+            fetchWithAuth
           )}
-        </>
-      )}
-      
+          data={currentItem.data.data}
+        />
+      )}      
     </div>
   )
 }

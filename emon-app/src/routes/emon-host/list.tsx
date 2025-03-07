@@ -1,9 +1,9 @@
-import { DataTable } from "@/components/data-table/data-table"
-import { columns } from "./table-header-columns"
+import { columns, EmonHost } from "./table-header-columns"
 import { useAuth } from "@/hooks/use-auth";
 import { useNavigate } from "react-router";
 import { useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
+import ListView from "@/components/layout/list-item-view";
 
 function ListEmonHost() {
   const { isAuthenticated, fetchWithAuth } = useAuth();
@@ -13,9 +13,10 @@ function ListEmonHost() {
         navigate("/login");
       }
     }, [isAuthenticated, navigate]);
-  const { data, error, isError, isPending: loading } = useQuery(
+  const items = useQuery(
     {
       queryKey: ['emon_hosts'],
+      retry: false,
       queryFn: () =>
         fetchWithAuth(
           `http://127.0.0.1:8000/api/v1/emon_host/`,
@@ -27,18 +28,16 @@ function ListEmonHost() {
   );
 
   return (
-    <div className="container mx-auto py-10">
-      {loading ? (
-        <div>Loading...</div>
-      ) : (
-        <>
-          {isError || !data || !data.data ? (
-            <div>No data available: {error ? error.message : ''}</div>
-          ) : (
-          <DataTable columns={columns} data={data.data} />
-          )}
-        </>
-      )}
+    <div className="w-full mx-auto">
+      <ListView<EmonHost, unknown>
+        paneProps={{
+          title: "Emoncms Hosts",
+          classContainer: "",
+          classHead: "w-full"
+        }}
+        columns={columns}
+        queryResult={items}
+      />
     </div>
   )
 }
