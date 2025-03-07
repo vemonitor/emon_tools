@@ -22,6 +22,24 @@ export const columns: ColumnDef<ArchiveFileList>[] = [
     ),
   },
   {
+    accessorKey: "file_name",
+    header: ({ column }) => (
+      <DataTableColumnHeader column={column} title="File Name" />
+    ),
+  },
+  {
+    accessorKey: "emonhost.name",
+    header: ({ column }) => (
+      <DataTableColumnHeader column={column} title="Emoncms Host" />
+    ),
+  },
+  {
+    accessorKey: "category.name",
+    header: ({ column }) => (
+      <DataTableColumnHeader column={column} title="Category" />
+    ),
+  },
+  {
     accessorKey: "start_time",
     header: ({ column }) => (
       <DataTableColumnHeader column={column} title="Start time" />

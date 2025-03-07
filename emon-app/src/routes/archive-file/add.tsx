@@ -1,9 +1,8 @@
-import { AddActionType } from "@/lib/types";
+import { AddActionType, ArchiveFileEdit } from "@/lib/types";
 import { ArchiveFileForm, ArchiveFileFormType } from "./form";
 import { useAuth } from "@/hooks/use-auth";
 import { useNavigate } from "react-router";
 import { useEffect } from "react";
-import { useQuery } from "@tanstack/react-query";
 
 const AddArchiveFileAction = async(
   values: ArchiveFileFormType,
@@ -47,7 +46,17 @@ const AddArchiveFileAction = async(
   return {success: true, redirect: `/archive-file`};
 };
 
-function AddArchiveFile() {
+type AddCrudComponentProps = {
+  is_dialog?: boolean,
+  successCallBack?: () => void
+  data?: ArchiveFileEdit
+}
+
+function AddArchiveFile({
+  is_dialog,
+  successCallBack,
+  data
+}: AddCrudComponentProps) {
   const { isAuthenticated, fetchWithAuth } = useAuth();
   
   const navigate = useNavigate();
@@ -56,48 +65,15 @@ function AddArchiveFile() {
       navigate("/login");
     }
   }, [isAuthenticated, navigate]);
-  
-  const archiveGroups = useQuery(
-    {
-      queryKey: ['archive_group'],
-      retry: false,
-      refetchOnMount: 'always',  // Always refetch when the component mounts
-      queryFn: () =>
-        fetchWithAuth(
-          `http://127.0.0.1:8000/api/v1/archive_group/`,
-          {
-            method: 'GET',
-          }
-        ).then((response) => response.json()),
-    }
-  );
-
-  const emonHosts = useQuery(
-    {
-      queryKey: ['emon_host'],
-      retry: false,
-      refetchOnMount: 'always',  // Always refetch when the component mounts
-      queryFn: () =>
-        fetchWithAuth(
-          `http://127.0.0.1:8000/api/v1/emon_host/`,
-          {
-            method: 'GET',
-          }
-        ).then((response) => response.json()),
-    }
-  );
 
   return (
     <div>
-      {archiveGroups.isPending || emonHosts.isPending ? (
-        <div>Loading...</div>
-      ) : (
-        <ArchiveFileForm
-          onSubmit={(values: ArchiveFileFormType) => AddArchiveFileAction(values, fetchWithAuth)}
-          archiveGroups={archiveGroups.data.data}
-          emonHosts={emonHosts.data.data}
-        />
-      )}
+      <ArchiveFileForm
+        onSubmit={(values: ArchiveFileFormType) => AddArchiveFileAction(values, fetchWithAuth)}
+        is_dialog={is_dialog}
+        successCallBack={successCallBack}
+        data={data}
+      />
     </div>
   )
 }

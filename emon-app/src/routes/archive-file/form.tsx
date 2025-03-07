@@ -26,19 +26,37 @@ import {
 
 import { Input } from "@/components/ui/input";
 import { z } from 'zod';
-import { AddActionType, ArchiveFileEdit, ArchiveGroupEdit, EmonHostEdit } from "@/lib/types";
+import { AddActionType, ArchiveFileEdit } from "@/lib/types";
 import { ComponentPropsWithoutRef, useEffect } from "react";
 import { useNavigate } from "react-router";
 import { useQueryClient } from "@tanstack/react-query";
+import ComboBox from "@/components/form/combo-box";
 
 export const FormScheme = z.object({
   name: z.string()
     .min(1)
-    .max(15)
+    .max(40)
     .regex(/^[A-Za-z0-9-_ ]+$/, {
       message: 'Please enter a valid attribute (Only Alphabetical characters with accents and spaces are accepted)',
     }),
-  archivegroup_id: z.union(
+  file_name: z.string()
+    .min(1)
+    .max(40)
+    .regex(/^[A-Za-z0-9-_.]+$/, {
+      message: 'Please enter a valid attribute (Only Alphabetical characters with accents and spaces are accepted)',
+    }),
+  category_id: z.union(
+    [
+      z.null(),
+      z.string()
+        .regex(/^[0-9]+$/, {
+          message: 'Invalid Value must be an integer',
+        }),
+      z.number()
+        .positive()
+    ]
+  ),
+  datapath_id: z.union(
     [
       z.null(),
       z.string()
@@ -64,13 +82,14 @@ export const FormScheme = z.object({
 
 export type ArchiveFileFormType = z.infer<typeof FormScheme>;
 
-type FormFieldsProps = "name" | "archivegroup_id" | "emonhost_id" | "root" | `root.${string}`;
+type FormFieldsProps = "name" | "file_name" | "category_id" | "emonhost_id" | "datapath_id" | "root" | `root.${string}`;
 
 const initFormDefaults = (data?: ArchiveFileEdit) => {
   return {
-    id: data?.id ? data.id : 0,
     name: data?.name ?? '',
-    archivegroup_id: data?.archivegroup_id ? Number(data.archivegroup_id) : 0,
+    file_name: data?.file_name ?? '',
+    category_id: data?.category_id ? Number(data.category_id) : 0,
+    datapath_id: data?.datapath_id ? Number(data.datapath_id) : 0,
     emonhost_id: data?.emonhost_id ? Number(data.emonhost_id) : 0,
   }
 }
@@ -78,16 +97,15 @@ const initFormDefaults = (data?: ArchiveFileEdit) => {
 export type ArchiveFileFormProps = ComponentPropsWithoutRef<"div"> & {
   onSubmit: (values: ArchiveFileFormType) => AddActionType;
   data?: ArchiveFileEdit;
-  archiveGroups: ArchiveGroupEdit[];
-  emonHosts: EmonHostEdit[]
-  className?: string;
+  is_dialog?: boolean,
+  successCallBack?: () => void
 };
 
 export function ArchiveFileForm({
   onSubmit,
   data,
-  archiveGroups,
-  emonHosts,
+  is_dialog,
+  successCallBack,
   className
 }: ArchiveFileFormProps) {
   const navigate = useNavigate();
@@ -113,7 +131,10 @@ export function ArchiveFileForm({
       if(data && data.id && data.id > 0){
         queryClient.invalidateQueries({ queryKey: ['archive_group_edit', data.id] })
       }
-      navigate(response.redirect);
+      if(is_dialog === true && successCallBack){
+        successCallBack()
+      }
+      else{navigate(response.redirect);}
     }
     else if (response && response.errors && response.errors.length > 0) {
       response.errors.map(obj => {
@@ -136,7 +157,7 @@ export function ArchiveFileForm({
     <div className={cn("flex flex-col gap-6", className)}>
       <Card>
         <CardHeader>
-          <CardTitle className="text-2xl">Archive Group</CardTitle>
+          <CardTitle className="text-2xl">Archive File</CardTitle>
         </CardHeader>
         <CardContent>
           <Form
@@ -151,10 +172,25 @@ export function ArchiveFileForm({
                   name="name"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Group Name</FormLabel>
+                      <FormLabel>Name</FormLabel>
                       <FormControl>
                         <Input
-                          placeholder="EmonLocal"
+                          required
+                          {...field}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="file_name"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>File Name</FormLabel>
+                      <FormControl>
+                        <Input
                           required
                           {...field}
                         />
@@ -167,61 +203,52 @@ export function ArchiveFileForm({
                   control={form.control}
                   name="emonhost_id"
                   render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Emon Host</FormLabel>
-                      <FormControl>
-                        <Select
-                            defaultValue={field?.value ? field?.value.toString() : "0"}
-                            onValueChange={field.onChange}
-                        >
-                            <SelectTrigger className="w-[180px]">
-                                <SelectValue placeholder="Emoncms Host" />
-                            </SelectTrigger>
-                            <SelectContent>
-                                <SelectGroup>
-                                  <SelectItem value="0">Undefined</SelectItem>
-                                    {emonHosts && (emonHosts.map((value, index) => {
-                                      return (
-                                        <SelectItem key={index} value={`${value.id??0}`}>{value.name}</SelectItem>
-                                      )
-                                    }))}
-                                </SelectGroup>
-                            </SelectContent>
-                        </Select>
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                    )}
+                    <ComboBox
+                      name="emonhost_id"
+                      label="Emon Host"
+                      description="Emoncms host server"
+                      queryKey={['emonhost']}
+                      url="http://127.0.0.1:8000/api/v1/emon_host/"
+                      resultKeyLabel="name"
+                      resultKeyValue="id"
+                      form={form}
+                      field={field}
+                    />
+                  )}
                 />
                 <FormField
                   control={form.control}
-                  name="archivegroup_id"
+                  name="category_id"
                   render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Group</FormLabel>
-                      <FormControl>
-                        <Select
-                            defaultValue={field?.value ? field?.value.toString() : "0"}
-                            onValueChange={field.onChange}
-                        >
-                            <SelectTrigger className="w-[180px]">
-                                <SelectValue placeholder="Group" />
-                            </SelectTrigger>
-                            <SelectContent>
-                                <SelectGroup>
-                                  <SelectItem value="0">Undefined</SelectItem>
-                                    {archiveGroups && (archiveGroups.map((value, index) => {
-                                      return (
-                                        <SelectItem key={index} value={`${value.id??0}`}>{value.name}</SelectItem>
-                                      )
-                                    }))}
-                                </SelectGroup>
-                            </SelectContent>
-                        </Select>
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                    )}
+                    <ComboBox
+                      name="category_id"
+                      label="Category"
+                      description="File Category"
+                      queryKey={['category']}
+                      url="http://127.0.0.1:8000/api/v1/category/"
+                      resultKeyLabel="name"
+                      resultKeyValue="id"
+                      form={form}
+                      field={field}
+                    />
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="datapath_id"
+                  render={({ field }) => (
+                    <ComboBox
+                      name="datapath_id"
+                      label="Server Path"
+                      description="Path"
+                      queryKey={['datapath']}
+                      url="http://127.0.0.1:8000/api/v1/data_path/"
+                      resultKeyLabel="name"
+                      resultKeyValue="id"
+                      form={form}
+                      field={field}
+                    />
+                  )}
                 />
               </div>
               <Button

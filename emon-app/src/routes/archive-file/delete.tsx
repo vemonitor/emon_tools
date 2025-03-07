@@ -18,15 +18,15 @@ const idSchemeOut = z.number()
 
 function DeleteArchiveFile() {
   const { isAuthenticated, fetchWithAuth } = useAuth();
-  const { item_id } = useParams();
+  const { file_id } = useParams();
   const navigate = useNavigate();
   useEffect(() => {
     if (!isAuthenticated) {
       navigate("/login");
     }
   }, [isAuthenticated, navigate]);
-  idSchemeIn.parse(item_id);
-  const itemId = item_id ? parseInt(item_id) : 0
+  idSchemeIn.parse(file_id);
+  const itemId = file_id ? parseInt(file_id) : 0
   idSchemeOut.parse(itemId);
   const DeleteArchiveFileAction = async (e: MouseEvent<HTMLButtonElement>) => {
     if(!itemId || itemId <= 0){

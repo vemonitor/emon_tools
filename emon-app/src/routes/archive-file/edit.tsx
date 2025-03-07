@@ -1,12 +1,13 @@
-import { AddActionType } from "@/lib/types";
+import { AddActionType, ArchiveFileEdit } from "@/lib/types";
 import { ArchiveFileForm, ArchiveFileFormType } from "./form";
 import { useAuth } from "@/hooks/use-auth";
 import { useNavigate, useParams } from "react-router";
 import { useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { CrudComponentProps } from "./add";
 
 const AddArchiveFileAction = async(
-  item_id: number,
+  file_id: number,
   values: ArchiveFileFormType,
   fetchWithAuth: (
     input: RequestInfo,
@@ -17,12 +18,12 @@ const AddArchiveFileAction = async(
 
   const data = {
       ...values,
-      id: item_id
+      id: file_id
   }
 
   try {
     const response = await fetchWithAuth(
-      `http://127.0.0.1:8000/api/v1/archive_file/edit/${item_id}/`,
+      `http://127.0.0.1:8000/api/v1/archive_file/edit/${file_id}/`,
       {
         method: 'PUT',
         headers: {
@@ -51,9 +52,20 @@ const AddArchiveFileAction = async(
   return {success: true, redirect: `/archive-file`};
 };
 
-function EditArchiveFile() {
+type EditCrudComponentProps = {
+  row_id?: number
+  is_dialog?: boolean,
+  successCallBack?: () => void
+  data?: ArchiveFileEdit
+}
+
+function EditArchiveFile({
+  row_id,
+  is_dialog,
+  successCallBack,
+}: EditCrudComponentProps) {
   const { isAuthenticated, fetchWithAuth } = useAuth();
-  const { item_id } = useParams();
+  const { file_id } = useParams();
   const navigate = useNavigate();
   useEffect(() => {
       if (!isAuthenticated) {
@@ -61,44 +73,16 @@ function EditArchiveFile() {
       }
     }, [isAuthenticated, navigate]);
   
+  const out_id = row_id && row_id > 0 ? row_id : Number(file_id);
+  
   const currentItem = useQuery(
     {
-      queryKey: ['archive_file', item_id],
+      queryKey: ['archive_file', file_id],
       retry: false,
       refetchOnMount: 'always',  // Always refetch when the component mounts
       queryFn: () =>
         fetchWithAuth(
-          `http://127.0.0.1:8000/api/v1/archive_file/get/${item_id}/`,
-          {
-            method: 'GET',
-          }
-        ).then((response) => response.json()),
-    }
-  );
-
-  const archiveGroups = useQuery(
-    {
-      queryKey: ['archive_group'],
-      retry: false,
-      refetchOnMount: 'always',  // Always refetch when the component mounts
-      queryFn: () =>
-        fetchWithAuth(
-          `http://127.0.0.1:8000/api/v1/archive_group/`,
-          {
-            method: 'GET',
-          }
-        ).then((response) => response.json()),
-    }
-  );
-
-  const emonHosts = useQuery(
-    {
-      queryKey: ['emon_host'],
-      retry: false,
-      refetchOnMount: 'always',  // Always refetch when the component mounts
-      queryFn: () =>
-        fetchWithAuth(
-          `http://127.0.0.1:8000/api/v1/emon_host/`,
+          `http://127.0.0.1:8000/api/v1/archive_file/get/${out_id}/`,
           {
             method: 'GET',
           }
@@ -117,13 +101,13 @@ function EditArchiveFile() {
           ) : (
             <ArchiveFileForm
               onSubmit={(values: ArchiveFileFormType) => AddArchiveFileAction(
-                item_id,
+                out_id,
                 values,
                 fetchWithAuth
               )}
+              is_dialog={is_dialog}
+              successCallBack={successCallBack}
               data={{...currentItem.data.data}}
-              archiveGroups={archiveGroups.data.data}
-              emonHosts={emonHosts.data.data}
             />
           )}
         </>
