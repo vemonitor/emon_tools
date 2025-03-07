@@ -21,6 +21,9 @@
  
     --muted: 0 0% 14.9%;
     --muted-foreground: 0 0% 63.9%;
+
+    --text-foreground: 0 0% 98%;
+    --text-muted-foreground: 0 0% 63.9%;
  
     --accent: 0 0% 14.9%;
     --accent-foreground: 0 0% 98%;
