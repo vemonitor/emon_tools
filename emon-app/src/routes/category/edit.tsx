@@ -1,13 +1,13 @@
 import { AddActionType } from "@/lib/types";
-import { ArchiveGroupForm, ArchiveGroupFormType } from "./form";
+import { CategoryForm, CategoryFormType } from "./form";
 import { useAuth } from "@/hooks/use-auth";
 import { useNavigate, useParams } from "react-router";
 import { useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 
-const EditArchiveGroupAction = async(
-  item_id: number,
-  values: ArchiveGroupFormType,
+const EditCategoryAction = async(
+  category_id: number,
+  values: CategoryFormType,
   fetchWithAuth: (
     input: RequestInfo,
     init?: RequestInit
@@ -16,12 +16,12 @@ const EditArchiveGroupAction = async(
   
   const data = {
       ...values,
-      id: item_id
+      id: category_id
   }
 
   try {
     const response = await fetchWithAuth(
-      `http://127.0.0.1:8000/api/v1/archive_group/edit/${item_id}/`,
+      `http://127.0.0.1:8000/api/v1/category/edit/${category_id}/`,
       {
         method: 'PUT',
         headers: {
@@ -47,12 +47,12 @@ const EditArchiveGroupAction = async(
     }
   }
 
-  return {success: true, redirect: `/archive-group`};
+  return {success: true, redirect: `/category`};
 };
 
-function EditArchiveGroup() {
+function EditCategory() {
   const { isAuthenticated, fetchWithAuth } = useAuth();
-  const { item_id } = useParams();
+  const { category_id } = useParams();
   const navigate = useNavigate();
   useEffect(() => {
       if (!isAuthenticated) {
@@ -62,12 +62,12 @@ function EditArchiveGroup() {
 
   const currentItem = useQuery(
     {
-      queryKey: ['archive_group', item_id],
+      queryKey: ['category', category_id],
       retry: false,
       refetchOnMount: 'always',  // Always refetch when the component mounts
       queryFn: () =>
         fetchWithAuth(
-          `http://127.0.0.1:8000/api/v1/archive_group/get/${item_id}/`,
+          `http://127.0.0.1:8000/api/v1/category/get/${category_id}/`,
           {
             method: 'GET',
           }
@@ -83,9 +83,9 @@ function EditArchiveGroup() {
           {currentItem.isError || !currentItem.data ? (
             <div>No data available: {currentItem.error ? currentItem.error.message : ''}</div>
           ) : (
-            <ArchiveGroupForm
-              onSubmit={(values: ArchiveGroupFormType) => EditArchiveGroupAction(
-                item_id,
+            <CategoryForm
+              onSubmit={(values: CategoryFormType) => EditCategoryAction(
+                category_id,
                 values,
                 fetchWithAuth
               )}
@@ -99,4 +99,4 @@ function EditArchiveGroup() {
   )
 }
 
-export default EditArchiveGroup
+export default EditCategory

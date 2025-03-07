@@ -1,11 +1,11 @@
 import { AddActionType } from "@/lib/types";
-import { ArchiveGroupForm, ArchiveGroupFormType } from "./form";
+import { CategoryForm, CategoryFormType } from "./form";
 import { useAuth } from "@/hooks/use-auth";
 import { useNavigate } from "react-router";
 import { useEffect } from "react";
 
-const AddArchiveGroupAction = async(
-  values: ArchiveGroupFormType,
+const AddCategoryAction = async(
+  values: CategoryFormType,
   fetchWithAuth: (input: RequestInfo, init?: RequestInit) => Promise<Response>
 ): AddActionType => {
   
@@ -16,7 +16,7 @@ const AddArchiveGroupAction = async(
 
   try {
     const response = await fetchWithAuth(
-      `http://127.0.0.1:8000/api/v1/archive_group/add/`,
+      `http://127.0.0.1:8000/api/v1/category/add/`,
       {
         method: 'POST',
         headers: {
@@ -42,10 +42,10 @@ const AddArchiveGroupAction = async(
     }
   }
 
-  return {success: true, redirect: `/archive-group`};
+  return {success: true, redirect: `/category`};
 };
 
-function AddArchiveGroup() {
+function AddCategory() {
   const { isAuthenticated, fetchWithAuth } = useAuth();
   
   const navigate = useNavigate();
@@ -57,12 +57,12 @@ function AddArchiveGroup() {
 
   return (
     <div>
-      <ArchiveGroupForm
-        onSubmit={(values: ArchiveGroupFormType) => AddArchiveGroupAction(values, fetchWithAuth)}
+      <CategoryForm
+        onSubmit={(values: CategoryFormType) => AddCategoryAction(values, fetchWithAuth)}
       />
     </div>
   )
 }
 
-export default AddArchiveGroup
+export default AddCategory
 

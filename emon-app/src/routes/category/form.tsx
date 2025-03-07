@@ -15,9 +15,17 @@ import {
   FormMessage,
   useZodForm,
 } from '@/components/ui/form';
+import {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectTrigger,
+  SelectValue
+} from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { z } from 'zod';
-import { AddActionType, ArchiveGroupEdit } from "@/lib/types";
+import { AddActionType, CategoryEdit } from "@/lib/types";
 import { ComponentPropsWithoutRef, useEffect } from "react";
 import { useNavigate } from "react-router";
 import { useQueryClient } from "@tanstack/react-query";
@@ -25,34 +33,41 @@ import { useQueryClient } from "@tanstack/react-query";
 export const FormScheme = z.object({
   name: z.string()
     .min(1)
-    .max(15)
+    .max(40)
+    .regex(/^[A-Za-z0-9-_ ]+$/, {
+      message: 'Please enter a valid attribute (Only Alphabetical characters with accents and spaces are accepted)',
+    }),
+  type: z.string()
+    .min(1)
+    .max(30)
     .regex(/^[A-Za-z0-9-_]+$/, {
       message: 'Please enter a valid attribute (Only Alphabetical characters with accents and spaces are accepted)',
     }),
 });
 
-export type ArchiveGroupFormType = z.infer<typeof FormScheme>;
+export type CategoryFormType = z.infer<typeof FormScheme>;
 
-type FormFieldsProps = "name" | "root" | `root.${string}`;
+type FormFieldsProps = "name" | "type" | "root" | `root.${string}`;
 
-const initFormDefaults = (data?: ArchiveGroupEdit) => {
+const initFormDefaults = (data?: CategoryEdit) => {
   return {
     id: data?.id ? data.id : 0,
     name: data?.name ?? '',
+    type: data?.type ?? '',
   }
 }
 
-export type ArchiveGroupFormProps = ComponentPropsWithoutRef<"div"> & {
-  onSubmit: (values: ArchiveGroupFormType) => AddActionType;
-  data?: ArchiveGroupEdit;
+export type CategoryFormProps = ComponentPropsWithoutRef<"div"> & {
+  onSubmit: (values: CategoryFormType) => AddActionType;
+  data?: CategoryEdit;
   className?: string;
 };
 
-export function ArchiveGroupForm({
+export function CategoryForm({
   onSubmit,
   data,
   className
-}: ArchiveGroupFormProps) {
+}: CategoryFormProps) {
   const navigate = useNavigate();
   const queryClient = useQueryClient()
   const form = useZodForm({
@@ -67,14 +82,14 @@ export function ArchiveGroupForm({
     }
   }, [data, form]);
 
-  const onSubmitForm = async (values: ArchiveGroupFormType) => {
+  const onSubmitForm = async (values: CategoryFormType) => {
     const response = await onSubmit(values);
 
     if (response && response.redirect) {
       form.reset();
-      queryClient.invalidateQueries({ queryKey: ['archive_group'] })
+      queryClient.invalidateQueries({ queryKey: ['category'] })
       if(data && data.id && data.id > 0){
-        queryClient.invalidateQueries({ queryKey: ['archive_group_edit', data.id] })
+        queryClient.invalidateQueries({ queryKey: ['category_edit', data.id] })
       }
       navigate(response.redirect);
     }
@@ -99,7 +114,7 @@ export function ArchiveGroupForm({
     <div className={cn("flex flex-col gap-6", className)}>
       <Card>
         <CardHeader>
-          <CardTitle className="text-2xl">Archive Group</CardTitle>
+          <CardTitle className="text-2xl">Category</CardTitle>
         </CardHeader>
         <CardContent>
           <Form
@@ -109,12 +124,39 @@ export function ArchiveGroupForm({
           >
             <div className="flex flex-col gap-6">
               <div className="grid gap-2">
+              <FormField
+                control={form.control}
+                name="type"
+                render={({ field }) => (
+                <FormItem>
+                    <FormLabel>Type</FormLabel>
+                    <FormControl>
+                    <Select
+                        defaultValue={field?.value ? field?.value : "null"}
+                        onValueChange={field.onChange}
+                    >
+                        <SelectTrigger className="w-[180px]">
+                            <SelectValue placeholder="Type" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            <SelectGroup>
+                                <SelectItem value="null">Undefined</SelectItem>
+                                <SelectItem value="fina_files">Fina Files</SelectItem>
+                                <SelectItem value="fina_paths">Fina Paths</SelectItem>
+                            </SelectGroup>
+                        </SelectContent>
+                    </Select>
+                    </FormControl>
+                    <FormMessage />
+                </FormItem>
+                )}
+               />
                 <FormField
                   control={form.control}
                   name="name"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Group</FormLabel>
+                      <FormLabel>Category</FormLabel>
                       <FormControl>
                         <Input
                           required

@@ -16,19 +16,19 @@ const idSchemeIn = z.string()
 const idSchemeOut = z.number()
   .positive();
 
-function DeleteArchiveGroup() {
+function DeleteCategory() {
   const { isAuthenticated, fetchWithAuth } = useAuth();
-  const { item_id } = useParams();
+  const { category_id } = useParams();
   const navigate = useNavigate();
   useEffect(() => {
     if (!isAuthenticated) {
       navigate("/login");
     }
   }, [isAuthenticated, navigate]);
-  idSchemeIn.parse(item_id);
-  const itemId = item_id ? parseInt(item_id) : 0
+  idSchemeIn.parse(category_id);
+  const itemId = category_id ? parseInt(category_id) : 0
   idSchemeOut.parse(itemId);
-  const DeleteArchiveGroupAction = async (e: MouseEvent<HTMLButtonElement>) => {
+  const DeleteCategoryAction = async (e: MouseEvent<HTMLButtonElement>) => {
     if(!itemId || itemId <= 0){
       return new Error(
         "Unable to delete Item, id is invalid"
@@ -36,7 +36,7 @@ function DeleteArchiveGroup() {
     }
     try {
       const response = await fetchWithAuth(
-        `http://127.0.0.1:8000/api/v1/archive_group/delete/${itemId}/`,
+        `http://127.0.0.1:8000/api/v1/category/delete/${itemId}/`,
         {
           method: 'DELETE',
           headers: {
@@ -60,7 +60,7 @@ function DeleteArchiveGroup() {
         error: error instanceof Error ? error.message : 'Unknown error'
       }
     }
-    navigate("/archive-group")
+    navigate("/category")
     return;
   }
   
@@ -76,16 +76,16 @@ function DeleteArchiveGroup() {
         </div>
         <Button
           variant="destructive"
-          onClick={DeleteArchiveGroupAction}
+          onClick={DeleteCategoryAction}
         >
           Delete
         </Button>
         <Button variant="ghost">
-          <Link to="/archive-group">Back</Link>
+          <Link to="/category">Back</Link>
         </Button>
       </CardContent>
     </Card>
   )
 }
 
-export default DeleteArchiveGroup
+export default DeleteCategory
