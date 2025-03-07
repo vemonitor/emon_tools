@@ -11,11 +11,12 @@ import { ChartTopMenu } from './chartTopMenu';
 import Ut from '@/helpers/utils';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useShallow } from 'zustand/react/shallow'
-import { Suspense } from 'react';
-import { FinaSourceProps, SelectedFileItem } from '@/lib/graphTypes';
+import { Suspense, useEffect } from 'react';
+import { SelectedFileItem } from '@/lib/graphTypes';
+import { useAuth } from '@/hooks/use-auth';
 
 type FinaChartViewerProps = {
-  source: FinaSourceProps,
+  path_id: number,
   selected_feeds: SelectedFileItem[]
   classBody?: string;
 }
@@ -36,62 +37,49 @@ const GraphLoader = () => {
 
 
 export function FinaChartViewer({
-  source,
+  path_id,
   selected_feeds
 }: FinaChartViewerProps){
-    /*const { 
-      time_start,
-      time_end,
-      time_window,
-      interval
-    } = useDataViewer()*/
+    const { fetchWithAuth } = useAuth();
+  
     const time_start = useDataViewer((state) => state.time_start)
     const time_window = useDataViewer((state) => state.time_window)
     const interval = useDataViewer((state) => state.interval)
     const set_data_points = useDataViewer(useShallow((state) => state.set_data_points))
 
-    const is_selected_feeds = Ut.isArray(selected_feeds)
-    
-    const has_selected_feeds = is_selected_feeds
-      && selected_feeds.length > 0
+    // Ensure selected_feeds is always an array.
+    const feeds = Array.isArray(selected_feeds) ? selected_feeds : [];
+    const leftFeeds = feeds.filter((feed) => feed.side === 'left');
+    const rightFeeds = feeds.filter((feed) => feed.side === 'right');
 
-    const leftGraph = useQueries({
-      queries: selected_feeds
-        .filter((item) => item.side === 'left')
-        .map((item) => execFinaDataQueries(
-          item,
-          source,
-          time_start,
-          time_window,
-          interval
-        )),
-      combine: (results) => {
-        return combineResults(results)
-      },
+    // Always call useQueries, even if the feed arrays are empty.
+    const leftQueries = useQueries({
+      queries: leftFeeds.map((feed) =>
+        execFinaDataQueries(feed, time_start, time_window, interval, fetchWithAuth)
+      ),
     });
-  
-    const rightGraph = useQueries({
-      queries: selected_feeds
-        .filter((item) => item.side === 'right')
-        .map((item) => execFinaDataQueries(
-          item,
-          source,
-          time_start,
-          time_window,
-          interval
-        )),
-      combine: (results) => {
-        return combineResults(results)
+    const rightQueries = useQueries({
+      queries: rightFeeds.map((feed) =>
+        execFinaDataQueries(feed, time_start, time_window, interval, fetchWithAuth)
+      ),
+    });
+
+    // Determine loading state based on queries.
+    const isLoading =
+      leftQueries.some((query) => query.isLoading) ||
+      rightQueries.some((query) => query.isLoading);
+
+    // Combine query results.
+    const leftData = leftQueries.flatMap((query) => query.data || []);
+    const rightData = rightQueries.flatMap((query) => query.data || []);
+    const data_points = format_datas(leftData, rightData);
+
+    // Always call useEffect, but conditionally perform an action inside it.
+    /*useEffect(() => {
+      if (!isLoading) {
+        set_data_points(data_points);
       }
-    });
-
-    if(!has_selected_feeds || leftGraph.pending || rightGraph.pending){
-      return (
-        <GraphLoader />
-      )
-    }
-    const data_points = format_datas(leftGraph.data ?? [], rightGraph.data ?? [])
-    //set_data_points(data_points)
+    }, [isLoading, data_points, set_data_points]);*/
     return (
       <>
         <div className='w-full h-full'>
@@ -112,12 +100,12 @@ export function FinaChartViewer({
 }
 
 type ChartPaneProps = {
-  source: FinaSourceProps
+  path_id: number
   classBody?: string;
 }
 
 export function ChartPane({
-  source,
+  path_id,
   classBody
 }: ChartPaneProps) {
   const selected_feeds = useDataViewer((state) => state.selected_feeds)
@@ -131,7 +119,7 @@ export function ChartPane({
     </div>
     <Suspense fallback={<GraphLoader />}>
       <FinaChartViewer
-        source={source}
+        path_id={path_id}
         selected_feeds={selected_feeds}
       />
     </Suspense>

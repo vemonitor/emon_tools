@@ -12,7 +12,7 @@ export function DataViewer({
 }: {
   className?: string
 }) {
-  const { source_ref } = useParams();
+  const { path_id } = useParams();
   const { isAuthenticated } = useAuth();
   const navigate = useNavigate();
 
@@ -30,12 +30,12 @@ export function DataViewer({
       <div className='grid grid-cols-8 h-full'>
         <div className='col-span-2 h-full'>
           <DataViewerList 
-            source={source_ref ?? 'archive'}
+            path_id={path_id ?? 'archive'}
           />
         </div>
         <div className='col-span-6 h-full'>
           <ChartPane
-            source={source_ref ?? 'archive'}
+            source={path_id ?? 'archive'}
             classBody='h-full'
           />
         </div>
