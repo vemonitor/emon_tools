@@ -5,9 +5,8 @@ from typing import List
 from typing import Optional
 from typing import Union
 import logging
-import math
-import numpy as np
 import datetime as dt
+import numpy as np
 from emon_tools.emon_fina.fina_models import OutputAverageEnum
 from emon_tools.emon_fina.fina_models import OutputType
 from emon_tools.emon_fina.fina_models import FinaByDateParamsModel
@@ -24,15 +23,15 @@ class FinaData:
     """
     A class to handle data retrieval and processing from a Fina data file.
     """
-    def __init__(self, feed_id: int, data_dir: str):
+    def __init__(self, file_name: int, data_dir: str):
         """
         Initialize the FinaData object with a FinaReader instance.
 
         Parameters:
-            feed_id (int): Unique identifier for the feed.
+            file_name (str): Fina File Name
             data_dir (str): Directory path to the Fina data files.
         """
-        self.reader = FinaReader(feed_id=feed_id, data_dir=data_dir)
+        self.reader = FinaReader(file_name=file_name, data_dir=data_dir)
         self.meta = self.reader.read_meta()
         self.length = self.meta.npoints * self.meta.interval
         self.lines: int = 0
