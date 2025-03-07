@@ -6,6 +6,7 @@ including models for creation, update, and public representations.
 It also includes models for authentication tokens and messages.
 """
 from datetime import datetime
+import enum
 from typing import Optional
 import uuid
 import sqlalchemy as sa
