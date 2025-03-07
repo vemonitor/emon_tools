@@ -53,20 +53,38 @@ export interface EmonHostEdit extends EmonHostBase{
     id?: number;
     created_at?: string;
     updated_at?: string;
-    owner_id?: string
+    owner_id?: string;
+    datapath_id?: bigint;
 }
 
-export interface ArchiveGroupBase {
+export interface CategoryBase {
     name: string;
-    parent_group_id?: bigint;
+    type: string;
 }
 
-export interface ArchiveGroupList extends ArchiveGroupBase{
+export interface CategoryList extends CategoryBase{
+    id: number;
+    owner_id: string
+}
+
+export interface CategoryEdit extends CategoryBase{
     id?: number;
+    created_at?: string;
+    updated_at?: string;
     owner_id?: string
 }
 
-export interface ArchiveGroupEdit extends ArchiveGroupBase{
+export interface DataPathBase {
+    name: string;
+    path: string;
+}
+
+export interface DataPathList extends DataPathBase{
+    id: number;
+    owner_id: string
+}
+
+export interface DataPathEdit extends DataPathBase{
     id?: number;
     created_at?: string;
     updated_at?: string;
@@ -86,9 +104,9 @@ export interface ArchiveFileBase {
 }
 
 export interface ArchiveFileList extends ArchiveFileBase{
-    id?: bigint;
-    owner_id?: string
-    archivegroup_id?: bigint
+    id: bigint;
+    owner_id: string
+    category_id?: bigint
     emonhost_id?: bigint
 }
 
@@ -97,6 +115,7 @@ export interface ArchiveFileEdit extends ArchiveFileBase{
     created_at?: string;
     updated_at?: string;
     owner_id?: string;
-    archivegroup_id?: bigint
+    category_id?: bigint
+    datapath_id?: bigint
     emonhost_id?: bigint
 }

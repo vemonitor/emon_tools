@@ -9,8 +9,24 @@
     start_time: number,
     end_time: number,
     npoints: number,
-    interval: number
+    interval: number,
+    size: number,
   }
+
+  export type FileDbOut = {
+    file_id: number,
+    name: string,
+    slug: string,
+    feed_id: number,
+    emonhost_id: number,
+  }
+
+  export type FileItemProps = {
+    file_name: string,
+    name: string,
+    meta: FeedMetaOut,
+    file_db?: FileDbOut,  
+  };
 
   export type FeedMetaResponse = {
     success: boolean,
@@ -19,7 +35,7 @@
   }
 
   export type DataViewerProps = {
-    source: FinaSourceProps
+    path_id: number
   }
   
   export interface GraphDataProps {
@@ -34,10 +50,11 @@
 
   export type SelectedFileItem = {
     is_checked: boolean;
-    item_id: string;
+    file_name: string;
     side: GraphLocationProps;
     name: string;
     meta: FeedMetaOut;
+    file_db?: FileDbOut;
   }
 
   /** Represents a feed with its id and the location it should be displayed on */
