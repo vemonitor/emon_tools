@@ -1,7 +1,7 @@
 import clsx from 'clsx';
 import { PropsWithChildren, ReactNode } from 'react'
 
-type Props = PropsWithChildren<{
+export type PaneProps = PropsWithChildren<{
     title: string;
     menuHead?: ReactNode;
     id?: string;
@@ -17,7 +17,7 @@ export default function Pane({
     classHead,
     classBody,
     children
-}: Props) {
+}: PaneProps) {
     const props = id ? { id: id } : null
     return (
         <section
