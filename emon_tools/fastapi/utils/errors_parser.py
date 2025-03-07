@@ -19,7 +19,7 @@ def parse_integrity_error(exc: IntegrityError) -> list[dict]:
 
     # ✅ UNIQUE constraint violation (multiple possible)
     unique_matches = re.findall(
-        r"Duplicate entry '(.+)' for key '(.+)\.(.+)'", error_message
+        r"Duplicate entry '(.+)' for key '([^'.]+)\.([^'.]+)'", error_message
     )
     for match in unique_matches:
         errors.append({
