@@ -7,13 +7,11 @@ default superuser if one does not already exist. It is expected that
 database tables are created via Alembic migrations.
 """
 
-from sqlmodel import Session, create_engine, select
-
+from sqlmodel import Session, select
+from emon_tools.fastapi.core.database import engine
 from emon_tools.fastapi import crud
 from emon_tools.fastapi.core.config import settings
 from emon_tools.fastapi.models.db import User, UserCreate
-
-engine = create_engine(str(settings.SQLALCHEMY_DATABASE_URI))
 
 
 # make sure all SQLModel models are imported (app.models)
