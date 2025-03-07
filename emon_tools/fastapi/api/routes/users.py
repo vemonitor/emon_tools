@@ -15,7 +15,7 @@ from emon_tools.fastapi.core.security import get_password_hash
 from emon_tools.fastapi.core.security import verify_password
 from emon_tools.fastapi.models.db import (
     ArchiveFile,
-    ArchiveGroup,
+    Category,
     EmonHost,
     Message,
     UpdatePassword,
@@ -251,8 +251,8 @@ def delete_user(
         )
     statement = delete(EmonHost).where(col(EmonHost.owner_id) == user_id)
     session.exec(statement)  # type: ignore
-    statement = delete(ArchiveGroup).where(
-        col(ArchiveGroup.owner_id) == user_id)
+    statement = delete(Category).where(
+        col(Category.owner_id) == user_id)
     session.exec(statement)  # type: ignore
     statement = delete(ArchiveFile).where(col(ArchiveFile.owner_id) == user_id)
     session.exec(statement)  # type: ignore
