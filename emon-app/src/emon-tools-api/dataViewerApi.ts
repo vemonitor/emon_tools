@@ -3,6 +3,7 @@ import { getWithFetch } from '../helpers/fetcher';
 import { UseQueryResult } from '@tanstack/react-query';
 import { GraphDataProps, GraphFeedProps, GraphLocationProps, LineChartDataProps } from '@/components/fina_viewer/feedChart';
 import { FinaSourceProps, SelectedFileItem } from '@/lib/graphTypes';
+import { useAuth } from '@/hooks/use-auth';
 
 export interface ExecQueriesParams {
   file_name: string;
@@ -29,12 +30,12 @@ export type combineResultsOut = {
 
 
 
-export const getFinaFiles = (source: FinaSourceProps) => {
+export const getFinaFiles = (path_id: number) => {
     return {
-        queryKey: ['emon_fina_files', source],
+        queryKey: ['emon_fina_files', path_id],
         queryFn: () =>
           getWithFetch({
-            url:`http://127.0.0.1:8000/api/v1/emon_fina/files/${source}`
+            url:`http://127.0.0.1:8000/api/v1/fina_data/files/${path_id}/`
           }),
       }
 }
@@ -105,12 +106,12 @@ export const getFeedIdFromFileName = (file_name: string) => {
 
 export const execFinaMetaQueries = (
   item: ExecQueriesParams,
-  source: FinaSourceProps
+  path_id: number
 ) => {
   const feed_id = getFeedIdFromFileName(item.file_name);
-  const url = 'http://127.0.0.1:8000/api/v1/emon_fina/meta/' + source + '/' + feed_id;
+  const url = 'http://127.0.0.1:8000/api/v1/fina_data/meta/' + path_id + '/' + feed_id;
   return {
-    queryKey: ['emon_fina_metas', source, feed_id],
+    queryKey: ['emon_fina_metas', path_id, feed_id],
     queryFn: () => getWithFetch({ url: url }),
     retry: false
   };
@@ -118,31 +119,40 @@ export const execFinaMetaQueries = (
 
 export const execFinaDataQueries = (
   item: SelectedFileItem,
-  source: FinaSourceProps,
   time_start: number,
   window: number,
-  interval: number
+  interval: number,
+  fetchWithAuth: (input: RequestInfo, init?: RequestInit) => Promise<Response>
 ) => {
-  const feed_id = item.item_id;
+  const file_id = item.file_db?.file_id ?? 0;
   const searchParams = new URLSearchParams({
     start: time_start.toString(),
     window: window.toString(),
     interval: interval.toString(),
   });
-  const url = 'http://127.0.0.1:8000/api/v1/emon_fina/data/' + source + '/' + feed_id + '?' + searchParams.toString();
+  const url = 'http://127.0.0.1:8000/api/v1/fina_data/data/' + file_id  + '/?' + searchParams.toString();
   return {
-    queryKey: ['emon_fina_datas', source, feed_id, time_start, window, interval],
-    queryFn: () => getWithFetch({ url: url }),
-    retry: false
+    queryKey: ['emon_fina_datas', file_id, time_start, window, interval],
+    retry: false,
+    queryFn: async () => {
+      const response = await fetchWithAuth(url, { method: 'GET' });
+      if (!response.ok) {
+        throw new Error('Network response was not ok');
+      }
+      const json = await response.json();
+      // If the API returns: { success: true, data: { ..., data: [...] } }
+      // and you need the inner "data" array, you can do:
+      return json.data?.data || [];
+    },
   };
 };
 
 export const combineResults = (
   results: QueryResultIn
 ): combineResultsOut => {
-  return {
-    data: results.flatMap((result) => result.data || []),
-    pending: results.some((result) => result.isPending),
-    error: results.flatMap((result) => result.error || []),
-  }
+  const data = results.flatMap((result) => result.data || []);
+  const isLoading = results.some((result) => result.isLoading);
+  const isError = results.some((result) => result.isError);
+  const errors = results.map((result) => result.error).filter(Boolean);
+  return { data, isLoading, isError, errors };
 }
