@@ -6,6 +6,7 @@ file structures for EmonFina data. It includes utilities to retrieve
 file source paths based on the given source type, validate source 
 directories, scan directories for files, and analyze file structures.
 """
+from emon_tools.emon_fina.emon_fina import FinaData
 from emon_tools.fastapi.utils.files import FilesHelper
 from emon_tools.emon_api.api_utils import Utils as Ut
 from emon_tools.fastapi.core.config import settings
@@ -76,7 +77,135 @@ class EmonFinaHelper:
         return result
 
     @staticmethod
+    def order_fina_files(
+        dat_files: list[str],
+        meta_files: list[str],
+        file_names: set[str]
+    ) -> list:
+        """
+        Validate if the file source directory exists and is readable.
+
+        Parameters:
+            source (str):
+                The identifier for the file source.
+
+        Returns:
+            dict:
+                A dictionary with a 'success' key indicating whether
+                the directory is valid and a 'message' key providing
+                additional information.
+        """
+        result = []
+        if Ut.is_list(dat_files)\
+                and Ut.is_list(meta_files)\
+                and Ut.is_set(file_names):
+            for name in file_names:
+                dat, meta = None, None
+                if name in dat_files:
+                    dat = f"{name}.dat"
+                if name in meta_files:
+                    meta = f"{name}.meta"
+                result.append({
+                    'file_name': name,
+                    'dat_file': dat,
+                    'meta_file': meta,
+                    'is_valid': Ut.is_str(dat) and Ut.is_str(meta)
+                })
+        return result
+
+    @staticmethod
     def scan_fina_dir(
+        file_path: str
+    ):
+        """
+        Scan the file source directory for files and determine their 
+        structure.
+
+        Parameters:
+            source (str):
+                The identifier for the file source.
+
+        Returns:
+            dict:
+                A dictionary containing the scan results with the keys:
+                - "success": A boolean indicating if scanning was 
+                  successful.
+                - "file_path": The path that was scanned.
+                - "files": A list of '.dat' files found.
+                - "invalid": A list of files that are invalid based on 
+                  the expected structure.
+                If scanning fails, returns a dictionary with 'success' 
+                set to False and an error 'message'.
+        """
+        result = None
+        if file_path is not None:
+            files = FilesHelper.scan_dir(
+                file_path=file_path
+            )
+            dat_files, meta_files, file_names = \
+                EmonFinaHelper.get_fina_files_structure(
+                    files=files
+                )
+            ordered = EmonFinaHelper.order_fina_files(
+                dat_files=dat_files,
+                meta_files=meta_files,
+                file_names=file_names
+            )
+            result = {
+                "file_path": file_path,
+                "files": ordered,
+                "file_names": file_names
+            }
+        return result
+
+    @staticmethod
+    def append_fina_data(
+        files: dict
+    ):
+        """
+        Append fina meta data to scanned files
+        """
+        result = None
+        if Ut.is_dict(files)\
+                and Ut.is_list(files.get('files'))\
+                and len(files.get('files')) > 0:
+            output_files = []
+
+            for file_item in files.get('files'):
+                try:
+                    if file_item.get('is_valid'):
+                        file_name = file_item.get('file_name')
+                        fina = FinaData(
+                            file_name=file_name,
+                            data_dir=files.get('file_path').path
+                        )
+                        output_files.append({
+                            "file_name": file_name,
+                            "name": file_item.get('dat_file'),
+                            "meta": fina.meta.serialize(),
+                            "file_db": file_item.get('file_db'),
+                        })
+                    else:
+                        output_files.append({
+                            "file_name": file_name,
+                            "name": file_item.get('dat_file'),
+                            "meta": {},
+                            "file_db": file_item.get('file_db'),
+                            "error": "Meta or dat file is not present"
+                        })
+                except (ValueError, TypeError, OSError) as ex:
+                    output_files.append({
+                        "file_name": file_name,
+                        "name": file_item.get('dat_file'),
+                        "meta": {},
+                        "error": str(ex)
+                    })
+            files['files'] = sorted(output_files, key=lambda d: d['name'])
+            result = files
+        return result
+
+    @staticmethod
+    def scan_fina_dir_by_source(
         source: str
     ):
         """
@@ -99,33 +228,17 @@ class EmonFinaHelper:
                 If scanning fails, returns a dictionary with 'success' 
                 set to False and an error 'message'.
         """
-        result = {
-            "success": False,
-            "message": "Unable to scan emoncms fina directory.",
-        }
         file_path = EmonFinaHelper.get_files_source(
             source=source
         )
-        if file_path is not None:
-            files = FilesHelper.scan_dir(
-                file_path=file_path
-            )
-            dat_files, meta_files = EmonFinaHelper.get_fina_files_structure(
-                files=files
-            )
-            result = {
-                "success": True,
-                "file_path": file_path,
-                "files": dat_files,
-                "invalid": EmonFinaHelper.get_fina_invalid_files(
-                    dat_files=dat_files,
-                    meta_files=meta_files
-                )
-            }
-        return result
+        return EmonFinaHelper.scan_fina_dir(
+            file_path=file_path
+        )
 
     @staticmethod
-    def get_fina_files_structure(files: list):
+    def get_fina_files_structure(
+        files: list
+    ) -> tuple[list[str], list[str], set[str]]:
         """
         Separate files into '.dat' and '.meta' files based on their 
         extensions.
@@ -140,18 +253,21 @@ class EmonFinaHelper:
                 - The first list contains filenames ending with '.dat'.
                 - The second list contains filenames ending with '.meta'.
         """
-        dat_files, meta_files = [], []
+        dat_files, meta_files, file_names = [], [], set()
         if Ut.is_list(files, not_empty=True):
             dat_files, meta_files = [], []
             for f in files:
-                tmp = f.split('.')
-                if len(tmp) == 2:
-                    ext = tmp[-1]
+                splitted = f.split('.')
+                nb_items = len(splitted)
+                if nb_items > 1:
+                    current_name = '.'.join(splitted[0: -1])
+                    ext = splitted[-1]
                     if ext == 'dat':
-                        dat_files.append(f)
+                        dat_files.append(current_name)
                     elif ext == 'meta':
-                        meta_files.append(f)
-        return dat_files, meta_files
+                        meta_files.append(current_name)
+                    file_names.add(current_name)
+        return dat_files, meta_files, file_names
 
     @staticmethod
     def get_fina_invalid_files(
