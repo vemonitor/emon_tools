@@ -4,14 +4,19 @@ import { Separator } from "@/components/ui/separator"
 import Ut from '@/helpers/utils';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
-import { ChangeEvent, ChangeEventHandler } from 'react';
-import { FeedMetaOut, GraphLocationProps, SelectedFileItem } from '@/lib/graphTypes';
+import { ChangeEvent, ChangeEventHandler, useState } from 'react';
+import { FeedMetaOut, FileDbOut, GraphLocationProps, SelectedFileItem } from '@/lib/graphTypes';
 import { useDataViewer } from '@/stores/dataViewerStore';
+import { BadgePlus, Pencil } from 'lucide-react';
+import DialogForm from '../form/dialog-form';
+import EditArchiveFile from '@/routes/archive-file/edit';
+import AddArchiveFile from '@/routes/archive-file/add';
 
 export interface IFilesData {
-  feed_id: number,
+  file_name: string,
   name: string,
-  meta: FeedMetaOut
+  meta: FeedMetaOut,
+  file_db?: FileDbOut
 }
 
 export interface IFiles {
@@ -24,9 +29,16 @@ export type GraphSideYProps = ChangeEventHandler<HTMLInputElement>
 
 type FilesListItemProps = {
   file_meta: {
-    feed_id: number,
+    file_name: string,
     name: string,
-    meta: FeedMetaOut
+    meta: FeedMetaOut,
+    file_db?: {
+      file_id: number,
+      name: string,
+      slug: string,
+      feed_id: number,
+      emonhost_id: number,
+    },
   };
   handleSelectLeft: GraphSideYProps;
   handleSelectRight: GraphSideYProps;
@@ -40,77 +52,133 @@ export function FilesListItem({
   classBody
 }: FilesListItemProps) {
   const selected_feeds = useDataViewer((state) => state.selected_feeds)
-
+  const [dialogOpen, dialogSetOpen] = useState(false);
   const is_selected = (side: GraphLocationProps) => {
-    const selecteds = selected_feeds.filter(item=>item.side === side && Number(item.item_id) === file_meta.feed_id)
+    const selecteds = selected_feeds.filter(item=>item.side === side && item.file_name === file_meta.file_name)
     return selecteds.length > 0
+  }
+
+  const is_registered = Ut.isObject(file_meta.file_db) && Ut.isNumber(
+    file_meta.file_db.file_id, {positive: true})
+  
+  const item_variant = is_registered ? 'border-lime-950' : 'border-red-950'
+  
+  const handleSuccessForm = () => {
+    dialogSetOpen(false)
   }
   return (
     <>
       <div
-        className={clsx('w-full flex flex-col items-center gap-2 p-4 border-2 rounded-lg hover:border-white', classBody)}
+        className={clsx(
+          'w-full flex flex-col items-center gap-2 p-2 border-2 rounded-lg hover:border-white',
+          classBody,
+          item_variant
+        )}
       >
+        <div
+          className={clsx('w-full flex items-center justify-center', classBody)}
+        >
+          {file_meta.name}
+        </div>
+        <Separator className="my-1" />
         <div
           className={clsx('w-full grid grid-cols-9 gap-2', classBody)}
         >
           <div className="col-span-3 text-sm flex items-center justify-center">
             <Input 
               type="checkbox"
-              className='w-6 h-6 m-auto'
-              value={file_meta.feed_id}
+              className='w-5 h-5 m-auto'
+              value={file_meta.file_name}
               onChange={handleSelectLeft}
               checked={is_selected("left")}
             />
           </div>
           <div className="col-span-3 text-sm flex items-center justify-center border-x-2">
-            <Button
-              variant='outline'
-              className='m-auto'
-            >
-              {file_meta.name}
-            </Button>
+            {is_registered ? (
+              <DialogForm
+                dialogOpen={dialogOpen}
+                dialogSetOpen={dialogSetOpen}
+                title="Edit Fina File"
+                trigger={(
+                  <Button
+                    variant='ghost'
+                    className='m-auto'
+                  >
+                    Edit <Pencil />
+                  </Button>
+                )}
+                form={(
+                  <EditArchiveFile
+                    row_id={file_meta.file_db?.file_id ?? undefined}
+                    is_dialog={true}
+                    successCallBack={handleSuccessForm}
+                  />
+                )}
+              />
+              
+            ) : (
+              <DialogForm
+                dialogOpen={dialogOpen}
+                dialogSetOpen={dialogSetOpen}
+                title="Edit Fina File"
+                trigger={(
+                  <Button
+                    variant='ghost'
+                    className='m-auto'
+                  >
+                    Add <BadgePlus />
+                  </Button>
+                )}
+                form={(
+                  <AddArchiveFile
+                    is_dialog={true}
+                    successCallBack={handleSuccessForm}
+                    data={{
+                      file_name: file_meta.file_name,
+                      name: file_meta.name,
+                      start_time: file_meta.meta.start_time
+                    }}
+                  />
+                )}
+              />
+              
+            )}
           </div>
           <div className="col-span-3 text-sm flex items-center justify-center">
             <Input
               type="checkbox"
-              className='w-6 h-6 m-auto'
-              value={file_meta.feed_id}
+              className='w-5 h-5 m-auto'
+              value={file_meta.file_name}
               onChange={handleSelectRight}
               checked={is_selected("right")}
             />
           </div>
         </div>
-        <Separator className="my-2" />
+        <Separator className="my-1" />
         <div
           className={clsx('w-full grid grid-cols-12 gap-1', classBody)}
         >
-          <div className="col-span-3 text-sm flex items-center justify-center">
+          <div className="col-span-6 text-sm flex items-center justify-start">
             Start
           </div>
-          <div className="col-span-3 text-sm flex items-center justify-center">
+          <div className="col-span-6 text-sm flex items-center justify-end">
             End
-          </div>
-          <div className="col-span-3 text-sm flex items-center justify-center" title='Interval'>
-            Interval
-          </div>
-          <div className="col-span-3 text-sm flex items-center justify-center">
-            Size
           </div>
         </div>
         <div
           className={clsx('w-full grid grid-cols-12 gap-1', classBody)}
         >
-          <div className="col-span-3 text-sm flex items-center justify-center">
+          <div className="col-span-6 text-sm flex items-center justify-start">
             {Ut.toLocaleDateFromTime(file_meta.meta.start_time)}
           </div>
-          <div className="col-span-3 text-sm flex items-center justify-center">
+          <div className="col-span-6 text-sm flex items-center justify-end">
             {Ut.toLocaleDateFromTime(file_meta.meta.end_time)}
           </div>
-          <div className="col-span-3 text-sm flex items-center justify-center" title='Interval'>
-            {file_meta.meta.interval}
+          <div className="col-span-6 text-sm flex items-center justify-start" title='Interval'>
+            Interval: {file_meta.meta.interval}
           </div>
-          <div className="col-span-3 text-sm flex items-center justify-center">
-            {Ut.formatBytes(file_meta.meta.npoints * 4, 3)}
+          <div className="col-span-6 text-sm flex items-center justify-end">
+            Size: {Ut.formatBytes(file_meta.meta.size)}
           </div>
         </div>        
       </div>
@@ -132,19 +200,20 @@ export function FilesListPane({
     classBody
 }: FilesListPaneProps) {
     
-    const is_data = Ut.isObject(data) && data.success === true && Ut.isArray(data.files)
+    const is_data = Ut.isObject(data) && Ut.isArray(data.files)
 
     const getSelectedFile = (e: ChangeEvent<HTMLInputElement>): SelectedFileItem =>{
       const target = e.target;
       const is_checked = target.type === 'checkbox' && target.checked;
-      const item_id = parseInt(target.value)
-      const selected_item = data.files.filter(item => item.feed_id === item_id)
-      return{
+      const file_name = target.value
+      const selected_item = data.files.filter(item => item.file_name === file_name)
+      return {
         is_checked: is_checked,
-        item_id: item_id.toString(),
+        file_name: file_name,
         side: 'left',
         name: selected_item[0]?.name,
-        meta: selected_item[0]?.meta
+        meta: selected_item[0]?.meta,
+        file_db: selected_item[0]?.file_db
       }
     }
 
