@@ -22,8 +22,33 @@ class ResponseModelBase(BaseModel):
     Inherits from ResponseModelBase and adds id and owner_id fields.
     """
     success: bool
-    msg: Optional[str] = None
-    from_error: Optional[str] = None
-    errors: Optional[list[ResponseError]] = None
-    status_code: Optional[int] = None
-    data: Optional[dict] = None
+
+
+class ResponseSuccessBase(BaseModel):
+    """
+    Public item model for API responses.
+
+    Inherits from ResponseModelBase and adds id and owner_id fields.
+    """
+    data: Optional[dict]
+
+
+class ResponseSimpleErrorBase(ResponseModelBase):
+    """
+    Public item model for API responses.
+
+    Inherits from ResponseModelBase and adds id and owner_id fields.
+    """
+    errors: Optional[list[ResponseError]]
+
+
+class ResponseErrorBase(ResponseSimpleErrorBase):
+    """
+    Public item model for API responses.
+
+    Inherits from ResponseModelBase and adds id and owner_id fields.
+    """
+    msg: Optional[str]
+    from_error: Optional[str]
+    errors: Optional[list[ResponseError]]
+    status_code: Optional[int]
