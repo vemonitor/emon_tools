@@ -326,7 +326,8 @@ class EmonHostBase(SQLModel):
 
     This model defines the common attributes for item-related models.
     """
-    name: str = Field(min_length=1, max_length=255)
+    name: str = Field(min_length=1, max_length=40)
+    slug: str = Field(unique=True, min_length=1, max_length=40)
     host: str | None = Field(default=None, max_length=255)
     api_key: str | None = Field(default=None, max_length=255)
     created_at: datetime | None = Field(
@@ -346,7 +347,25 @@ class EmonHostBase(SQLModel):
     )
 
 
-class EmonHostCreate(EmonHostBase):
+class EmonHostGenerators(EmonHostBase):
+    """
+    EmonHostGenerators class inherits from EmonHostBase
+    and provides functionality to generate a slug for the host.
+    Methods:
+        generate_slug(cls, values):
+            Class method that generates a slug from the 'name' field
+            in the provided values dictionary before model validation.
+    """
+    @model_validator(mode="before")
+    @classmethod
+    def generate_slug(cls, values):
+        """Generate slug"""
+        if 'name' in values:
+            values["slug"] = slugify(values.get("name"))
+        return values
+
+
+class EmonHostCreate(EmonHostGenerators):
     """
     Model for user registration via API.
 
@@ -359,7 +378,7 @@ class EmonHostCreate(EmonHostBase):
 
 # Properties to receive on item update
 # type: ignore
-class EmonHostUpdate(EmonHostBase):
+class EmonHostUpdate(EmonHostGenerators):
     """
     Model for updating an Emon Host.
 
