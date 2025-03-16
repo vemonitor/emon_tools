@@ -7,7 +7,7 @@ from typing import Annotated, Any
 from fastapi import APIRouter, Depends, HTTPException, Response
 from fastapi.security import OAuth2PasswordRequestForm
 
-from emon_tools.fastapi import crud
+from emon_tools.fastapi.controllers.users import UserController
 from emon_tools.fastapi.api.deps import CurrentUser
 from emon_tools.fastapi.api.deps import SessionDep
 from emon_tools.fastapi.core import security
@@ -15,11 +15,10 @@ from emon_tools.fastapi.core.config import settings
 from emon_tools.fastapi.models.db import Token
 from emon_tools.fastapi.models.db import UserPublic
 
+router = APIRouter(tags=["login"], prefix="/login")
 
-router = APIRouter(tags=["login"])
 
-
-@router.post("/login/access-token")
+@router.post("/access-token/")
 def login_access_token(
     response: Response,
     session: SessionDep,
@@ -28,7 +27,7 @@ def login_access_token(
     """
     OAuth2 compatible token login, get an access token for future requests
     """
-    user = crud.authenticate(
+    user = UserController.authenticate(
         session=session, email=form_data.username, password=form_data.password
     )
     if not user:
@@ -65,7 +64,7 @@ def login_access_token(
     )
 
 
-@router.post("/login/refresh-token")
+@router.post("/refresh-token/")
 def login_refresh_token(
     response: Response,
     session: SessionDep,
@@ -82,7 +81,7 @@ def login_refresh_token(
             detail="Invalid refresh token"
         ) from ex
 
-    user = crud.get_user(session=session, user_id=user_id)
+    user = UserController.get_user(session=session, user_id=user_id)
     if not user or not user.is_active:
         raise HTTPException(
             status_code=401,
@@ -115,7 +114,7 @@ def login_refresh_token(
     )
 
 
-@router.post("/logout")
+@router.post("/logout/")
 async def logout(response: Response):
     """
     Logout
