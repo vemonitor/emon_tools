@@ -22,6 +22,15 @@ class BaseController:
     Base controller
     """
     @staticmethod
+    def get_error_responses():
+        """Get error responses request model"""
+        return {
+            500: {
+                "model": ResponseErrorBase
+            }
+        }
+        
+    @staticmethod
     def handle_exception(
         ex: Exception,
         session: Union[Session, None] = None
