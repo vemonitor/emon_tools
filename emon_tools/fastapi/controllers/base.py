@@ -29,7 +29,7 @@ class BaseController:
                 "model": ResponseErrorBase
             }
         }
-        
+
     @staticmethod
     def handle_exception(
         ex: Exception,
