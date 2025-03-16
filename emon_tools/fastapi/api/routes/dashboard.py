@@ -8,9 +8,6 @@ from emon_tools.fastapi.controllers.dashboard import DashboardController
 from emon_tools.fastapi.controllers.data_path import DataPathController
 from emon_tools.fastapi.controllers.emon_host import EmonHostController
 from emon_tools.fastapi.controllers.files import FilesController
-from emon_tools.fastapi.models.base import (
-    ResponseErrorBase
-)
 from emon_tools.fastapi.models.dashboard import (
     ModelsCountStats,
     RangeActivityType,
@@ -24,11 +21,7 @@ router = APIRouter(prefix="/dashboard", tags=["dashboard"])
 @router.get(
     "/users/activity/",
     response_model=UsersActivity,
-    responses={
-        500: {
-            "model": ResponseErrorBase
-        }
-    }
+    responses=BaseController.get_error_responses()
 )
 async def get_dash_users_stats(
     session: SessionDep,
@@ -45,11 +38,7 @@ async def get_dash_users_stats(
 @router.get(
     "/users/activity/current/",
     response_model=UsersActivity,
-    responses={
-        500: {
-            "model": ResponseErrorBase
-        }
-    }
+    responses=BaseController.get_error_responses()
 )
 async def get_dash_current_user_stats(
     session: SessionDep,
@@ -67,11 +56,7 @@ async def get_dash_current_user_stats(
 @router.get(
     "/view/",
     response_model=ModelsCountStats,
-    responses={
-        500: {
-            "model": ResponseErrorBase
-        }
-    }
+    responses=BaseController.get_error_responses()
 )
 async def get_dash_stats(
     session: SessionDep,
