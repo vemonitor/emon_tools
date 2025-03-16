@@ -395,7 +395,7 @@ class EmonHost(EmonHostBase, table=True):
         )
     )
 
-    owner: User | None = Relationship(
+    owner: User = Relationship(
         back_populates="emonhost")
     datapath: DataPath | None = Relationship(
         back_populates="emonhost")
