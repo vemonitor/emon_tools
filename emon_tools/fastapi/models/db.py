@@ -571,7 +571,7 @@ class ArchiveFileBase(SQLModel):
     """
     name: str = Field(min_length=1, max_length=40)
     slug: str = Field(unique=True, min_length=1, max_length=40)
-    file_name: str | None = Field(default=None, min_length=1, max_length=50)
+    file_name: str = Field(min_length=1, max_length=50)
     start_time: datetime | None = Field(
         default=None,
         sa_column=sa.Column(
