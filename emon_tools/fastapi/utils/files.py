@@ -6,7 +6,7 @@ such as checking if a path is a directory and scanning a directory for
 files.
 """
 from os import scandir
-from os.path import isdir, isfile
+from os.path import isdir, isfile, getsize
 
 
 class FilesHelper:
@@ -30,7 +30,7 @@ class FilesHelper:
         return isdir(file_path)
 
     @staticmethod
-    def scan_dir(file_path):
+    def scan_dir(file_path) -> list:
         """
         Scan the specified directory for files.
 
@@ -45,4 +45,22 @@ class FilesHelper:
             for file_item in scandir(file_path):
                 if isfile(file_item):
                     result.append(file_item.name)
+        return result
+
+    @staticmethod
+    def get_path_file_sizes(file_path) -> int:
+        """
+        Scan the specified directory and get sum of file sizes.
+
+        Parameters:
+            file_path (str): The directory path to scan.
+
+        Returns:
+            int: Sum of sizes of all files in current path.
+        """
+        result = 0
+        if isdir(file_path):
+            for file_item in scandir(file_path):
+                if isfile(file_item):
+                    result += getsize(file_item)
         return result
