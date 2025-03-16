@@ -6,10 +6,9 @@ This module sets up logging, initializes the database using the
 initialization.
 """
 import logging
-
 from sqlmodel import Session
-
-from emon_tools.fastapi.core.db import engine, init_db
+from emon_tools.fastapi.core.db import init_db
+from emon_tools.fastapi.core.database import engine
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)

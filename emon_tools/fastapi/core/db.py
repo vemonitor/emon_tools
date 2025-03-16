@@ -6,10 +6,8 @@ to initialize the database with initial data, specifically creating a
 default superuser if one does not already exist. It is expected that
 database tables are created via Alembic migrations.
 """
-
 from sqlmodel import Session, select
-from emon_tools.fastapi.core.database import engine
-from emon_tools.fastapi import crud
+from emon_tools.fastapi.controllers.users import UserController
 from emon_tools.fastapi.core.config import settings
 from emon_tools.fastapi.models.db import User, UserCreate
 
@@ -52,4 +50,4 @@ def init_db(session: Session) -> None:
             password=settings.FIRST_SUPERUSER_PASSWORD,
             is_superuser=True,
         )
-        user = crud.create_user(session=session, user_create=user_in)
+        user = UserController.create_user(session=session, user_create=user_in)
