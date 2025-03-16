@@ -2,14 +2,14 @@
 Base controller
 """
 from typing import Union
-from fastapi import HTTPException, status
+from fastapi import status
+from fastapi.responses import JSONResponse
 from pydantic import ValidationError
 from sqlalchemy.exc import IntegrityError
 from sqlmodel import Session
 
 from emon_tools.fastapi.models.base import (
-    ResponseErrorBase,
-    ResponseSimpleErrorBase
+    ResponseErrorBase
 )
 from emon_tools.fastapi.utils.errors_parser import (
     parse_integrity_error,
@@ -37,10 +37,9 @@ class BaseController:
         Returns:
             ResponseModelBase: A properly formatted API response.
         """
+        content = None
         if isinstance(ex, IntegrityError):
-            if session:
-                session.rollback()
-            return ResponseErrorBase(
+            content = ResponseErrorBase(
                 success=False,
                 msg=(
                     "Database integrity error: "
@@ -51,10 +50,8 @@ class BaseController:
                 errors=parse_integrity_error(ex),
             )
 
-        elif isinstance(ex, ValidationError):
-            if session:
-                session.rollback()
-            return ResponseErrorBase(
+        if isinstance(ex, ValidationError):
+            content = ResponseErrorBase(
                 success=False,
                 msg="Validation error.",
                 from_error="ValidationError",
@@ -62,16 +59,27 @@ class BaseController:
                 errors=parse_pydantic_errors(ex),
             )
 
-        elif isinstance(ex, (ValueError, TypeError, IOError)):
-            return ResponseSimpleErrorBase(
+        if isinstance(ex, (ValueError, TypeError, IOError)):
+            content = ResponseErrorBase(
                 success=False,
-                errors=[str(ex)]
+                msg="Internal Error.",
+                from_error="EmonToolsError",
+                errors=[str(ex)],
+                status_code=status.HTTP_400_BAD_REQUEST,
             )
 
         if session:
             session.rollback()
 
-        raise HTTPException(
+        if content is None:
+            content = ResponseErrorBase(
+                success=False,
+                msg="An unexpected error occurred",
+                from_error="Exeption",
+                errors=[str(ex)],
+                status_code=status.HTTP_400_BAD_REQUEST,
+            )
+        return JSONResponse(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"An unexpected error occurred: {str(ex)}"
-        ) from ex
+            content=content.model_dump()
+        )
