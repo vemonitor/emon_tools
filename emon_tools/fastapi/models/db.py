@@ -222,7 +222,25 @@ class DataPathBase(SQLModel):
     )
 
 
-class DataPathCreate(DataPathBase):
+class DataPathGenerators(DataPathBase):
+    """
+    EmonHostGenerators class inherits from EmonHostBase
+    and provides functionality to generate a slug for the host.
+    Methods:
+        generate_slug(cls, values):
+            Class method that generates a slug from the 'name' field
+            in the provided values dictionary before model validation.
+    """
+    @model_validator(mode="before")
+    @classmethod
+    def generate_slug(cls, values):
+        """Generate slug"""
+        if 'name' in values:
+            values["slug"] = slugify(values.get("name"))
+        return values
+
+
+class DataPathCreate(DataPathGenerators):
     """
     Model for DataPath registration via API.
 
@@ -231,30 +249,16 @@ class DataPathCreate(DataPathBase):
         password (str): The user's password.
         full_name (str | None): The user's full name.
     """
-    @model_validator(mode="before")
-    @classmethod
-    def generate_slug(cls, values):
-        """Generate slug"""
-        if 'name' in values:
-            values["slug"] = slugify(values.get("name"))
-        return values
 
 
 # Properties to receive on item update
 # type: ignore
-class DataPathUpdate(DataPathBase):
+class DataPathUpdate(DataPathGenerators):
     """
     Model for updating an Emon Host.
 
     Inherits from EmonHostBase, with fields made optional for updates.
     """
-    @model_validator(mode="before")
-    @classmethod
-    def generate_slug(cls, values):
-        """Generate slug"""
-        if 'name' in values:
-            values["slug"] = slugify(values.get("name"))
-        return values
 
 
 # Database model, database table inferred from class name
@@ -467,7 +471,25 @@ class CategoryBase(SQLModel):
     )
 
 
-class CategoryCreate(CategoryBase):
+class CategoryGenerators(CategoryBase):
+    """
+    EmonHostGenerators class inherits from EmonHostBase
+    and provides functionality to generate a slug for the host.
+    Methods:
+        generate_slug(cls, values):
+            Class method that generates a slug from the 'name' field
+            in the provided values dictionary before model validation.
+    """
+    @model_validator(mode="before")
+    @classmethod
+    def generate_slug(cls, values):
+        """Generate slug"""
+        if 'name' in values:
+            values["slug"] = slugify(values.get("name"))
+        return values
+
+
+class CategoryCreate(CategoryGenerators):
     """
     Model for Category registration via API.
 
@@ -476,30 +498,16 @@ class CategoryCreate(CategoryBase):
         password (str): The user's password.
         full_name (str | None): The user's full name.
     """
-    @model_validator(mode="before")
-    @classmethod
-    def generate_slug(cls, values):
-        """Generate slug"""
-        if 'name' in values:
-            values["slug"] = slugify(values.get("name"))
-        return values
 
 
 # Properties to receive on item update
 # type: ignore
-class CategoryUpdate(CategoryBase):
+class CategoryUpdate(CategoryGenerators):
     """
     Model for updating an Emon Host.
 
     Inherits from EmonHostBase, with fields made optional for updates.
     """
-    @model_validator(mode="before")
-    @classmethod
-    def generate_slug(cls, values):
-        """Generate slug"""
-        if 'name' in values:
-            values["slug"] = slugify(values.get("name"))
-        return values
 
 
 # Database model, database table inferred from class name
@@ -605,7 +613,50 @@ class ArchiveFileBase(SQLModel):
     )
 
 
-class ArchiveFileCreate(ArchiveFileBase):
+class ArchiveFileGenerators(ArchiveFileBase):
+    """
+    EmonHostGenerators class inherits from EmonHostBase
+    and provides functionality to generate a slug for the host.
+    Methods:
+        generate_slug(cls, values):
+            Class method that generates a slug from the 'name' field
+            in the provided values dictionary before model validation.
+    """
+    category_id: int | None = Field(
+        default=None,
+        gt=0,
+        sa_column=sa.Column(
+            sa.Integer,
+            index=True,
+        )
+    )
+    datapath_id: int | None = Field(
+        default=None,
+        gt=0,
+        sa_column=sa.Column(
+            sa.Integer,
+            index=True,
+        )
+    )
+    emonhost_id: int | None = Field(
+        default=None,
+        gt=0,
+        sa_column=sa.Column(
+            sa.Integer,
+            index=True,
+        )
+    )
+
+    @model_validator(mode="before")
+    @classmethod
+    def generate_slug(cls, values):
+        """Generate slug"""
+        if 'name' in values:
+            values["slug"] = slugify(values.get("name"))
+        return values
+
+
+class ArchiveFileCreate(ArchiveFileGenerators):
     """
     Model for ArchiveFile registration via API.
 
@@ -614,80 +665,16 @@ class ArchiveFileCreate(ArchiveFileBase):
         password (str): The user's password.
         full_name (str | None): The user's full name.
     """
-    category_id: int | None = Field(
-        default=None,
-        gt=0,
-        sa_column=sa.Column(
-            sa.Integer,
-            index=True,
-        )
-    )
-    datapath_id: int | None = Field(
-        default=None,
-        gt=0,
-        sa_column=sa.Column(
-            sa.Integer,
-            index=True,
-        )
-    )
-    emonhost_id: int | None = Field(
-        default=None,
-        gt=0,
-        sa_column=sa.Column(
-            sa.Integer,
-            index=True,
-        )
-    )
-
-    @model_validator(mode="before")
-    @classmethod
-    def generate_slug(cls, values):
-        """Generate slug"""
-        if 'name' in values:
-            values["slug"] = slugify(values.get("name"))
-        return values
 
 
 # Properties to receive on item update
 # type: ignore
-class ArchiveFileUpdate(ArchiveFileBase):
+class ArchiveFileUpdate(ArchiveFileGenerators):
     """
     Model for updating an Emon Host.
 
     Inherits from EmonHostBase, with fields made optional for updates.
     """
-    category_id: int | None = Field(
-        default=None,
-        gt=0,
-        sa_column=sa.Column(
-            sa.Integer,
-            index=True,
-        )
-    )
-    datapath_id: int | None = Field(
-        default=None,
-        gt=0,
-        sa_column=sa.Column(
-            sa.Integer,
-            index=True,
-        )
-    )
-    emonhost_id: int | None = Field(
-        default=None,
-        gt=0,
-        sa_column=sa.Column(
-            sa.Integer,
-            index=True,
-        )
-    )
-
-    @model_validator(mode="before")
-    @classmethod
-    def generate_slug(cls, values):
-        """Generate slug"""
-        if 'name' in values:
-            values["slug"] = slugify(values.get("name"))
-        return values
 
 
 # Database model, database table inferred from class name
