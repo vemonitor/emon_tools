@@ -17,6 +17,10 @@ ENVIRONMENT="local"
 PROJECT_NAME="EmonTools"
 STACK_NAME="full-stack-emontools-project"
 
+# Data Path
+DATA_BASE_PATH="/opt/emon_tools/data"
+STATIC_BASE_PATH="/opt/emon_tools/static"
+
 # Backend
 BACKEND_CORS_ORIGINS="http://localhost,http://localhost:5173,https://localhost,https://localhost:5173"
 SECRET_KEY= 

@@ -52,6 +52,9 @@ class Settings(BaseSettings):
     REFRESH_TOKEN_EXPIRE_MINUTES: int = 30
     REFRESH_TOKEN_COOKIE_EXPIRE_SECONDS: int = 60 * 30
 
+    DATA_BASE_PATH: str
+    STATIC_BASE_PATH: str
+
     FRONTEND_HOST: str = "http://localhost:5173"
     ENVIRONMENT: Literal["local", "staging", "production"] = "local"
 
