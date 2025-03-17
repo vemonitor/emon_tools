@@ -31,9 +31,18 @@ export type AddActionType = Promise<
 
 export interface User {
     id: string;
-    name: string;
-    email?: string;
-    avatar?: string
+    full_name?: string;
+    email: string;
+    avatar?: string;
+    is_superuser: boolean;
+}
+
+export interface UserEdit {
+    id?: string;
+    full_name?: string;
+    email: string;
+    avatar?: string;
+    is_superuser: boolean;
 }
 
 export interface EmonHostBase {
@@ -54,7 +63,7 @@ export interface EmonHostEdit extends EmonHostBase{
     created_at?: string;
     updated_at?: string;
     owner_id?: string;
-    datapath_id?: bigint;
+    datapath_id?: number;
 }
 
 export interface CategoryBase {
@@ -99,23 +108,23 @@ export interface ArchiveFileBase {
     interval?: number;
     size?: number;
     npoints?: number;
-    feed_id?: bigint;
+    feed_id?: number;
     sha_256: string;
 }
 
 export interface ArchiveFileList extends ArchiveFileBase{
-    id: bigint;
+    id: number;
     owner_id: string
-    category_id?: bigint
-    emonhost_id?: bigint
+    category_id?: number
+    emonhost_id?: number
 }
 
 export interface ArchiveFileEdit extends ArchiveFileBase{
-    id?: bigint;
+    id?: number;
     created_at?: string;
     updated_at?: string;
     owner_id?: string;
-    category_id?: bigint
-    datapath_id?: bigint
-    emonhost_id?: bigint
+    category_id?: number
+    datapath_id?: number
+    emonhost_id?: number
 }
