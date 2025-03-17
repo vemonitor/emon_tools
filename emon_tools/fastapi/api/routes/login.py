@@ -123,7 +123,7 @@ async def logout(response: Response):
     return {"message": "Logged out successfully"}
 
 
-@router.post("/login/test-token", response_model=UserPublic)
+@router.post("/login/test-token/", response_model=UserPublic)
 def test_token(current_user: CurrentUser) -> Any:
     """
     Test access token
