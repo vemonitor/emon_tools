@@ -1,24 +1,28 @@
 """EmonHost api routes."""
 from typing import Any
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, HTTPException
 from sqlmodel import select
 from sqlmodel import func
-from sqlalchemy.exc import IntegrityError
-from pydantic import ValidationError
 
 from emon_tools.fastapi.api.deps import CurrentUser, SessionDep
+from emon_tools.fastapi.controllers.base import BaseController
 from emon_tools.fastapi.models.base import ResponseModelBase
-from emon_tools.fastapi.models.db import EmonHost
-from emon_tools.fastapi.models.db import EmonHostCreate
-from emon_tools.fastapi.models.db import EmonHostUpdate
-from emon_tools.fastapi.models.db import EmonHostsPublic
-from emon_tools.fastapi.utils.errors_parser import parse_integrity_error
-from emon_tools.fastapi.utils.errors_parser import parse_pydantic_errors
-# pylint: disable=not-callable
+from emon_tools.fastapi.models.db import (
+    EmonHost,
+    EmonHostCreate,
+    EmonHostUpdate,
+    EmonHostsPublic,
+)
+
 router = APIRouter(prefix="/emon_host", tags=["emon_host"])
+# pylint: disable=broad-exception-caught, not-callable
 
 
-@router.get("/", response_model=EmonHostsPublic)
+@router.get(
+    "/",
+    response_model=EmonHostsPublic,
+    responses=BaseController.get_error_responses()
+)
 async def read_root(
     session: SessionDep,
     current_user: CurrentUser,
@@ -26,30 +30,40 @@ async def read_root(
     limit: int = 100
 ) -> dict:
     """Retrieve emon_hosts list."""
-    if current_user.is_superuser:
-        count_statement = select(func.count()).select_from(EmonHost)
-        count = session.exec(count_statement).one()
-        statement = select(EmonHost).offset(skip).limit(limit)
-        items = session.exec(statement).all()
-    else:
-        count_statement = (
-            select(func.count())
-            .select_from(EmonHost)
-            .where(EmonHost.owner_id == current_user.id)
+    try:
+        if current_user.is_superuser:
+            count_statement = select(func.count()).select_from(EmonHost)
+            count = session.exec(count_statement).one()
+            statement = select(EmonHost).offset(skip).limit(limit)
+            items = session.exec(statement).all()
+        else:
+            count_statement = (
+                select(func.count())
+                .select_from(EmonHost)
+                .where(EmonHost.owner_id == current_user.id)
+            )
+            count = session.exec(count_statement).one()
+            statement = (
+                select(EmonHost)
+                .where(EmonHost.owner_id == current_user.id)
+                .offset(skip)
+                .limit(limit)
+            )
+            items = session.exec(statement).all()
+
+        return EmonHostsPublic(data=items, count=count)
+    except Exception as ex:
+        BaseController.handle_exception(
+            ex=ex,
+            session=session
         )
-        count = session.exec(count_statement).one()
-        statement = (
-            select(EmonHost)
-            .where(EmonHost.owner_id == current_user.id)
-            .offset(skip)
-            .limit(limit)
-        )
-        items = session.exec(statement).all()
-
-    return EmonHostsPublic(data=items, count=count)
 
 
-@router.get("/get/{item_id}/", response_model=ResponseModelBase)
+@router.get(
+    "/get/{item_id}/",
+    response_model=ResponseModelBase,
+    responses=BaseController.get_error_responses()
+)
 def read_item(
     session: SessionDep,
     current_user: CurrentUser,
@@ -71,36 +85,18 @@ def read_item(
             success=True,
             data=dict(item)
         )
-    except (IntegrityError) as ex:
-        session.rollback()  # Ensure the session is rolled back
-        return ResponseModelBase(
-            success=False,
-            msg=(
-                "Database integrity error: "
-                "Possibly duplicate entry or invalid reference."
-            ),
-            status_code=status.HTTP_400_BAD_REQUEST,
-            from_error="IntegrityError",
-            errors=parse_integrity_error(ex),
-        )
-    except (ValidationError) as ex:
-        session.rollback()  # Ensure the session is rolled back
-        return ResponseModelBase(
-            success=False,
-            msg="Database integrity error: Validation Error.",
-            from_error="ValidationError",
-            status_code=status.HTTP_400_BAD_REQUEST,
-            errors=parse_pydantic_errors(ex),
-        )
     except Exception as ex:
-        session.rollback()
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"An unexpected error occurred: {str(ex)}"
-        ) from ex
+        BaseController.handle_exception(
+            ex=ex,
+            session=session
+        )
 
 
-@router.post("/add/", response_model=ResponseModelBase)
+@router.post(
+    "/add/",
+    response_model=ResponseModelBase,
+    responses=BaseController.get_error_responses()
+)
 def create_item(
     *,
     session: SessionDep,
@@ -120,36 +116,18 @@ def create_item(
             success=True,
             data=dict(item)
         )
-    except (IntegrityError) as ex:
-        session.rollback()  # Ensure the session is rolled back
-        return ResponseModelBase(
-            success=False,
-            msg=(
-                "Database integrity error: "
-                "Possibly duplicate entry or invalid reference."
-            ),
-            status_code=status.HTTP_400_BAD_REQUEST,
-            from_error="IntegrityError",
-            errors=parse_integrity_error(ex),
-        )
-    except (ValidationError) as ex:
-        session.rollback()  # Ensure the session is rolled back
-        return ResponseModelBase(
-            success=False,
-            msg="Database integrity error: Validation Error.",
-            from_error="ValidationError",
-            status_code=status.HTTP_400_BAD_REQUEST,
-            errors=parse_pydantic_errors(ex),
-        )
     except Exception as ex:
-        session.rollback()
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"An unexpected error occurred: {str(ex)}"
-        ) from ex
+        BaseController.handle_exception(
+            ex=ex,
+            session=session
+        )
 
 
-@router.put("/edit/{item_id}/", response_model=ResponseModelBase)
+@router.put(
+    "/edit/{item_id}/",
+    response_model=ResponseModelBase,
+    responses=BaseController.get_error_responses()
+)
 def update_item(
     *,
     session: SessionDep,
@@ -178,36 +156,18 @@ def update_item(
             success=True,
             data=dict(item)
         )
-    except (IntegrityError) as ex:
-        session.rollback()  # Ensure the session is rolled back
-        return ResponseModelBase(
-            success=False,
-            msg=(
-                "Database integrity error: "
-                "Possibly duplicate entry or invalid reference."
-            ),
-            status_code=status.HTTP_400_BAD_REQUEST,
-            from_error="IntegrityError",
-            errors=parse_integrity_error(ex),
-        )
-    except (ValidationError) as ex:
-        session.rollback()  # Ensure the session is rolled back
-        return ResponseModelBase(
-            success=False,
-            msg="Database integrity error: Validation Error.",
-            from_error="ValidationError",
-            status_code=status.HTTP_400_BAD_REQUEST,
-            errors=parse_pydantic_errors(ex),
-        )
     except Exception as ex:
-        session.rollback()
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"An unexpected error occurred: {str(ex)}"
-        ) from ex
+        BaseController.handle_exception(
+            ex=ex,
+            session=session
+        )
 
 
-@router.delete("/delete/{item_id}/", response_model=ResponseModelBase)
+@router.delete(
+    "/delete/{item_id}/",
+    response_model=ResponseModelBase,
+    responses=BaseController.get_error_responses()
+)
 def delete_item(
     session: SessionDep,
     current_user: CurrentUser,
@@ -231,30 +191,8 @@ def delete_item(
             success=True,
             msg="Emon Host deleted successfully"
         )
-    except (IntegrityError) as ex:
-        session.rollback()  # Ensure the session is rolled back
-        return ResponseModelBase(
-            success=False,
-            msg=(
-                "Database integrity error: "
-                "Possibly duplicate entry or invalid reference."
-            ),
-            status_code=status.HTTP_400_BAD_REQUEST,
-            from_error="IntegrityError",
-            errors=parse_integrity_error(ex),
-        )
-    except (ValidationError) as ex:
-        session.rollback()  # Ensure the session is rolled back
-        return ResponseModelBase(
-            success=False,
-            msg="Database integrity error: Validation Error.",
-            from_error="ValidationError",
-            status_code=status.HTTP_400_BAD_REQUEST,
-            errors=parse_pydantic_errors(ex),
-        )
     except Exception as ex:
-        session.rollback()
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"An unexpected error occurred: {str(ex)}"
-        ) from ex
+        BaseController.handle_exception(
+            ex=ex,
+            session=session
+        )
