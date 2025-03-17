@@ -85,4 +85,3 @@ class FileDataPoints(BaseModel):
     file_name: str = ""
     name: str = ""
     data: list[list[Any]] = []
-
