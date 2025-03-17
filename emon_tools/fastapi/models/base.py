@@ -30,7 +30,7 @@ class ResponseErrorBase(ResponseModelBase):
 
     Inherits from ResponseModelBase and adds id and owner_id fields.
     """
-    success: bool
+    success: bool = False
     msg: Optional[str]
     from_error: Optional[str]
     errors: Optional[list[Union[ResponseError, str]]]
