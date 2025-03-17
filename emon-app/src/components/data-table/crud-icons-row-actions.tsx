@@ -1,6 +1,6 @@
 import { Row } from "@tanstack/react-table"
 import { Link } from "react-router"
-import { Button } from "../ui/button"
+import { Button } from "@/components/ui/button"
 import { Eye, Pencil, Trash2 } from "lucide-react"
 
 interface CrudIconRowActionsProps<TData extends { id: string | number }> {
