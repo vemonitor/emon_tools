@@ -1,5 +1,5 @@
 """Base Models"""
-from typing import Optional, Union
+from typing import Any, Optional, Union
 from pydantic import BaseModel
 
 
@@ -22,6 +22,7 @@ class ResponseModelBase(BaseModel):
     Inherits from ResponseModelBase and adds id and owner_id fields.
     """
     success: bool
+    data: Any
 
 
 class ResponseErrorBase(ResponseModelBase):
