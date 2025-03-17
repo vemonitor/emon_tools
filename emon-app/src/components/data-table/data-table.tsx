@@ -1,4 +1,3 @@
-import * as React from "react"
 import {
   ColumnDef,
   ColumnFiltersState,
@@ -23,7 +22,8 @@ import {
   TableRow,
 } from "@/components/ui/table"
 
-import { DataTablePagination } from "./data-table-pagination"
+import { DataTablePagination } from "@/components/data-table/data-table-pagination"
+import { useState } from "react"
 //import { DataTableToolbar } from "./data-table-toolbar"
 
 export interface DataTableProps<TData, TValue> {
@@ -35,13 +35,13 @@ export function DataTable<TData, TValue>({
   columns,
   data,
 }: DataTableProps<TData, TValue>) {
-  const [rowSelection, setRowSelection] = React.useState({})
+  const [rowSelection, setRowSelection] = useState({})
   const [columnVisibility, setColumnVisibility] =
-    React.useState<VisibilityState>({})
-  const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>(
+    useState<VisibilityState>({})
+  const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>(
     []
   )
-  const [sorting, setSorting] = React.useState<SortingState>([])
+  const [sorting, setSorting] = useState<SortingState>([])
 
   const table = useReactTable({
     data,
