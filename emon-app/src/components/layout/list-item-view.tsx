@@ -1,10 +1,10 @@
 import { ColumnDef } from "@tanstack/react-table"
-import { DataTable } from '../data-table/data-table'
-import Pane, { PaneProps } from './pane'
+import { DataTable } from '@/components/data-table/data-table'
+import { Pane, PaneProps } from '@/components/layout/pane'
 import { UseQueryResult } from "@tanstack/react-query"
 import { useToast } from "@/hooks/use-toast"
-import { ToastAction } from "@radix-ui/react-toast"
 import { useEffect } from "react"
+import { Loader } from "@/components/layout/loader"
 
 type ListViewProps<TData, TValue> = {
     paneProps: PaneProps
@@ -32,7 +32,7 @@ export default function ListView<TData, TValue>({
             {...paneProps}
         >
             {queryResult.isPending ? (
-                <div>Loading...</div>
+                <Loader />
             ) : queryResult.isError || !(queryResult.data && queryResult.data.data) ? (
                 <div>No data available...</div>
             ) : (
