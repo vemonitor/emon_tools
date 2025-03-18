@@ -10,6 +10,7 @@ export type SimpleSideMenuProps = {
     title: string
     url: string
     icon?: LucideIcon
+    isPublic?: boolean
 }
 
 export function SimpleSideMenu({
