@@ -6,7 +6,10 @@ import { create, StateCreator } from 'zustand'
 import { devtools } from 'zustand/middleware'
 
 export type VerticalRange = {
-  left_top: number[], left_bottom: number[], right_top: number[], right_bottom: number[]
+  left_top: number[],
+  left_bottom: number[],
+  right_top: number[],
+  right_bottom: number[]
 }
 
 export const get_view_time_rage = () => {
@@ -147,8 +150,8 @@ DataViewerStore
       remove_feed: (selected_item: SelectedFileItem) => set((state) => {
           const current_feeds = state.selected_feeds
             .filter((item) => (
-              item.item_id !== selected_item.item_id && item.side !== selected_item.side
-            ) || (item.item_id !== selected_item.item_id && item.side === selected_item.side))
+              item.file_db?.file_id !== selected_item.file_db?.file_id && item.side !== selected_item.side
+            ) || (item.file_db?.file_id !== selected_item.file_db?.file_id && item.side === selected_item.side))
           if(current_feeds.length === 0){
             state.reset_store()
           }
