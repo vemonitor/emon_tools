@@ -33,6 +33,10 @@ import AddDataPath from "./data-path/add";
 import EditDataPath from "./data-path/edit";
 import DeleteDataPath from "./data-path/delete";
 import ViewDataPath from "./data-path/view";
+import { ComponentType } from "react";
+import Logout from "./user/logout";
+import EditProfile from "./user/edit-profile";
+import { Profile } from "./user/profile";
 
 export const crudRoutes = [
   {
@@ -53,178 +57,191 @@ export const crudRoutes = [
   }
 ]
 
-export const routes = [
-    {
-      key_group: "home",
-      title: "Home",
-      path: "/",
-      icon: House,
-      element: Home,
-    },
-    {
-      key_group: "dashboard",
-      title: "Dashboard",
-      path: "/dashboard",
-      icon: Gauge,
-      element: Dashboard,
-    },
-    {
-      key_group: "login",
-      title: "Login",
-      path: "/login",
-      icon: KeyRound,
-      element: Login,
-    },
-    {
-      key_group: "logout",
-      title: "Logout",
-      path: "/logout",
-      icon: UserRoundX,
-      element: Login,
-    },
-    {
-      key_group: "signIn",
-      title: "Sign In",
-      path: "/sign-in",
-      icon: LogIn,
-      element: Login,
-    },
-    {
-      key_group: "account",
-      title: "Account",
-      path: "/account",
-      icon: User,
-      element: Login,
-      routes: [
-        {
-          title: "Edit Profile",
-          path: "edit",
-          icon: LogIn,
-          element: Login,
-        }
-      ]
-    },
-    {
-      key_group: "dataViewer",
-      title: "PhpFina Viewer",
-      icon: ChartSpline,
-      path: "/dataViewer/:source_ref",
-      element: DataViewer,
-    },
-    {
-      key_group: "emonHosts",
-      title: "Emoncms Hosts",
-      icon: Globe,
-      path: "/emon-host",
-      element: ListEmonHost,
-      routes: [
-        {
-          title: "Add",
-          path: "add",
-          element: AddEmonHost,
-        },
-        {
-          title: "View",
-          path: "view/:host_id",
-          element: ViewEmonHost,
-        },
-        {
-          title: "Edit",
-          path: "edit/:host_id",
-          element: EditEmonHost,
-        },
-        {
-          title: "Delete",
-          path: "delete/:host_id",
-          element: DeleteEmonHost,
-        }
-      ],
-    },
-    {
-      key_group: "category",
-      title: "Category",
-      icon: Boxes,
-      path: "/category",
-      element: ListCategory,
-      routes: [
-        {
-          title: "Add",
-          path: "add",
-          element: AddCategory,
-        },
-        {
-          title: "View",
-          path: "view/:category_id",
-          element: ListCategory,
-        },
-        {
-          title: "Edit",
-          path: "edit/:category_id",
-          element: EditCategory,
-        },
-        {
-          title: "Delete",
-          path: "delete/:category_id",
-          element: DeleteCategory,
-        }
-      ],
-    },
-    {
-      key_group: "dataPath",
-      title: "Data Path",
-      icon: Boxes,
-      path: "/data-path",
-      element: ListDataPath,
-      routes: [
-        {
-          title: "Add",
-          path: "add",
-          element: AddDataPath,
-        },
-        {
-          title: "View",
-          path: "view/:path_id",
-          element: ViewDataPath,
-        },
-        {
-          title: "Edit",
-          path: "edit/:path_id",
-          element: EditDataPath,
-        },
-        {
-          title: "Delete",
-          path: "delete/:path_id",
-          element: DeleteDataPath,
-        }
-      ],
-    },
-    {
-      key_group: "archiveFile",
-      title: "Archive File",
-      icon: FileChartLine,
-      path: "/archive-file",
-      element: ListArchiveFile,
-      routes: [
-        {
-          title: "Add",
-          path: "add",
-          element: AddArchiveFile,
-        },
-        {
-          title: "View",
-          path: "view/:file_id",
-          element: DataViewer,
-        },
-        {
-          title: "Edit",
-          path: "edit/:file_id",
-          element: EditArchiveFile,
-        },
-        {
-          title: "Delete",
-          path: "delete/:file_id",
-          element: DeleteArchiveFile,
-        }
-      ],
-    }
-  ]
+export interface RouteListType {
+  key_group?: string;
+  title: string;
+  path: string;
+  icon?: ComponentType;
+  element: ComponentType;
+  routes?: RouteListType[];
+}
+
+export const publicRoutes: RouteListType[] = [
+  {
+    key_group: "home",
+    title: "Home",
+    path: "/",
+    icon: House,
+    element: Home,
+  }
+]
+
+
+export const privateRoutes: RouteListType[] = [
+  {
+    key_group: "dashboard",
+    title: "Dashboard",
+    path: "/dashboard",
+    icon: Gauge,
+    element: Dashboard,
+  },
+  {
+    key_group: "login",
+    title: "Login",
+    path: "/login",
+    icon: KeyRound,
+    element: Login,
+  },
+  {
+    key_group: "logout",
+    title: "Logout",
+    path: "/logout",
+    icon: UserRoundX,
+    element: Logout,
+  },
+  {
+    key_group: "signIn",
+    title: "Sign In",
+    path: "/sign-in",
+    icon: LogIn,
+    element: Login,
+  },
+  {
+    key_group: "profile",
+    title: "Profile",
+    path: "/profile",
+    icon: User,
+    element: Profile,
+    routes: [
+      {
+        title: "Edit Profile",
+        path: "edit/",
+        icon: LogIn,
+        element: EditProfile,
+      }
+    ]
+  },
+  {
+    key_group: "dataViewer",
+    title: "PhpFina Viewer",
+    icon: ChartSpline,
+    path: "/dataViewer/:source_ref",
+    element: DataViewer,
+  },
+  {
+    key_group: "emonHosts",
+    title: "Emoncms Hosts",
+    icon: Globe,
+    path: "/emon-host",
+    element: ListEmonHost,
+    routes: [
+      {
+        title: "Add",
+        path: "add",
+        element: AddEmonHost,
+      },
+      {
+        title: "View",
+        path: "view/:host_id",
+        element: ViewEmonHost,
+      },
+      {
+        title: "Edit",
+        path: "edit/:host_id",
+        element: EditEmonHost,
+      },
+      {
+        title: "Delete",
+        path: "delete/:host_id",
+        element: DeleteEmonHost,
+      }
+    ],
+  },
+  {
+    key_group: "category",
+    title: "Category",
+    icon: Boxes,
+    path: "/category",
+    element: ListCategory,
+    routes: [
+      {
+        title: "Add",
+        path: "add",
+        element: AddCategory,
+      },
+      {
+        title: "View",
+        path: "view/:category_id",
+        element: ListCategory,
+      },
+      {
+        title: "Edit",
+        path: "edit/:category_id",
+        element: EditCategory,
+      },
+      {
+        title: "Delete",
+        path: "delete/:category_id",
+        element: DeleteCategory,
+      }
+    ],
+  },
+  {
+    key_group: "dataPath",
+    title: "Data Path",
+    icon: Boxes,
+    path: "/data-path",
+    element: ListDataPath,
+    routes: [
+      {
+        title: "Add",
+        path: "add",
+        element: AddDataPath,
+      },
+      {
+        title: "View",
+        path: "view/:path_id",
+        element: ViewDataPath,
+      },
+      {
+        title: "Edit",
+        path: "edit/:path_id",
+        element: EditDataPath,
+      },
+      {
+        title: "Delete",
+        path: "delete/:path_id",
+        element: DeleteDataPath,
+      }
+    ],
+  },
+  {
+    key_group: "archiveFile",
+    title: "Archive File",
+    icon: FileChartLine,
+    path: "/archive-file",
+    element: ListArchiveFile,
+    routes: [
+      {
+        title: "Add",
+        path: "add",
+        element: AddArchiveFile,
+      },
+      {
+        title: "View",
+        path: "view/:file_id",
+        element: DataViewer,
+      },
+      {
+        title: "Edit",
+        path: "edit/:file_id",
+        element: EditArchiveFile,
+      },
+      {
+        title: "Delete",
+        path: "delete/:file_id",
+        element: DeleteArchiveFile,
+      }
+    ],
+  }
+];
