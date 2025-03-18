@@ -1,5 +1,6 @@
 import { AuthContext } from "@/hooks/use-auth";
 import { User } from "@/lib/types";
+import { getApiUrl } from "@/lib/utils";
 import {
   FC,
   ReactNode,
@@ -32,10 +33,13 @@ export const AuthProvider: FC<{ children: ReactNode }> = ({ children }) => {
     // Otherwise, start a new refresh request
     refreshPromiseRef.current = (async () => {
       try {
-        const response = await fetch('http://127.0.0.1:8000/api/v1/login/refresh-token', {
-          method: 'POST',
-          credentials: 'include',
-        });
+        const response = await fetch(
+          getApiUrl(`/api/v1/login/refresh-token/`),
+          {
+            method: 'POST',
+            credentials: 'include',
+          }
+        );
         if (response.ok) {
           const data = await response.json();
           // Assume the token expires in 15 minutes; refresh 1 minute early
@@ -44,14 +48,12 @@ export const AuthProvider: FC<{ children: ReactNode }> = ({ children }) => {
           return data.access_token;
         } else {
           // If refresh fails, clear token info
-          setAccessToken(null);
-          setTokenExpiry(null);
+          reset();
           return null;
         }
       } catch (error) {
         console.error('Token refresh failed:', error);
-        setAccessToken(null);
-        setTokenExpiry(null);
+        reset();
         return null;
       }
     })();
@@ -62,50 +64,90 @@ export const AuthProvider: FC<{ children: ReactNode }> = ({ children }) => {
     return token;
   }, [accessToken, tokenExpiry]);
 
+  const reset = () => {
+    setIsAuthenticated(false);
+    setUser(null);
+    setAccessToken(null);
+    setTokenExpiry(null);
+  }
+
   const login = async (username: string, password: string): Promise<void> => {
     try {
-      const response = await fetch('http://127.0.0.1:8000/api/v1/login/access-token', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/x-www-form-urlencoded',
-        },
-        body: new URLSearchParams({
-          username,
-          password,
-        }),
-        credentials: 'include',
-      });
+      const response = await fetch(
+        getApiUrl(`/api/v1/login/access-token/`),
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+          },
+          body: new URLSearchParams({
+            username,
+            password,
+          }),
+          credentials: 'include',
+        }
+      );
       if (response.ok) {
         const data = await response.json();
         setAccessToken(data.access_token);
         setTokenExpiry(Date.now() + 14 * 60 * 1000);
         setIsAuthenticated(true);
-        setUser({ id: '', name: 'Dummy' });
+        await getCurrentUser();
       } else {
+        reset();
         throw new Error('Login failed');
       }
     } catch (error) {
       console.error('Login error:', error);
+      reset();
       throw error;
     }
   };
 
   const logout = async (): Promise<void> => {
     try {
-      await fetch('http://127.0.0.1:8000/api/v1/login/logout', {
-        method: 'POST',
-        credentials: 'include',
-      });
-      setIsAuthenticated(false);
-      setUser(null);
-      setAccessToken(null);
-      setTokenExpiry(null);
+      await fetch(
+        getApiUrl(`/api/v1/login/logout/`),
+        {
+          method: 'POST',
+          credentials: 'include',
+        }
+      );
+      reset();
     } catch (error) {
+      reset();
       console.error('Logout failed:', error);
     }
   };
 
-  const fetchWithAuthOriginal = async (url: string, options: RequestInit = {}): Promise<Response> => {
+  const getCurrentUser = async (): Promise<void> => {
+    try {
+      //if(isAuthenticated === true){
+        const response = await fetchWithAuth(
+          '/api/v1/users/me/',
+          {
+            method: 'GET',
+          }
+        )
+        if (response.ok){
+          const user = await response.json();
+          setUser(user);
+        }else{
+          reset();
+        }
+      /*}else{
+        reset();
+      }*/
+    } catch (error) {
+      reset();
+      console.error('Unable to get current user: ', error);
+    }
+  }
+
+  const fetchWithAuthOriginal = async (
+    url: string,
+    options: RequestInit = {}
+  ): Promise<Response> => {
     let token = await refreshAccessToken();
     const fetchOptions: RequestInit = {
       ...options,
@@ -117,7 +159,10 @@ export const AuthProvider: FC<{ children: ReactNode }> = ({ children }) => {
     };
 
     try {
-      let response = await fetch(url, fetchOptions);
+      let response = await fetch(
+        getApiUrl(url),
+        fetchOptions
+      );
 
       if (response.status === 401) {
         // If the token was rejected, try refreshing it once more.
@@ -127,11 +172,13 @@ export const AuthProvider: FC<{ children: ReactNode }> = ({ children }) => {
             ...fetchOptions.headers,
             'Authorization': `Bearer ${token}`,
           };
-          response = await fetch(url, fetchOptions);
+          response = await fetch(
+            getApiUrl(url),
+            fetchOptions
+          );
         } else {
           // If refresh fails, user needs to log in again.
-          setIsAuthenticated(false);
-          setUser(null);
+          reset();
           throw new Error('Session expired');
         }
       }
@@ -155,8 +202,11 @@ export const AuthProvider: FC<{ children: ReactNode }> = ({ children }) => {
 
   useEffect(() => {
     // This effect checks auth status on mount.
-    refreshAccessToken().then(token => {
+    refreshAccessToken().then(async (token) => {
       setIsAuthenticated(!!token);
+      if(!user && isAuthenticated){
+        await getCurrentUser();
+      }
     });
     // NOTE: In development with React StrictMode, this effect may run twice.
   }, [refreshAccessToken]);
