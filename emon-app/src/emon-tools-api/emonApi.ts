@@ -1,6 +1,5 @@
 import Ut from '@/helpers/utils';
-import { getWithFetch } from '../helpers/fetcher';
-import { yearsToDays } from 'date-fns';
+import { getWithFetch } from '@/helpers/fetcher';
 
 
 export interface EmonTimeSerieData {
