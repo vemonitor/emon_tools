@@ -1,10 +1,10 @@
 import { AddActionType, ArchiveFileEdit } from "@/lib/types";
-import { ArchiveFileForm, ArchiveFileFormType } from "./form";
+import { ArchiveFileForm, ArchiveFileFormType } from "@/routes/archive-file/form";
 import { useAuth } from "@/hooks/use-auth";
-import { useNavigate, useParams } from "react-router";
-import { useEffect } from "react";
+import { useParams } from "react-router";
 import { useQuery } from "@tanstack/react-query";
-import { CrudComponentProps } from "./add";
+import { Loader } from "@/components/layout/loader";
+import { idSchemeIn, idSchemeOut } from "@/lib/comon-schemas";
 
 const AddArchiveFileAction = async(
   file_id: number,
@@ -23,7 +23,7 @@ const AddArchiveFileAction = async(
 
   try {
     const response = await fetchWithAuth(
-      `http://127.0.0.1:8000/api/v1/archive_file/edit/${file_id}/`,
+      `/api/v1/archive_file/edit/${file_id}/`,
       {
         method: 'PUT',
         headers: {
@@ -64,17 +64,11 @@ function EditArchiveFile({
   is_dialog,
   successCallBack,
 }: EditCrudComponentProps) {
-  const { isAuthenticated, fetchWithAuth } = useAuth();
+  const { fetchWithAuth } = useAuth();
   const { file_id } = useParams();
-  const navigate = useNavigate();
-  useEffect(() => {
-      if (!isAuthenticated) {
-        navigate("/login");
-      }
-    }, [isAuthenticated, navigate]);
-  
+  idSchemeIn.parse(file_id);
   const out_id = row_id && row_id > 0 ? row_id : Number(file_id);
-  
+  idSchemeOut.parse(out_id);
   const currentItem = useQuery(
     {
       queryKey: ['archive_file', file_id],
@@ -82,7 +76,7 @@ function EditArchiveFile({
       refetchOnMount: 'always',  // Always refetch when the component mounts
       queryFn: () =>
         fetchWithAuth(
-          `http://127.0.0.1:8000/api/v1/archive_file/get/${out_id}/`,
+          `/api/v1/archive_file/get/${out_id}/`,
           {
             method: 'GET',
           }
@@ -93,14 +87,14 @@ function EditArchiveFile({
   return (
     <div>
       {currentItem.isPending ? (
-        <div>Loading...</div>
+        <Loader />
       ) : (
         <>
           {currentItem.isError || !currentItem.data ? (
             <div>No data available: {currentItem.error ? currentItem.error.message : ''}</div>
           ) : (
             <ArchiveFileForm
-              onSubmit={(values: ArchiveFileFormType) => AddArchiveFileAction(
+                handleSubmit={(values: ArchiveFileFormType) => AddArchiveFileAction(
                 out_id,
                 values,
                 fetchWithAuth
