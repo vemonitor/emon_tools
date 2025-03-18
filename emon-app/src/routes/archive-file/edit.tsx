@@ -4,7 +4,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { useParams } from "react-router";
 import { useQuery } from "@tanstack/react-query";
 import { Loader } from "@/components/layout/loader";
-import { idSchemeIn, idSchemeOut } from "@/lib/comon-schemas";
+import { validateIds } from "@/lib/utils";
 
 const AddArchiveFileAction = async(
   file_id: number,
@@ -66,9 +66,7 @@ function EditArchiveFile({
 }: EditCrudComponentProps) {
   const { fetchWithAuth } = useAuth();
   const { file_id } = useParams();
-  idSchemeIn.parse(file_id);
-  const out_id = row_id && row_id > 0 ? row_id : Number(file_id);
-  idSchemeOut.parse(out_id);
+  const out_id = validateIds(file_id, row_id);
   const currentItem = useQuery(
     {
       queryKey: ['archive_file', file_id],
