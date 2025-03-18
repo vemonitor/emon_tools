@@ -2,9 +2,7 @@ import {
     BadgeCheck,
     Bell,
     ChevronsUpDown,
-    CreditCard,
     LogOut,
-    Sparkles,
   } from "lucide-react"
   
   import {
@@ -27,16 +25,13 @@ import {
     SidebarMenuItem,
     useSidebar,
   } from "@/components/ui/sidebar"
-import { User } from "@/lib/types"
+import { useAuth } from "@/hooks/use-auth"
+import { Link } from "react-router"
   
-  export type NavUserProps = {
-    user: User | null
-  }
-  export function NavUser({
-    user,
-  }: NavUserProps) {
+  export function NavUser() {
     const { isMobile } = useSidebar()
-    if (!user) {
+    const { isAuthenticated, user } = useAuth();
+    if (!isAuthenticated || !user) {
       return null
     }
     return (
@@ -49,11 +44,11 @@ import { User } from "@/lib/types"
                 className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
               >
                 <Avatar className="h-8 w-8 rounded-lg">
-                  <AvatarImage src={user.avatar} alt={user.name} />
+                  <AvatarImage src={user.avatar} alt={user.full_name} />
                   <AvatarFallback className="rounded-lg">CN</AvatarFallback>
                 </Avatar>
                 <div className="grid flex-1 text-left text-sm leading-tight">
-                  <span className="truncate font-semibold">{user.name}</span>
+                  <span className="truncate font-semibold">{user.full_name}</span>
                   <span className="truncate text-xs">{user.email}</span>
                 </div>
                 <ChevronsUpDown className="ml-auto size-4" />
@@ -68,31 +63,25 @@ import { User } from "@/lib/types"
               <DropdownMenuLabel className="p-0 font-normal">
                 <div className="flex items-center gap-2 px-1 py-1.5 text-left text-sm">
                   <Avatar className="h-8 w-8 rounded-lg">
-                    <AvatarImage src={user.avatar} alt={user.name} />
+                    <AvatarImage src={user.avatar} alt={user.full_name} />
                     <AvatarFallback className="rounded-lg">CN</AvatarFallback>
                   </Avatar>
                   <div className="grid flex-1 text-left text-sm leading-tight">
-                    <span className="truncate font-semibold">{user.name}</span>
+                    <span className="truncate font-semibold">{user.full_name}</span>
                     <span className="truncate text-xs">{user.email}</span>
                   </div>
                 </div>
               </DropdownMenuLabel>
               <DropdownMenuSeparator />
-              <DropdownMenuGroup>
-                <DropdownMenuItem>
-                  <Sparkles />
-                  Upgrade to Pro
-                </DropdownMenuItem>
-              </DropdownMenuGroup>
-              <DropdownMenuSeparator />
+              
               <DropdownMenuGroup>
                 <DropdownMenuItem>
                   <BadgeCheck />
-                  Account
+                  <Link to="/profile">Profile</Link>
                 </DropdownMenuItem>
                 <DropdownMenuItem>
-                  <CreditCard />
-                  Billing
+                  <BadgeCheck />
+                  <Link to={`/profile/edit/`}>Edit Profile</Link>
                 </DropdownMenuItem>
                 <DropdownMenuItem>
                   <Bell />
@@ -102,7 +91,7 @@ import { User } from "@/lib/types"
               <DropdownMenuSeparator />
               <DropdownMenuItem>
                 <LogOut />
-                Log out
+                <Link to="/logout">Log out</Link>
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
