@@ -2,13 +2,13 @@ import clsx from 'clsx';
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Separator } from "@/components/ui/separator"
 import Ut from '@/helpers/utils';
-import { Button } from '../ui/button';
-import { Input } from '../ui/input';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { ChangeEvent, ChangeEventHandler, useState } from 'react';
 import { FeedMetaOut, FileDbOut, GraphLocationProps, SelectedFileItem } from '@/lib/graphTypes';
 import { useDataViewer } from '@/stores/dataViewerStore';
 import { BadgePlus, Pencil } from 'lucide-react';
-import DialogForm from '../form/dialog-form';
+import DialogForm from '@/components/form/dialog-form';
 import EditArchiveFile from '@/routes/archive-file/edit';
 import AddArchiveFile from '@/routes/archive-file/add';
 
