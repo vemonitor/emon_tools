@@ -6,16 +6,16 @@ import {
   BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb"
 import { Link, useLocation } from "react-router";
-import { routes } from "./routes";
+import { privateRoutes } from "./routes";
 
 export function Breadcrumbs() {
   const location = useLocation();
   //const [crumbs, setCrumbs] = useState<User | null>(null);
-  const crumbs = routes.reduce((res, route) => {
+  const crumbs = privateRoutes.reduce((res, route) => {
     const is_parent = location.pathname.includes(route.path);
     const has_child = route.routes
     if (is_parent && has_child) {
-      const childs =  route.routes.filter((subroute) => {
+      const childs =  route.routes?.filter((subroute) => {
         return location.pathname.includes(`${route.path}/${subroute.path}`);
       });
       res.push(route);
