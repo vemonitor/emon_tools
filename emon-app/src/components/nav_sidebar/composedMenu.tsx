@@ -18,6 +18,7 @@ import { createElement } from "react";
 export type ComposedSideMenuProps = {
     title: string
     isActive?: boolean
+    isPublic?: boolean
     icon?: LucideIcon
     items?: {
         title: string
