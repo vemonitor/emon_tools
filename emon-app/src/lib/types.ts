@@ -11,7 +11,7 @@ export type SubmitHandlerProps = Promise<{
 
 export type BaseActionErrorType = {
     table?: string,
-    field?: string,
+    field_name?: string,
     error?: string
 }
 
@@ -117,6 +117,14 @@ export interface ArchiveFileList extends ArchiveFileBase{
     owner_id: string
     category_id?: number
     emonhost_id?: number
+    emonhost?: {
+        id?: number
+        name?: string
+    }
+    category?: {
+        id?: number,
+        name?: string
+    }
 }
 
 export interface ArchiveFileEdit extends ArchiveFileBase{
