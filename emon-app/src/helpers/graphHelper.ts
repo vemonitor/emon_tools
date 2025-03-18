@@ -1,7 +1,10 @@
-import { FullGraphZoom, GraphDataProps, LineChartDataProps, VerticalRange } from "@/lib/graphTypes";
+import {
+  FullGraphZoom,
+  GraphDataProps,
+  LineChartDataProps,
+  VerticalRange
+} from "@/lib/graphTypes";
 import Ut from "./utils";
-
-
 
 /**
  * The initial full zoom state.
@@ -229,15 +232,15 @@ export class GraphHelper {
       result.topLeft = Math.max(...verticalRange.left_top);
       result.bottomLeft = Math.min(...verticalRange.left_bottom);
       const offset_left = (Number(result.topLeft) - Number(result.bottomLeft)) * 0.05;
-      result.topLeft = Ut.roundFloat(Number(result.topLeft) + offset_left);
-      result.bottomLeft = Ut.roundFloat(Number(result.bottomLeft) - offset_left);
+      result.topLeft = Ut.roundFloat(Number(result.topLeft) + offset_left) as number;
+      result.bottomLeft = Ut.roundFloat(Number(result.bottomLeft) - offset_left) as number;
     }
     if (verticalRange.right_top.length > 0 && verticalRange.right_bottom.length > 0) {
       result.topRight = Math.max(...verticalRange.right_top);
       result.bottomRight = Math.min(...verticalRange.right_bottom);
       const offset_right = (Number(result.topRight) - Number(result.bottomRight)) * 0.05;
-      result.topRight = Ut.roundFloat(Number(result.topRight) + offset_right);
-      result.bottomRight = Ut.roundFloat(Number(result.bottomRight) - offset_right);
+      result.topRight = Ut.roundFloat(Number(result.topRight) + offset_right) as number;
+      result.bottomRight = Ut.roundFloat(Number(result.bottomRight) - offset_right) as number;
     }
     return result;
   }
