@@ -97,7 +97,8 @@ export interface DataPathEdit extends DataPathBase{
     id?: number;
     created_at?: string;
     updated_at?: string;
-    owner_id?: string
+    owner_id?: string;
+    path_type: string;
 }
 
 export interface ArchiveFileBase {
