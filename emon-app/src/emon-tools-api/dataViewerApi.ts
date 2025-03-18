@@ -1,9 +1,14 @@
 import Ut from '@/helpers/utils';
-import { getWithFetch } from '../helpers/fetcher';
+import { getWithFetch } from '@/helpers/fetcher';
 import { UseQueryResult } from '@tanstack/react-query';
-import { GraphDataProps, GraphFeedProps, GraphLocationProps, LineChartDataProps } from '@/components/fina_viewer/feedChart';
-import { FinaSourceProps, SelectedFileItem } from '@/lib/graphTypes';
-import { useAuth } from '@/hooks/use-auth';
+import {
+  GraphDataProps,
+  GraphFeedProps,
+  GraphLocationProps,
+  LineChartDataProps
+} from '@/components/fina_viewer/feedChart';
+import { SelectedFileItem } from '@/lib/graphTypes';
+import { getApiUrl } from '@/lib/utils';
 
 export interface ExecQueriesParams {
   file_name: string;
@@ -11,7 +16,11 @@ export interface ExecQueriesParams {
 
 export type FinaDataFetchItem = {
   success: boolean,
+  datapath_id: number,
+  emonhost_id: number,
+  file_id: number,
   feed_id: number,
+  file_name: string,
   location: GraphLocationProps,
   data: number[][],
 }
@@ -31,13 +40,14 @@ export type combineResultsOut = {
 
 
 export const getFinaFiles = (path_id: number) => {
-    return {
-        queryKey: ['emon_fina_files', path_id],
-        queryFn: () =>
-          getWithFetch({
-            url:`http://127.0.0.1:8000/api/v1/fina_data/files/${path_id}/`
-          }),
-      }
+  const url = getApiUrl(`/api/v1/fina_data/files/${path_id}/`);
+  return {
+      queryKey: ['emon_fina_files', path_id],
+      queryFn: () =>
+        getWithFetch({
+          url: url
+        }),
+    }
 }
 
 export const format_data = (
@@ -46,6 +56,10 @@ export const format_data = (
   ): LineChartDataProps => {
     if(Ut.isArray(dataFetch) && dataFetch.length > 0){
       return dataFetch.reduce((obj, item) => {
+        const datapath_id = item.datapath_id
+        const emonhost_id = item.emonhost_id
+        const file_name = item.file_name
+        const file_id = item.file_id
         const feed_id = item.feed_id
         const data = item.data
         if(Ut.isArray(data)){
@@ -53,21 +67,25 @@ export const format_data = (
             if(value.length === 2){
               return {
                 date: value[0],
-                [feed_id]: value[1],
-                [`${feed_id}_range`]: []
+                [file_id]: value[1],
+                [`${file_id}_range`]: []
               }
             }
             else if(value.length >= 4){
               return {
                 date: value[0],
-                [`${feed_id}_range`]: [value[1], value[3]],
-                [`${feed_id}`]: value[2],
+                [`${file_id}_range`]: [value[1], value[3]],
+                [`${file_id}`]: value[2],
               }
             }
           })
           obj.data = obj.data.concat(feed_data)
           obj.feeds.push({
+            file_id: file_id,
             feed_id: feed_id,
+            datapath_id: datapath_id,
+            emonhost_id: emonhost_id,
+            file_name: file_name,
             location: location
           })
         }
@@ -109,7 +127,7 @@ export const execFinaMetaQueries = (
   path_id: number
 ) => {
   const feed_id = getFeedIdFromFileName(item.file_name);
-  const url = 'http://127.0.0.1:8000/api/v1/fina_data/meta/' + path_id + '/' + feed_id;
+  const url = getApiUrl(`/api/v1/fina_data/meta/${path_id}/${feed_id}`);
   return {
     queryKey: ['emon_fina_metas', path_id, feed_id],
     queryFn: () => getWithFetch({ url: url }),
@@ -130,7 +148,7 @@ export const execFinaDataQueries = (
     window: window.toString(),
     interval: interval.toString(),
   });
-  const url = 'http://127.0.0.1:8000/api/v1/fina_data/data/' + file_id  + '/?' + searchParams.toString();
+  const url = `/api/v1/fina_data/data/${file_id}/?${searchParams.toString()}`;
   return {
     queryKey: ['emon_fina_datas', file_id, time_start, window, interval],
     retry: false,
@@ -142,7 +160,7 @@ export const execFinaDataQueries = (
       const json = await response.json();
       // If the API returns: { success: true, data: { ..., data: [...] } }
       // and you need the inner "data" array, you can do:
-      return json.data?.data || [];
+      return json.data || {};
     },
   };
 };
