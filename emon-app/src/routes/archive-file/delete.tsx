@@ -1,7 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useAuth } from "@/hooks/use-auth";
-import { idSchemeIn, idSchemeOut } from "@/lib/comon-schemas";
+import { validateStringId } from "@/lib/utils";
 import { Link, useNavigate, useParams } from "react-router";
 
 
@@ -10,9 +10,8 @@ function DeleteArchiveFile() {
   const { file_id } = useParams();
   const navigate = useNavigate();
   
-  idSchemeIn.parse(file_id);
-  const itemId = file_id ? parseInt(file_id) : 0
-  idSchemeOut.parse(itemId);
+  const itemId = validateStringId(file_id)
+  
   const DeleteArchiveFileAction = async () => {
     if(!itemId || itemId <= 0){
       return new Error(
