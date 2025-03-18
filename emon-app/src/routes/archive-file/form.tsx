@@ -15,15 +15,6 @@ import {
   FormMessage,
   useZodForm,
 } from '@/components/ui/form';
-import {
-  Select,
-  SelectContent,
-  SelectGroup,
-  SelectItem,
-  SelectTrigger,
-  SelectValue
-} from "@/components/ui/select";
-
 import { Input } from "@/components/ui/input";
 import { z } from 'zod';
 import { AddActionType, ArchiveFileEdit } from "@/lib/types";
@@ -95,14 +86,14 @@ const initFormDefaults = (data?: ArchiveFileEdit) => {
 }
 
 export type ArchiveFileFormProps = ComponentPropsWithoutRef<"div"> & {
-  onSubmit: (values: ArchiveFileFormType) => AddActionType;
+  handleSubmit: (values: ArchiveFileFormType) => AddActionType;
   data?: ArchiveFileEdit;
   is_dialog?: boolean,
   successCallBack?: () => void
 };
 
 export function ArchiveFileForm({
-  onSubmit,
+  handleSubmit,
   data,
   is_dialog,
   successCallBack,
@@ -123,7 +114,7 @@ export function ArchiveFileForm({
   }, [data, form]);
 
   const onSubmitForm = async (values: ArchiveFileFormType) => {
-    const response = await onSubmit(values);
+    const response = await handleSubmit(values);
 
     if (response && response.redirect) {
       form.reset();
@@ -208,7 +199,7 @@ export function ArchiveFileForm({
                       label="Emon Host"
                       description="Emoncms host server"
                       queryKey={['emonhost']}
-                      url="http://127.0.0.1:8000/api/v1/emon_host/"
+                      url="/api/v1/emon_host/"
                       resultKeyLabel="name"
                       resultKeyValue="id"
                       form={form}
@@ -225,7 +216,7 @@ export function ArchiveFileForm({
                       label="Category"
                       description="File Category"
                       queryKey={['category']}
-                      url="http://127.0.0.1:8000/api/v1/category/"
+                      url="/api/v1/category/"
                       resultKeyLabel="name"
                       resultKeyValue="id"
                       form={form}
@@ -242,7 +233,7 @@ export function ArchiveFileForm({
                       label="Server Path"
                       description="Path"
                       queryKey={['datapath']}
-                      url="http://127.0.0.1:8000/api/v1/data_path/"
+                      url="/api/v1/data_path/"
                       resultKeyLabel="name"
                       resultKeyValue="id"
                       form={form}
