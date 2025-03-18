@@ -1,8 +1,6 @@
 import { AddActionType, ArchiveFileEdit } from "@/lib/types";
-import { ArchiveFileForm, ArchiveFileFormType } from "./form";
+import { ArchiveFileForm, ArchiveFileFormType } from "@/routes/archive-file/form";
 import { useAuth } from "@/hooks/use-auth";
-import { useNavigate } from "react-router";
-import { useEffect } from "react";
 
 const AddArchiveFileAction = async(
   values: ArchiveFileFormType,
@@ -17,7 +15,7 @@ const AddArchiveFileAction = async(
 
   try {
     const response = await fetchWithAuth(
-      `http://127.0.0.1:8000/api/v1/archive_file/add/`,
+      `/api/v1/archive_file/add/`,
       {
         method: 'POST',
         headers: {
@@ -57,19 +55,13 @@ function AddArchiveFile({
   successCallBack,
   data
 }: AddCrudComponentProps) {
-  const { isAuthenticated, fetchWithAuth } = useAuth();
+  const { fetchWithAuth } = useAuth();
   
-  const navigate = useNavigate();
-  useEffect(() => {
-    if (!isAuthenticated) {
-      navigate("/login");
-    }
-  }, [isAuthenticated, navigate]);
 
   return (
     <div>
       <ArchiveFileForm
-        onSubmit={(values: ArchiveFileFormType) => AddArchiveFileAction(values, fetchWithAuth)}
+        handleSubmit={(values: ArchiveFileFormType) => AddArchiveFileAction(values, fetchWithAuth)}
         is_dialog={is_dialog}
         successCallBack={successCallBack}
         data={data}
