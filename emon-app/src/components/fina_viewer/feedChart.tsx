@@ -17,13 +17,18 @@ import { ContentType } from 'recharts/types/component/Tooltip';
 import { scaleTime } from 'd3-scale';
 import { utcFormat } from 'd3-time-format';
 import { utcHour, utcSecond, utcMinute, utcDay, utcMonth, utcYear, utcWeek } from 'd3-time';
-import { SelectedFileItem } from '@/lib/graphTypes';
-import ChartInfo from './chartInfo';
+import { GraphDataProps, SelectedFileItem } from '@/lib/graphTypes';
+import ChartInfo from '@/components/fina_viewer/chartInfo';
 export type GraphLocationProps = "left" | "right"
 
-export type GraphDataProps = {[key: string]: number | null}
-
-export type GraphFeedProps = { feed_id: number, location: GraphLocationProps }
+export type GraphFeedProps = {
+  datapath_id: number,
+  emonhost_id: number,
+  file_id: number,
+  feed_id: number,
+  file_name: string,
+  location: GraphLocationProps
+}
 
 export interface LineChartDataProps {
   data: GraphDataProps[],
@@ -64,10 +69,41 @@ const formatMillisecond = utcFormat(".%L"),
     formatHour = utcFormat("%a %d %H:%M"),
     formatDay = utcFormat("%b %a %d %H"),
     formatWeek = utcFormat("%b %d"),
-    formatMonth = utcFormat("%B"),
-    formatYear = utcFormat("%Y");
-const dateFormat = (time: number) => {
+    formatMonth = utcFormat("%B %d"),
+    formatYear = utcFormat("%Y %b %d");
+const dateFormat = (time: number, minTime?: number, maxTime?: number) => {
   const date = new Date(time * 1000)
+  if (minTime !== undefined && maxTime !== undefined) {
+    // Calculate overall range in milliseconds.
+    const diffMs = (maxTime - minTime) * 1000;
+    const onehour = 60 * 60 * 1000;
+    const oneday = 24 * 60 * 60 * 1000;
+    const oneWeek = 7 * 24 * 60 * 60 * 1000;
+    const oneMonth = 30 * 24 * 60 * 60 * 1000;
+    const oneYear = 365 * 24 * 60 * 60 * 1000;
+
+    let formatter;
+    if (diffMs <= onehour) {
+      // For day or week ranges, show detailed day-level info.
+      formatter = formatMinute;
+    } else if (diffMs <= oneday) {
+      // For day or week ranges, show detailed day-level info.
+      formatter = formatHour;
+    } else if (diffMs <= oneWeek) {
+      // For day or week ranges, show detailed day-level info.
+      formatter = formatDay;
+    } else if (diffMs <= oneMonth) {
+      // For month-range data, use a concise week-level format.
+      formatter = formatWeek;
+    } else if (diffMs <= oneYear) {
+      // For year-range data, display the month.
+      formatter = formatMonth;
+    } else {
+      // For ranges wider than a year, display the year.
+      formatter = formatYear;
+    }
+    return formatter(date);
+  }
 	return (utcSecond(date) < date ? formatMillisecond
       : utcMinute(date) < date ? formatSecond
       : utcHour(date) < date ? formatMinute
@@ -116,7 +152,11 @@ export function FeedLineChart({
         feeds: []
       }
       result.feeds.push({
+        datapath_id: 0,
+        emonhost_id: 0,
+        file_id: 0,
         feed_id: 0,
+        file_name: "null",
         location: "left"
       })
       for (const x of Array(nb_points).keys()) {
@@ -138,7 +178,8 @@ export function FeedLineChart({
   if(!hasData(data_points)){
     data_points = empty_graph_data(time_start, time_window, interval)
   }
-
+  const min_date = data_points?.data[0]?.date ?? undefined;
+  const max_date = data_points?.data[data_points?.data.length - 1]?.date ?? undefined;
   const CustomTooltip: ContentType<number, string> = ({
     active, payload, label
   }) => {
@@ -201,7 +242,7 @@ export function FeedLineChart({
                 interval={5}
                 textAnchor="start"
                 tickFormatter={(value: number) => {
-                  return dateFormat(value)
+                  return dateFormat(value, min_date, max_date)
                 }}
               />
               <YAxis
@@ -228,7 +269,7 @@ export function FeedLineChart({
                       key={`${index}_range`}
                       legendType='none'
                       type="linear"
-                      dataKey={`${item.feed_id}_range`}
+                      dataKey={`${item.file_id}_range`}
                       yAxisId={item.location}
                       stroke="none"
                       fill="#ccc"
@@ -242,7 +283,7 @@ export function FeedLineChart({
                       key={`${index}_line`}
                       
                       connectNulls={connect_nulls}
-                      dataKey={item.feed_id}
+                      dataKey={item.file_id}
                       yAxisId={item.location}
                       type="linear"
                       stroke="#8884d8"
