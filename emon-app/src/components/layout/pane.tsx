@@ -9,7 +9,7 @@ export type PaneProps = PropsWithChildren<{
     classHead?: string;
     classBody?: string;
 }>
-export default function Pane({
+export function Pane({
     title,
     menuHead,
     id,
