@@ -15,10 +15,18 @@ import {
     SelectValue
   } from "@/components/ui/select";
 
+import { Control, FieldValues } from 'react-hook-form';
+
+interface CategoryTypeSelectProps {
+  form: {
+    control: Control<FieldValues>;
+  };
+  field: unknown;
+}
+
 export default function categoryTypeSelect({
-    form,
-    field
-}) {
+    form
+}: CategoryTypeSelectProps) {
   return (
     <FormField
         control={form.control}

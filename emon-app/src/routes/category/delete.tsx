@@ -1,7 +1,6 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useAuth } from "@/hooks/use-auth";
-import { MouseEvent, useEffect } from "react";
 import { Link, useNavigate, useParams } from "react-router";
 import { z } from 'zod';
 
@@ -17,18 +16,13 @@ const idSchemeOut = z.number()
   .positive();
 
 function DeleteCategory() {
-  const { isAuthenticated, fetchWithAuth } = useAuth();
+  const { fetchWithAuth } = useAuth();
   const { category_id } = useParams();
   const navigate = useNavigate();
-  useEffect(() => {
-    if (!isAuthenticated) {
-      navigate("/login");
-    }
-  }, [isAuthenticated, navigate]);
   idSchemeIn.parse(category_id);
   const itemId = category_id ? parseInt(category_id) : 0
   idSchemeOut.parse(itemId);
-  const DeleteCategoryAction = async (e: MouseEvent<HTMLButtonElement>) => {
+  const DeleteCategoryAction = async () => {
     if(!itemId || itemId <= 0){
       return new Error(
         "Unable to delete Item, id is invalid"
@@ -36,7 +30,7 @@ function DeleteCategory() {
     }
     try {
       const response = await fetchWithAuth(
-        `http://127.0.0.1:8000/api/v1/category/delete/${itemId}/`,
+        `/api/v1/category/delete/${itemId}/`,
         {
           method: 'DELETE',
           headers: {

@@ -1,9 +1,10 @@
 import { AddActionType } from "@/lib/types";
 import { CategoryForm, CategoryFormType } from "./form";
 import { useAuth } from "@/hooks/use-auth";
-import { useNavigate, useParams } from "react-router";
-import { useEffect } from "react";
+import { useParams } from "react-router";
 import { useQuery } from "@tanstack/react-query";
+import { Loader } from "lucide-react";
+import { validateId } from "@/lib/utils";
 
 const EditCategoryAction = async(
   category_id: number,
@@ -21,7 +22,7 @@ const EditCategoryAction = async(
 
   try {
     const response = await fetchWithAuth(
-      `http://127.0.0.1:8000/api/v1/category/edit/${category_id}/`,
+      `/api/v1/category/edit/${category_id}/`,
       {
         method: 'PUT',
         headers: {
@@ -51,15 +52,9 @@ const EditCategoryAction = async(
 };
 
 function EditCategory() {
-  const { isAuthenticated, fetchWithAuth } = useAuth();
+  const { fetchWithAuth } = useAuth();
   const { category_id } = useParams();
-  const navigate = useNavigate();
-  useEffect(() => {
-      if (!isAuthenticated) {
-        navigate("/login");
-      }
-    }, [isAuthenticated, navigate]);
-
+  const item_id = validateId(category_id) ?? 0
   const currentItem = useQuery(
     {
       queryKey: ['category', category_id],
@@ -67,7 +62,7 @@ function EditCategory() {
       refetchOnMount: 'always',  // Always refetch when the component mounts
       queryFn: () =>
         fetchWithAuth(
-          `http://127.0.0.1:8000/api/v1/category/get/${category_id}/`,
+          `/api/v1/category/get/${item_id}/`,
           {
             method: 'GET',
           }
@@ -77,15 +72,15 @@ function EditCategory() {
   return (
     <div>
       {currentItem.isPending ? (
-        <div>Loading...</div>
+        <Loader />
       ) : (
         <>
           {currentItem.isError || !currentItem.data ? (
             <div>No data available: {currentItem.error ? currentItem.error.message : ''}</div>
           ) : (
             <CategoryForm
-              onSubmit={(values: CategoryFormType) => EditCategoryAction(
-                category_id,
+                handleSubmit={(values: CategoryFormType) => EditCategoryAction(
+                item_id,
                 values,
                 fetchWithAuth
               )}

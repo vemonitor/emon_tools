@@ -1,8 +1,6 @@
 import { AddActionType } from "@/lib/types";
 import { CategoryForm, CategoryFormType } from "./form";
 import { useAuth } from "@/hooks/use-auth";
-import { useNavigate } from "react-router";
-import { useEffect } from "react";
 
 const AddCategoryAction = async(
   values: CategoryFormType,
@@ -16,7 +14,7 @@ const AddCategoryAction = async(
 
   try {
     const response = await fetchWithAuth(
-      `http://127.0.0.1:8000/api/v1/category/add/`,
+      `/api/v1/category/add/`,
       {
         method: 'POST',
         headers: {
@@ -46,19 +44,11 @@ const AddCategoryAction = async(
 };
 
 function AddCategory() {
-  const { isAuthenticated, fetchWithAuth } = useAuth();
-  
-  const navigate = useNavigate();
-  useEffect(() => {
-    if (!isAuthenticated) {
-      navigate("/login");
-    }
-  }, [isAuthenticated, navigate]);
-
+  const { fetchWithAuth } = useAuth();
   return (
     <div>
       <CategoryForm
-        onSubmit={(values: CategoryFormType) => AddCategoryAction(values, fetchWithAuth)}
+        handleSubmit={(values: CategoryFormType) => AddCategoryAction(values, fetchWithAuth)}
       />
     </div>
   )

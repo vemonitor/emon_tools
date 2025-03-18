@@ -58,13 +58,13 @@ const initFormDefaults = (data?: CategoryEdit) => {
 }
 
 export type CategoryFormProps = ComponentPropsWithoutRef<"div"> & {
-  onSubmit: (values: CategoryFormType) => AddActionType;
+  handleSubmit: (values: CategoryFormType) => AddActionType;
   data?: CategoryEdit;
   className?: string;
 };
 
 export function CategoryForm({
-  onSubmit,
+  handleSubmit,
   data,
   className
 }: CategoryFormProps) {
@@ -83,7 +83,7 @@ export function CategoryForm({
   }, [data, form]);
 
   const onSubmitForm = async (values: CategoryFormType) => {
-    const response = await onSubmit(values);
+    const response = await handleSubmit(values);
 
     if (response && response.redirect) {
       form.reset();
