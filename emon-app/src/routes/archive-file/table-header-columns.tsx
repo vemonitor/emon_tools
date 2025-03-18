@@ -32,12 +32,14 @@ export const columns: ColumnDef<ArchiveFileList>[] = [
     header: ({ column }) => (
       <DataTableColumnHeader column={column} title="Emoncms Host" />
     ),
+    cell: ({ row }) => <div>{row.original.emonhost?.name ?? ''}</div>,
   },
   {
     accessorKey: "category.name",
     header: ({ column }) => (
       <DataTableColumnHeader column={column} title="Category" />
     ),
+    cell: ({ row }) => <div>{row.original.category?.name ?? ''}</div>
   },
   {
     accessorKey: "start_time",
