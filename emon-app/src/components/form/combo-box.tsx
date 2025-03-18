@@ -1,7 +1,5 @@
 import { Check, ChevronsUpDown } from "lucide-react"
-import { z } from "zod"
 import { cn } from "@/lib/utils"
-import { toast } from "@/components/hooks/use-toast"
 import { Button } from "@/components/ui/button"
 import {
   Command,
@@ -14,7 +12,6 @@ import {
 import {
   FormControl,
   FormDescription,
-  FormField,
   FormItem,
   FormLabel,
   FormMessage,
@@ -26,6 +23,7 @@ import {
 } from "@/components/ui/popover"
 import { useAuth } from "@/hooks/use-auth"
 import { useQuery } from "@tanstack/react-query"
+import { Loader } from "@/components/layout/loader"
 
 type ComboBox = {
     name: string,
@@ -69,7 +67,7 @@ export default function ComboBox({
         }
     );
     if(queryResult.isPending){
-        return (<div>Loading...</div>)
+        return (<Loader />)
     }
     return (
         <FormItem className="flex flex-col">
@@ -86,7 +84,7 @@ export default function ComboBox({
                         )}
                     >
                         {queryResult.isPending ? (
-                            <div>Loading...</div>
+                            <Loader />
                         ) : queryResult.isError || !(queryResult.data && queryResult.data.data) ? (
                             `Select ${label}`
                         ) : (
@@ -111,7 +109,7 @@ export default function ComboBox({
                     <CommandEmpty>No framework found.</CommandEmpty>
                     <CommandGroup>
                         {queryResult.isPending ? (
-                            <div>Loading...</div>
+                            <Loader />
                         ) : queryResult.isError || !(queryResult.data && queryResult.data.data) ? (
                             `Select ${label}`
                         ) : (
