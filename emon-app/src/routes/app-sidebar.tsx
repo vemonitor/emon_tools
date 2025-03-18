@@ -1,4 +1,3 @@
-import * as React from "react"
 import {
   Bot,
   Boxes,
@@ -22,28 +21,32 @@ import {
 import { NavUser } from "@/components/nav_sidebar/nav-user"
 import { LoginDialog } from "@/components/nav_sidebar/login-dialog"
 import { useAuth } from "@/hooks/use-auth"
+import { ComponentProps, useEffect } from "react"
 
-// This is sample data.
+
 const navMain = [
   {
     key_group: "home",
     title: "Home",
     url: "/",
     icon: House,
-    isActive: true
+    isActive: true,
+    isPublic: true
   },
   {
     key_group: "dashboard",
     title: "Dashboard",
     url: "/dashboard",
     icon: Gauge,
-    isActive: true
+    isActive: true,
+    isPublic: false
   },
   {
     key_group: "dataViewer",
     title: "PhpFina Viewer",
     icon: ChartSpline,
     isActive: false,
+    isPublic: false,
     items: [
       {
         title: "Archived",
@@ -62,6 +65,7 @@ const navMain = [
     title: "Emoncms Hosts",
     icon: Globe,
     isActive: false,
+    isPublic: false,
     items: [
       {
         title: "View list",
@@ -78,6 +82,7 @@ const navMain = [
     title: "Category",
     icon: Boxes,
     isActive: false,
+    isPublic: false,
     items: [
       {
         title: "View list",
@@ -94,6 +99,7 @@ const navMain = [
     title: "DataPath",
     icon: Boxes,
     isActive: false,
+    isPublic: false,
     items: [
       {
         title: "View list",
@@ -110,6 +116,7 @@ const navMain = [
     title: "Archive File",
     icon: FileChartLine,
     isActive: true,
+    isPublic: false,
     items: [
       {
         title: "View list",
@@ -126,6 +133,7 @@ const navMain = [
     title: "Emoncms Api",
     url: "#",
     icon: Bot,
+    isPublic: false,
     items: [
       {
         title: "Inputs",
@@ -145,6 +153,7 @@ const navMain = [
     title: "Settings",
     url: "#",
     icon: Settings2,
+    isPublic: false,
     items: [
       {
         title: "General",
@@ -166,12 +175,19 @@ const navMain = [
   },
 ]
 
-export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
-  const { isAuthenticated, user } = useAuth();
+type AppSidebarProps = ComponentProps<typeof Sidebar>
+
+export function AppSidebar({
+  ...props
+}: AppSidebarProps) {
+  const { isAuthenticated } = useAuth();
+  useEffect(() => {
+    return;
+  }, [isAuthenticated]);
   return (
     <Sidebar collapsible="icon" {...props}>
       <SidebarHeader>
-        
+
       </SidebarHeader>
       <SidebarContent>
         <NavMain
@@ -180,13 +196,11 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       </SidebarContent>
       <SidebarFooter>
         {isAuthenticated ? (
-          <NavUser 
-            user={user}
-          />
+          <NavUser />
         ) : (
           <LoginDialog />
         )}
-        
+
       </SidebarFooter>
       <SidebarRail />
     </Sidebar>
