@@ -1,9 +1,7 @@
-import Pane from '../../components/layout/pane'
+import { Pane } from '../../components/layout/pane'
 import { ChartPane } from './finaChartViever';
 import { DataViewerList } from './finaFilesViever';
-import { useNavigate, useParams } from "react-router";
-import { useAuth } from '@/hooks/use-auth';
-import { useEffect } from 'react';
+import { useParams } from "react-router";
 import clsx from 'clsx';
 
 
@@ -13,14 +11,6 @@ export function DataViewer({
   className?: string
 }) {
   const { path_id } = useParams();
-  const { isAuthenticated } = useAuth();
-  const navigate = useNavigate();
-
-  useEffect(() => {
-    if (!isAuthenticated) {
-      navigate("/login");
-    }
-  }, [isAuthenticated, navigate]);
   return (
     <Pane
       title='Fina Reader'
