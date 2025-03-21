@@ -1,11 +1,12 @@
-import { AddActionType } from "@/lib/types";
+import { AddActionType, EditCrudComponentProps, EmonHostEdit } from "@/lib/types";
 import { EmonHostForm, EmonHostFormType } from "./form";
 import { useAuth } from "@/hooks/use-auth";
-import { useNavigate, useParams } from "react-router";
-import { useEffect } from "react";
+import { useParams } from "react-router";
 import { useQuery } from "@tanstack/react-query";
+import { Loader } from "@/components/layout/loader";
+import { validateIds } from "@/lib/utils";
 
-const AddEmonHostAction = async(
+const EditEmonHostAction = async(
   host_id: number,
   values: EmonHostFormType,
   fetchWithAuth: (
@@ -21,7 +22,7 @@ const AddEmonHostAction = async(
 
   try {
     const response = await fetchWithAuth(
-      `http://127.0.0.1:8000/api/v1/emon_host/edit/${host_id}/`,
+      `/api/v1/emon_host/edit/${host_id}/`,
       {
         method: 'PUT',
         headers: {
@@ -50,24 +51,22 @@ const AddEmonHostAction = async(
   return {success: true, redirect: `/emon-host`};
 };
 
-function EditEmonHost() {
-  const { isAuthenticated, fetchWithAuth } = useAuth();
+function EditEmonHost({
+  row_id,
+  is_dialog,
+  successCallBack,
+}: EditCrudComponentProps<EmonHostEdit>) {
+  const { fetchWithAuth } = useAuth();
   const { host_id } = useParams();
-  const navigate = useNavigate();
-  useEffect(() => {
-      if (!isAuthenticated) {
-        navigate("/login");
-      }
-    }, [isAuthenticated, navigate]);
-  
+  const out_id = validateIds(host_id, row_id);
   const currentItem = useQuery(
     {
-      queryKey: ['emon_host', host_id],
+      queryKey: ['emon_host_edit'],
       retry: false,
       refetchOnMount: 'always',  // Always refetch when the component mounts
       queryFn: () =>
         fetchWithAuth(
-          `http://127.0.0.1:8000/api/v1/emon_host/get/${host_id}/`,
+          `/api/v1/emon_host/get/${out_id}/`,
           {
             method: 'GET',
           }
@@ -77,16 +76,18 @@ function EditEmonHost() {
   return (
     <div>
       {currentItem.isPending ? (
-                      <div>Loading...</div>
+        <Loader />
       ) : currentItem.isError || !currentItem.data || !currentItem.data.data ? (
           <div>No data available: {currentItem.error ? currentItem.error.message : ''}</div>
       ) : (
         <EmonHostForm
-          onSubmit={(values: EmonHostFormType) => AddEmonHostAction(
-            host_id,
+          handleSubmit={(values: EmonHostFormType) => EditEmonHostAction(
+            out_id,
             values,
             fetchWithAuth
           )}
+          is_dialog={is_dialog}
+          successCallBack={successCallBack}
           data={currentItem.data.data}
         />
       )}      

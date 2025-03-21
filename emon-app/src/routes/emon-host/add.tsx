@@ -1,8 +1,6 @@
-import { AddActionType } from "@/lib/types";
+import { AddActionType, EditCrudComponentProps, EmonHostEdit } from "@/lib/types";
 import { EmonHostForm, EmonHostFormType } from "./form";
 import { useAuth } from "@/hooks/use-auth";
-import { useNavigate } from "react-router";
-import { useEffect } from "react";
 
 const AddEmonHostAction = async(
   values: EmonHostFormType,
@@ -16,7 +14,7 @@ const AddEmonHostAction = async(
 
   try {
     const response = await fetchWithAuth(
-      `http://127.0.0.1:8000/api/v1/emon_host/add/`,
+      `/api/v1/emon_host/add/`,
       {
         method: 'POST',
         headers: {
@@ -45,19 +43,19 @@ const AddEmonHostAction = async(
   return {success: true, redirect: `/emon-host`};
 };
 
-function AddEmonHost() {
-  const { isAuthenticated, fetchWithAuth } = useAuth();
-  
-  const navigate = useNavigate();
-  useEffect(() => {
-      if (!isAuthenticated) {
-        navigate("/login");
-      }
-    }, [isAuthenticated, navigate]);
+function AddEmonHost({
+  is_dialog,
+  successCallBack,
+}: EditCrudComponentProps<EmonHostEdit>) {
+  const { fetchWithAuth } = useAuth();
   return (
     <div>
       <EmonHostForm
-        onSubmit={(values: EmonHostFormType) => AddEmonHostAction(values, fetchWithAuth)} />
+        handleSubmit={(values: EmonHostFormType) => AddEmonHostAction(values, fetchWithAuth)}
+        is_dialog={is_dialog}
+        successCallBack={successCallBack}
+      />
+        
     </div>
   )
 }
