@@ -11,7 +11,7 @@ import { ChartTopMenu } from './chartTopMenu';
 import Ut from '@/helpers/utils';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useShallow } from 'zustand/react/shallow'
-import { Suspense, useEffect } from 'react';
+import { Suspense } from 'react';
 import { SelectedFileItem } from '@/lib/graphTypes';
 import { useAuth } from '@/hooks/use-auth';
 
