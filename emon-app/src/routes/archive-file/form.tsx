@@ -1,13 +1,5 @@
-import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import {
-  Form,
   FormControl,
   FormField,
   FormItem,
@@ -19,9 +11,8 @@ import { Input } from "@/components/ui/input";
 import { z } from 'zod';
 import { AddActionType, ArchiveFileEdit } from "@/lib/types";
 import { ComponentPropsWithoutRef, useEffect } from "react";
-import { useNavigate } from "react-router";
-import { useQueryClient } from "@tanstack/react-query";
 import ComboBox from "@/components/form/combo-box";
+import { CrudForm } from "@/components/form/crud-form";
 
 export const FormScheme = z.object({
   name: z.string()
@@ -73,8 +64,6 @@ export const FormScheme = z.object({
 
 export type ArchiveFileFormType = z.infer<typeof FormScheme>;
 
-type FormFieldsProps = "name" | "file_name" | "category_id" | "emonhost_id" | "datapath_id" | "root" | `root.${string}`;
-
 const initFormDefaults = (data?: ArchiveFileEdit) => {
   return {
     name: data?.name ?? '',
@@ -99,8 +88,6 @@ export function ArchiveFileForm({
   successCallBack,
   className
 }: ArchiveFileFormProps) {
-  const navigate = useNavigate();
-  const queryClient = useQueryClient()
   const form = useZodForm({
     schema: FormScheme,
     defaultValues: initFormDefaults(data),
@@ -113,145 +100,111 @@ export function ArchiveFileForm({
     }
   }, [data, form]);
 
-  const onSubmitForm = async (values: ArchiveFileFormType) => {
-    const response = await handleSubmit(values);
-
-    if (response && response.redirect) {
-      form.reset();
-      queryClient.invalidateQueries({ queryKey: ['archive_group'] })
-      if(data && data.id && data.id > 0){
-        queryClient.invalidateQueries({ queryKey: ['archive_group_edit', data.id] })
-      }
-      if(is_dialog === true && successCallBack){
-        successCallBack()
-      }
-      else{navigate(response.redirect);}
-    }
-    else if (response && response.errors && response.errors.length > 0) {
-      response.errors.map(obj => {
-        form.setError(
-          obj.field_name as FormFieldsProps,
-          { type: 'manual', message: obj.error }
-        )
-      })
-    }
-    else if (response && response.error) {
-      console.log(response.error);
-    }
-    else {
-      console.log("Fatal error");
-    }
-    return;
-  }
-
   return (
-    <div className={cn("flex flex-col gap-6", className)}>
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-2xl">Archive File</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <Form
-            className=""
-            form={form}
-            onSubmit={onSubmitForm}
-          >
-            <div className="flex flex-col gap-6">
-              <div className="grid gap-2">
-                <FormField
-                  control={form.control}
-                  name="name"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Name</FormLabel>
-                      <FormControl>
-                        <Input
-                          required
-                          {...field}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="file_name"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>File Name</FormLabel>
-                      <FormControl>
-                        <Input
-                          required
-                          {...field}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="emonhost_id"
-                  render={({ field }) => (
-                    <ComboBox
-                      name="emonhost_id"
-                      label="Emon Host"
-                      description="Emoncms host server"
-                      queryKey={['emonhost']}
-                      url="/api/v1/emon_host/"
-                      resultKeyLabel="name"
-                      resultKeyValue="id"
-                      form={form}
-                      field={field}
-                    />
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="category_id"
-                  render={({ field }) => (
-                    <ComboBox
-                      name="category_id"
-                      label="Category"
-                      description="File Category"
-                      queryKey={['category']}
-                      url="/api/v1/category/"
-                      resultKeyLabel="name"
-                      resultKeyValue="id"
-                      form={form}
-                      field={field}
-                    />
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="datapath_id"
-                  render={({ field }) => (
-                    <ComboBox
-                      name="datapath_id"
-                      label="Server Path"
-                      description="Path"
-                      queryKey={['datapath']}
-                      url="/api/v1/data_path/"
-                      resultKeyLabel="name"
-                      resultKeyValue="id"
-                      form={form}
-                      field={field}
-                    />
-                  )}
-                />
-              </div>
-              <Button
-                type="submit"
-                className="w-full"
-              >
-                Submit
-              </Button>
-            </div>
-          </Form>
-        </CardContent>
-      </Card>
-    </div>
+    <CrudForm
+      handleSubmit={handleSubmit}
+      data={data}
+      queryKeysList={['archive_file']}
+      queryKeysEdit={['archive_file_edit']}
+      form={form}
+      formTitle={"File"}
+      is_dialog={is_dialog}
+      successCallBack={successCallBack}
+      className={className}
+    >
+      <div className="flex flex-col gap-6">
+        <div className="grid gap-2">
+          <FormField
+            control={form.control}
+            name="name"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Name</FormLabel>
+                <FormControl>
+                  <Input
+                    required
+                    {...field}
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+          <FormField
+            control={form.control}
+            name="file_name"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>File Name</FormLabel>
+                <FormControl>
+                  <Input
+                    required
+                    {...field}
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+          <FormField
+            control={form.control}
+            name="emonhost_id"
+            render={({ field }) => (
+              <ComboBox
+                name="emonhost_id"
+                label="Emon Host"
+                description="Emoncms host server"
+                queryKey={['emonhost']}
+                url="/api/v1/emon_host/"
+                resultKeyLabel="name"
+                resultKeyValue="id"
+                form={form}
+                field={field}
+              />
+            )}
+          />
+          <FormField
+            control={form.control}
+            name="category_id"
+            render={({ field }) => (
+              <ComboBox
+                name="category_id"
+                label="Category"
+                description="File Category"
+                queryKey={['category']}
+                url="/api/v1/category/"
+                resultKeyLabel="name"
+                resultKeyValue="id"
+                form={form}
+                field={field}
+              />
+            )}
+          />
+          <FormField
+            control={form.control}
+            name="datapath_id"
+            render={({ field }) => (
+              <ComboBox
+                name="datapath_id"
+                label="Server Path"
+                description="Path"
+                queryKey={['datapath']}
+                url="/api/v1/data_path/"
+                resultKeyLabel="name"
+                resultKeyValue="id"
+                form={form}
+                field={field}
+              />
+            )}
+          />
+        </div>
+        <Button
+          type="submit"
+          className="w-full"
+        >
+          Submit
+        </Button>
+      </div>
+    </CrudForm>
   )
 }

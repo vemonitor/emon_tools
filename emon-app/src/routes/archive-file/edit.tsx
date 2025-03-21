@@ -1,4 +1,4 @@
-import { AddActionType, ArchiveFileEdit } from "@/lib/types";
+import { AddActionType, ArchiveFileEdit, EditCrudComponentProps } from "@/lib/types";
 import { ArchiveFileForm, ArchiveFileFormType } from "@/routes/archive-file/form";
 import { useAuth } from "@/hooks/use-auth";
 import { useParams } from "react-router";
@@ -6,7 +6,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Loader } from "@/components/layout/loader";
 import { validateIds } from "@/lib/utils";
 
-const AddArchiveFileAction = async(
+const AddArchiveFileAction = async (
   file_id: number,
   values: ArchiveFileFormType,
   fetchWithAuth: (
@@ -14,11 +14,11 @@ const AddArchiveFileAction = async(
     init?: RequestInit
   ) => Promise<Response>
 ): AddActionType => {
-  
+
 
   const data = {
-      ...values,
-      id: file_id
+    ...values,
+    id: file_id
   }
 
   try {
@@ -49,27 +49,20 @@ const AddArchiveFileAction = async(
     }
   }
 
-  return {success: true, redirect: `/archive-file`};
+  return { success: true, redirect: `/archive-file` };
 };
-
-type EditCrudComponentProps = {
-  row_id?: number
-  is_dialog?: boolean,
-  successCallBack?: () => void
-  data?: ArchiveFileEdit
-}
 
 function EditArchiveFile({
   row_id,
   is_dialog,
   successCallBack,
-}: EditCrudComponentProps) {
+}: EditCrudComponentProps<ArchiveFileEdit>) {
   const { fetchWithAuth } = useAuth();
   const { file_id } = useParams();
   const out_id = validateIds(file_id, row_id);
   const currentItem = useQuery(
     {
-      queryKey: ['archive_file', file_id],
+      queryKey: ['archive_file_edit'],
       retry: false,
       refetchOnMount: 'always',  // Always refetch when the component mounts
       queryFn: () =>
@@ -86,25 +79,20 @@ function EditArchiveFile({
     <div>
       {currentItem.isPending ? (
         <Loader />
+      ) : currentItem.isError || !currentItem.data || !currentItem.data.data ? (
+        <div>No data available: {currentItem.error ? currentItem.error.message : ''}</div>
       ) : (
-        <>
-          {currentItem.isError || !currentItem.data ? (
-            <div>No data available: {currentItem.error ? currentItem.error.message : ''}</div>
-          ) : (
-            <ArchiveFileForm
-                handleSubmit={(values: ArchiveFileFormType) => AddArchiveFileAction(
-                out_id,
-                values,
-                fetchWithAuth
-              )}
-              is_dialog={is_dialog}
-              successCallBack={successCallBack}
-              data={{...currentItem.data.data}}
-            />
+        <ArchiveFileForm
+          handleSubmit={(values: ArchiveFileFormType) => AddArchiveFileAction(
+            out_id,
+            values,
+            fetchWithAuth
           )}
-        </>
+          is_dialog={is_dialog}
+          successCallBack={successCallBack}
+          data={{ ...currentItem.data.data }}
+        />
       )}
-      
     </div>
   )
 }

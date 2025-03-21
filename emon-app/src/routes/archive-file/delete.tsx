@@ -55,7 +55,7 @@ function DeleteArchiveFile() {
       </CardHeader>
       <CardContent>
         <div className="">
-          This action cannot be undone. This will permanently delete this item
+          This action cannot be undone. This will permanently delete file item
           and remove your data from our servers.
         </div>
         <Button
