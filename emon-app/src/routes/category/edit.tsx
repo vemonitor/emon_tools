@@ -3,8 +3,9 @@ import { CategoryForm, CategoryFormType } from "./form";
 import { useAuth } from "@/hooks/use-auth";
 import { useParams } from "react-router";
 import { useQuery } from "@tanstack/react-query";
-import { Loader } from "lucide-react";
+
 import { validateIds } from "@/lib/utils";
+import { Loader } from "@/components/layout/loader";
 
 const EditCategoryAction = async (
   category_id: number,
