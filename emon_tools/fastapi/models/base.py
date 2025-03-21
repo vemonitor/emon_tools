@@ -25,6 +25,16 @@ class ResponseModelBase(BaseModel):
     data: Any
 
 
+class ResponseMessage(BaseModel):
+    """
+    Public item model for API responses.
+
+    Inherits from ResponseModelBase and adds id and owner_id fields.
+    """
+    success: bool
+    msg: str
+
+
 class ResponseErrorBase(ResponseModelBase):
     """
     Public item model for API responses.
