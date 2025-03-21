@@ -158,9 +158,7 @@ export const execFinaDataQueries = (
         throw new Error('Network response was not ok');
       }
       const json = await response.json();
-      // If the API returns: { success: true, data: { ..., data: [...] } }
-      // and you need the inner "data" array, you can do:
-      return json.data || {};
+      return json || {};
     },
   };
 };
