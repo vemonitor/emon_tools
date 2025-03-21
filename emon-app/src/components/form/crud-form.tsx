@@ -1,0 +1,111 @@
+import { useQueryClient } from "@tanstack/react-query";
+import { PropsWithChildren, useState } from "react";
+import { useNavigate } from "react-router";
+import {
+    Card,
+    CardContent,
+    CardHeader,
+    CardTitle,
+} from "@/components/ui/card";
+import {
+    Form,
+} from '@/components/ui/form';
+import { AddActionType } from "@/lib/types";
+import { cn } from "@/lib/utils";
+import { FieldValues, UseFormReturn } from "react-hook-form";
+import { AlertError, AlertErrorProps } from "../layout/alert-error";
+
+export type CrudFormProps<T1 extends FieldValues, T2> = PropsWithChildren & {
+    handleSubmit: (values: T1) => AddActionType;
+    data?: T2;
+    queryKeysList: string[];
+    queryKeysEdit: string[];
+    form: UseFormReturn<T1>;
+    formTitle: string;
+    //initFormDefaults: (data?: T2) => DefaultValues<T1>;
+    is_dialog?: boolean;
+    successCallBack?: () => void;
+    className?: string;
+};
+
+export type FormFieldsProps = "root" | `root.${string}`;
+
+export function CrudForm<T1 extends FieldValues, T2>({
+    handleSubmit,
+    data,
+    queryKeysList,
+    queryKeysEdit,
+    form,
+    formTitle,
+    //initFormDefaults,
+    is_dialog,
+    successCallBack,
+    children,
+    className
+}: CrudFormProps<T1, T2>) {
+    const navigate = useNavigate();
+    const queryClient = useQueryClient()
+    const [ alert, setAlert ] = useState<AlertErrorProps | null>(null)
+    const onSubmitForm = async (values: T1) => {
+        const response = await handleSubmit(values);
+
+        if (response && response.redirect) {
+            form.reset();
+            queryClient.invalidateQueries({ queryKey: queryKeysList })
+            if (data) {
+                queryClient.invalidateQueries({ queryKey: queryKeysEdit })
+            }
+            if (is_dialog === true && successCallBack) {
+                successCallBack()
+            }
+            else { navigate(response.redirect); }
+        }
+        else if (response && response.errors && response.errors.length > 0) {
+            response.errors.map(obj => {
+                form.setError(
+                    obj.field_name as FormFieldsProps,
+                    { type: 'manual', message: obj.error }
+                )
+            })
+        }
+        else if (response && response.error) {
+            setAlert({
+                title: 'Form Error',
+                message: response.error
+            })
+            console.log(response.error);
+        }
+        else {
+            setAlert({
+                title: 'Form Error',
+                message: 'An unknown error occurred.'
+            })
+            console.log("Fatal error");
+        }
+        return;
+    }
+    return (
+        <div className={cn("flex flex-col gap-6", className)}>
+            <Card>
+                <CardHeader>
+                    <CardTitle className="text-2xl">{formTitle}</CardTitle>
+                    {alert ? (
+                        <AlertError
+                            title={alert.title}
+                            message={alert.message}
+                        />
+                    ) : (null)}
+                </CardHeader>
+                <CardContent>
+                    <Form
+                        className=""
+                        form={form}
+                        onSubmit={onSubmitForm}
+                    >
+                        {children}
+                    </Form>
+                </CardContent>
+            </Card>
+        </div>
+    )
+}
