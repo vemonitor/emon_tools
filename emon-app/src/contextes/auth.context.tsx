@@ -1,4 +1,5 @@
 import { AuthContext } from "@/hooks/use-auth";
+import { useToast } from "@/hooks/use-toast";
 import { User } from "@/lib/types";
 import { getApiUrl } from "@/lib/utils";
 import {
@@ -15,7 +16,7 @@ export const AuthProvider: FC<{ children: ReactNode }> = ({ children }) => {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
   const [accessToken, setAccessToken] = useState<string | null>(null);
   const [tokenExpiry, setTokenExpiry] = useState<number | null>(null);
-
+  const { toast } = useToast()
   // Use a ref to track an in-flight refresh token call
   const refreshPromiseRef = useRef<Promise<string | null> | null>(null);
 
@@ -95,12 +96,16 @@ export const AuthProvider: FC<{ children: ReactNode }> = ({ children }) => {
         await getCurrentUser();
       } else {
         reset();
+        toast({
+            title: "Login failed",
+            description: 'Please verify your credentials and try again.',
+        })
         throw new Error('Login failed');
       }
     } catch (error) {
-      console.error('Login error:', error);
       reset();
-      throw error;
+      console.error('Login error:', error);
+      throw new Error('Login error');
     }
   };
 
@@ -134,13 +139,15 @@ export const AuthProvider: FC<{ children: ReactNode }> = ({ children }) => {
           setUser(user);
         }else{
           reset();
+          throw new Error('Current User');
         }
-      /*}else{
-        reset();
-      }*/
     } catch (error) {
       reset();
       console.error('Unable to get current user: ', error);
+      toast({
+          title: "Error",
+          description: 'Unable to get current user.',
+      })
     }
   }
 
@@ -148,7 +155,18 @@ export const AuthProvider: FC<{ children: ReactNode }> = ({ children }) => {
     url: string,
     options: RequestInit = {}
   ): Promise<Response> => {
-    let token = await refreshAccessToken();
+    let token = null;
+    try{
+      token = await refreshAccessToken();
+    } catch (error) {
+      console.error('Refresh token error:', error);
+      toast({
+          title: "Error",
+          description: 'Session expired.',
+      })
+    }
+    
+    
     const fetchOptions: RequestInit = {
       ...options,
       headers: {
@@ -179,6 +197,10 @@ export const AuthProvider: FC<{ children: ReactNode }> = ({ children }) => {
         } else {
           // If refresh fails, user needs to log in again.
           reset();
+          toast({
+              title: "Error",
+              description: 'Session expired.',
+          })
           throw new Error('Session expired');
         }
       }
