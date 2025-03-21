@@ -20,7 +20,7 @@ export function DataViewerList({path_id}: DataViewerProps){
         refetchOnMount: 'always',
         queryFn: () =>
           fetchWithAuth(
-            `http://127.0.0.1:8000/api/v1/fina_data/files/${path_id}/`,
+            `/api/v1/fina_data/files/${path_id}/`,
             {
               method: 'GET',
             }
@@ -41,7 +41,7 @@ export function DataViewerList({path_id}: DataViewerProps){
     return (
       <div className='w-full h-full'>
         {queryResult.isPending ? (
-            <div>Loading...</div>
+            <Loader />
         ) : queryResult.isError || !(queryResult.data && queryResult.data.data) ? (
             <div>No data available...</div>
         ) : (
