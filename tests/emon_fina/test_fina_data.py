@@ -826,7 +826,7 @@ class TestFinaData:
     ):
         """
         Test get_data_by_date_range method.
-        """        
+        """
         # Run the read_file method
         start, end = Utils.get_dates_interval_from_timestamp(
             start=kwargs.get('start_time'),
