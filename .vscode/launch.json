@@ -19,12 +19,12 @@
             "webRoot": "${workspaceFolder}"
         },
         {
-            "name": "Python Debugger: FastAPI",
+            "name": "Backend: FastAPI",
             "type": "debugpy",
             "request": "launch",
             "module": "uvicorn",
             "args": [
-                "emon_tools.fastapi.main:app",
+                "backend.main:app",
                 "--reload"
             ],
             "jinja": true
