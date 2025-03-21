@@ -1,20 +1,12 @@
-import Pane from "@/components/layout/pane";
-import { useAuth } from "@/hooks/use-auth";
-import { useEffect } from "react";
-import { useNavigate, useParams } from "react-router";
+import { Pane } from "@/components/layout/pane";
+import { useParams } from "react-router";
 import { DataViewerList } from "../data-viewer/finaFilesViever";
 import { ChartPane } from "../data-viewer/finaChartViever";
+import { validateStringId } from "@/lib/utils";
 
 function ViewDataPath() {
   const { path_id } = useParams();
-  const { isAuthenticated } = useAuth();
-  const navigate = useNavigate();
-
-  useEffect(() => {
-    if (!isAuthenticated) {
-      navigate("/login");
-    }
-  }, [isAuthenticated, navigate]);
+  const item_id = validateStringId(path_id) 
   return (
     <Pane
       title='Fina Reader'
@@ -24,12 +16,12 @@ function ViewDataPath() {
       <div className='grid grid-cols-8 h-full'>
         <div className='col-span-2 h-full'>
           <DataViewerList
-            path_id={(path_id) ?? 0}
+            path_id={(item_id)}
           />
         </div>
         <div className='col-span-6 h-full'>
           <ChartPane
-            source={path_id ?? 'archive'}
+            source={item_id}
             classBody='h-full'
           />
         </div>
