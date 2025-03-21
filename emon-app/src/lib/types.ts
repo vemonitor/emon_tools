@@ -29,6 +29,13 @@ export type AddActionType = Promise<
   }
 >
 
+export interface  EditCrudComponentProps<T> {
+    row_id?: number
+    is_dialog?: boolean,
+    successCallBack?: () => void
+    data?: T
+}
+
 export interface User {
     id: string;
     full_name?: string;
@@ -136,4 +143,20 @@ export interface ArchiveFileEdit extends ArchiveFileBase{
     category_id?: number
     datapath_id?: number
     emonhost_id?: number
+}
+
+export interface ProfileBase {
+    email: string;
+    full_name?: string;
+    avatar?: string;
+}
+
+export interface ProfileList extends ProfileBase{
+    id: string;
+}
+
+export interface ProfileEdit extends ProfileBase{
+    id?: number;
+    created_at?: string;
+    updated_at?: string;
 }
