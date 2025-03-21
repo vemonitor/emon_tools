@@ -1,8 +1,6 @@
 import { AddActionType } from "@/lib/types";
 import { DataPathForm, DataPathFormType } from "./form";
 import { useAuth } from "@/hooks/use-auth";
-import { useNavigate } from "react-router";
-import { useEffect } from "react";
 
 const AddDataPathAction = async(
   values: DataPathFormType,
@@ -16,7 +14,7 @@ const AddDataPathAction = async(
 
   try {
     const response = await fetchWithAuth(
-      `http://127.0.0.1:8000/api/v1/data_path/add/`,
+      `/api/v1/data_path/add/`,
       {
         method: 'POST',
         headers: {
@@ -46,19 +44,11 @@ const AddDataPathAction = async(
 };
 
 function AddDataPath() {
-  const { isAuthenticated, fetchWithAuth } = useAuth();
-  
-  const navigate = useNavigate();
-  useEffect(() => {
-    if (!isAuthenticated) {
-      navigate("/login");
-    }
-  }, [isAuthenticated, navigate]);
-
+  const { fetchWithAuth } = useAuth();
   return (
     <div>
       <DataPathForm
-        onSubmit={(values: DataPathFormType) => AddDataPathAction(values, fetchWithAuth)}
+        handleSubmit={(values: DataPathFormType) => AddDataPathAction(values, fetchWithAuth)}
       />
     </div>
   )

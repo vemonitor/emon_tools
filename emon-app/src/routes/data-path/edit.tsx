@@ -1,11 +1,12 @@
-import { AddActionType } from "@/lib/types";
+import { AddActionType, DataPathEdit, EditCrudComponentProps } from "@/lib/types";
 import { DataPathForm, DataPathFormType } from "./form";
 import { useAuth } from "@/hooks/use-auth";
-import { useNavigate, useParams } from "react-router";
-import { useEffect } from "react";
+import { useParams } from "react-router";
 import { useQuery } from "@tanstack/react-query";
+import { Loader } from "@/components/layout/loader";
+import { validateIds } from "@/lib/utils";
 
-const EditDataPathAction = async(
+const EditDataPathAction = async (
   path_id: number,
   values: DataPathFormType,
   fetchWithAuth: (
@@ -13,15 +14,15 @@ const EditDataPathAction = async(
     init?: RequestInit
   ) => Promise<Response>
 ): AddActionType => {
-  
+
   const data = {
-      ...values,
-      id: path_id
+    ...values,
+    id: path_id
   }
 
   try {
     const response = await fetchWithAuth(
-      `http://127.0.0.1:8000/api/v1/data_path/edit/${path_id}/`,
+      `/api/v1/data_path/edit/${path_id}/`,
       {
         method: 'PUT',
         headers: {
@@ -47,27 +48,25 @@ const EditDataPathAction = async(
     }
   }
 
-  return {success: true, redirect: `/data-path`};
+  return { success: true, redirect: `/data-path` };
 };
 
-function EditDataPath() {
-  const { isAuthenticated, fetchWithAuth } = useAuth();
+function EditDataPath({
+  row_id,
+  is_dialog,
+  successCallBack,
+}: EditCrudComponentProps<DataPathEdit>) {
+  const { fetchWithAuth } = useAuth();
   const { path_id } = useParams();
-  const navigate = useNavigate();
-  useEffect(() => {
-      if (!isAuthenticated) {
-        navigate("/login");
-      }
-    }, [isAuthenticated, navigate]);
-
+  const out_id = validateIds(path_id, row_id);
   const currentItem = useQuery(
     {
-      queryKey: ['data_path', path_id],
+      queryKey: ['data_path_edit'],
       retry: false,
       refetchOnMount: 'always',  // Always refetch when the component mounts
       queryFn: () =>
         fetchWithAuth(
-          `http://127.0.0.1:8000/api/v1/data_path/get/${path_id}/`,
+          `/api/v1/data_path/get/${out_id}/`,
           {
             method: 'GET',
           }
@@ -77,24 +76,21 @@ function EditDataPath() {
   return (
     <div>
       {currentItem.isPending ? (
-        <div>Loading...</div>
+        <Loader />
+      ) : currentItem.isError || !currentItem.data || !currentItem.data.data ? (
+        <div>No data available: {currentItem.error ? currentItem.error.message : ''}</div>
       ) : (
-        <>
-          {currentItem.isError || !currentItem.data ? (
-            <div>No data available: {currentItem.error ? currentItem.error.message : ''}</div>
-          ) : (
-            <DataPathForm
-              onSubmit={(values: DataPathFormType) => EditDataPathAction(
-                Number(path_id),
-                values,
-                fetchWithAuth
-              )}
-              data={{...currentItem.data.data}}
-            />
+        <DataPathForm
+          handleSubmit={(values: DataPathFormType) => EditDataPathAction(
+            out_id,
+            values,
+            fetchWithAuth
           )}
-        </>
+          is_dialog={is_dialog}
+          successCallBack={successCallBack}
+          data={{ ...currentItem.data.data }}
+        />
       )}
-      
     </div>
   )
 }
