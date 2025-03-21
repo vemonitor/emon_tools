@@ -12,7 +12,10 @@ from emon_tools.fastapi.models.db import (
     DataPathUpdate,
     DataPathsPublic,
 )
-from emon_tools.fastapi.models.base import ResponseModelBase
+from emon_tools.fastapi.models.base import (
+    ResponseMessage,
+    ResponseModelBase
+)
 
 router = APIRouter(prefix="/data_path", tags=["data_path"])
 # pylint: disable=broad-exception-caught, not-callable
@@ -166,14 +169,14 @@ def update_item(
 
 @router.delete(
     "/delete/{item_id}/",
-    response_model=ResponseModelBase,
+    response_model=ResponseMessage,
     responses=BaseController.get_error_responses()
 )
 def delete_item(
     session: SessionDep,
     current_user: CurrentUser,
     item_id: int
-) -> ResponseModelBase:
+) -> ResponseMessage:
     """
     Delete an item.
     """
@@ -188,7 +191,7 @@ def delete_item(
                 status_code=400, detail="Not enough permissions")
         session.delete(item)
         session.commit()
-        return ResponseModelBase(
+        return ResponseMessage(
             success=True,
             msg="DataPath deleted successfully"
         )
