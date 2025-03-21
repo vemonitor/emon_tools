@@ -1,34 +1,15 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useAuth } from "@/hooks/use-auth";
-import { MouseEvent, useEffect } from "react";
+import { validateStringId } from "@/lib/utils";
 import { Link, useNavigate, useParams } from "react-router";
-import { z } from 'zod';
-
-
-const idSchemeIn = z.string()
-  .min(1)
-  .max(9)
-  .regex(/^[0-9]+$/, {
-    message: 'Please enter a valid attribute (Only Alphabetical characters with accents and spaces are accepted)',
-  })
-
-const idSchemeOut = z.number()
-  .positive();
 
 function DeleteDataPath() {
-  const { isAuthenticated, fetchWithAuth } = useAuth();
+  const { fetchWithAuth } = useAuth();
   const { path_id } = useParams();
   const navigate = useNavigate();
-  useEffect(() => {
-    if (!isAuthenticated) {
-      navigate("/login");
-    }
-  }, [isAuthenticated, navigate]);
-  idSchemeIn.parse(path_id);
-  const itemId = path_id ? parseInt(path_id) : 0
-  idSchemeOut.parse(itemId);
-  const DeleteDataPathAction = async (e: MouseEvent<HTMLButtonElement>) => {
+  const itemId = validateStringId(path_id)
+  const DeleteDataPathAction = async () => {
     if(!itemId || itemId <= 0){
       return new Error(
         "Unable to delete Item, id is invalid"
@@ -36,7 +17,7 @@ function DeleteDataPath() {
     }
     try {
       const response = await fetchWithAuth(
-        `http://127.0.0.1:8000/api/v1/category/data_path/${itemId}/`,
+        `/api/v1/category/data_path/${itemId}/`,
         {
           method: 'DELETE',
           headers: {
@@ -71,7 +52,7 @@ function DeleteDataPath() {
       </CardHeader>
       <CardContent>
         <div className="">
-          This action cannot be undone. This will permanently delete your account
+          This action cannot be undone. This will permanently delete data path item
           and remove your data from our servers.
         </div>
         <Button
