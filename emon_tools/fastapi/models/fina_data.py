@@ -1,7 +1,7 @@
 """
 FinaData Models
 """
-from typing import Any
+from typing import Any, Optional
 from typing_extensions import TypedDict
 from pydantic import BaseModel
 
@@ -35,7 +35,7 @@ class FileDataDict(TypedDict):
     name: str
     slug: str
     feed_id: int
-    emonhost_id: int
+    emonhost_id: Optional[int]
 
 
 class PathFileItem(TypedDict):
@@ -59,7 +59,7 @@ class PathFiles(BaseModel):
     success: bool
     path_id: int = 0
     nb_added: int = 0
-    files: list[PathFileItem] = []
+    files: list[Optional[PathFileItem]] = []
 
 
 class SelectedFileMeta(BaseModel):
