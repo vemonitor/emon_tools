@@ -1,22 +1,28 @@
+import clsx from "clsx";
+import {ItemsCountStat} from "./items_count";
+import { CurrentUserStats, UserStats } from "./user_stats";
 import { useAuth } from "@/hooks/use-auth";
-import { useEffect } from "react";
-import { useNavigate } from "react-router";
 
 type DashboardProps = {
-  className?: string;
+  classContainer?: string;
 }
 
-const Dashboard = ({ className }: DashboardProps) => {
-  const { isAuthenticated } = useAuth();
-  const navigate = useNavigate();
-
-  useEffect(() => {
-    if (!isAuthenticated) {
-      navigate("/login");
-    }
-  }, [isAuthenticated, navigate]);
+const Dashboard = ({ classContainer }: DashboardProps) => {
+  const { user } = useAuth();
   return (
-    <div>My dashboard</div>
+    <section
+      className={clsx(
+          "flex flex-row justify-center items-center py-2 px-3 my-4 mx-auto shadow-lg shadow-black/50 dark:shadow-zinc-50/50 tracking-wide",
+          classContainer
+    )}>
+      <div className="grid grid-cols-2 gap-2">
+        {user?.is_superuser && (<UserStats />)}
+        <CurrentUserStats />
+        <ItemsCountStat />
+        
+      </div>
+        
+      </section>
   );
 };
 
