@@ -43,12 +43,22 @@ const AddCategoryAction = async(
   return {success: true, redirect: `/category`};
 };
 
-function AddCategory() {
+type AddCategoryProps = {
+  is_dialog?: boolean,
+  successCallBack?: () => void
+}
+
+function AddCategory({
+  is_dialog,
+  successCallBack
+}: AddCategoryProps) {
   const { fetchWithAuth } = useAuth();
   return (
     <div>
       <CategoryForm
         handleSubmit={(values: CategoryFormType) => AddCategoryAction(values, fetchWithAuth)}
+        is_dialog={is_dialog}
+        successCallBack={successCallBack}
       />
     </div>
   )

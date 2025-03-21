@@ -1,12 +1,12 @@
-import { AddActionType } from "@/lib/types";
+import { AddActionType, CategoryEdit, EditCrudComponentProps } from "@/lib/types";
 import { CategoryForm, CategoryFormType } from "./form";
 import { useAuth } from "@/hooks/use-auth";
 import { useParams } from "react-router";
 import { useQuery } from "@tanstack/react-query";
 import { Loader } from "lucide-react";
-import { validateId } from "@/lib/utils";
+import { validateIds } from "@/lib/utils";
 
-const EditCategoryAction = async(
+const EditCategoryAction = async (
   category_id: number,
   values: CategoryFormType,
   fetchWithAuth: (
@@ -14,10 +14,10 @@ const EditCategoryAction = async(
     init?: RequestInit
   ) => Promise<Response>
 ): AddActionType => {
-  
+
   const data = {
-      ...values,
-      id: category_id
+    ...values,
+    id: category_id
   }
 
   try {
@@ -48,16 +48,20 @@ const EditCategoryAction = async(
     }
   }
 
-  return {success: true, redirect: `/category`};
+  return { success: true, redirect: `/category` };
 };
 
-function EditCategory() {
+function EditCategory({
+  row_id,
+  is_dialog,
+  successCallBack,
+}: EditCrudComponentProps<CategoryEdit>) {
   const { fetchWithAuth } = useAuth();
   const { category_id } = useParams();
-  const item_id = validateId(category_id) ?? 0
+  const item_id = validateIds(category_id, row_id);
   const currentItem = useQuery(
     {
-      queryKey: ['category', category_id],
+      queryKey: ['category_edit'],
       retry: false,
       refetchOnMount: 'always',  // Always refetch when the component mounts
       queryFn: () =>
@@ -73,23 +77,21 @@ function EditCategory() {
     <div>
       {currentItem.isPending ? (
         <Loader />
+      ) : currentItem.isError || !currentItem.data || !currentItem.data.data ? (
+        <div>No data available: {currentItem.error ? currentItem.error.message : ''}</div>
       ) : (
-        <>
-          {currentItem.isError || !currentItem.data ? (
-            <div>No data available: {currentItem.error ? currentItem.error.message : ''}</div>
-          ) : (
-            <CategoryForm
-                handleSubmit={(values: CategoryFormType) => EditCategoryAction(
-                item_id,
-                values,
-                fetchWithAuth
-              )}
-              data={{...currentItem.data.data}}
-            />
+        <CategoryForm
+          handleSubmit={(values: CategoryFormType) => EditCategoryAction(
+            item_id,
+            values,
+            fetchWithAuth
           )}
-        </>
+          is_dialog={is_dialog}
+          successCallBack={successCallBack}
+          data={{ ...currentItem.data.data }}
+        />
       )}
-      
+
     </div>
   )
 }

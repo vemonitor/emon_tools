@@ -1,13 +1,6 @@
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import {
-  Form,
   FormControl,
   FormField,
   FormItem,
@@ -26,102 +19,60 @@ import {
 import { Input } from "@/components/ui/input";
 import { z } from 'zod';
 import { AddActionType, CategoryEdit } from "@/lib/types";
-import { ComponentPropsWithoutRef, useEffect } from "react";
-import { useNavigate } from "react-router";
-import { useQueryClient } from "@tanstack/react-query";
+import { ComponentPropsWithoutRef } from "react";
+import { CrudForm } from "@/components/form/crud-form";
+import { KeyString, NameString } from "@/lib/comon-schemas";
 
 export const FormScheme = z.object({
-  name: z.string()
-    .min(1)
-    .max(40)
-    .regex(/^[A-Za-z0-9-_ ]+$/, {
-      message: 'Please enter a valid attribute (Only Alphabetical characters with accents and spaces are accepted)',
-    }),
-  type: z.string()
-    .min(1)
-    .max(30)
-    .regex(/^[A-Za-z0-9-_]+$/, {
-      message: 'Please enter a valid attribute (Only Alphabetical characters with accents and spaces are accepted)',
-    }),
+  name: NameString,
+  type: KeyString,
 });
 
 export type CategoryFormType = z.infer<typeof FormScheme>;
 
-type FormFieldsProps = "name" | "type" | "root" | `root.${string}`;
-
 const initFormDefaults = (data?: CategoryEdit) => {
   return {
-    id: data?.id ? data.id : 0,
     name: data?.name ?? '',
     type: data?.type ?? '',
   }
 }
 
+//export type CategoryFormProps = ComponentPropsWithoutRef<"div"> & CrudFormProps<CategoryFormType, CategoryEdit>;
 export type CategoryFormProps = ComponentPropsWithoutRef<"div"> & {
   handleSubmit: (values: CategoryFormType) => AddActionType;
   data?: CategoryEdit;
+  is_dialog?: boolean;
+  successCallBack?: () => void;
   className?: string;
 };
 
 export function CategoryForm({
   handleSubmit,
   data,
+  is_dialog,
+  successCallBack,
   className
 }: CategoryFormProps) {
-  const navigate = useNavigate();
-  const queryClient = useQueryClient()
+  
   const form = useZodForm({
-    schema: FormScheme,
-    defaultValues: initFormDefaults(data),
-  });
-
-  // Reset the form whenever new data arrives
-  useEffect(() => {
-    if (data) {
-      form.reset(initFormDefaults(data));
-    }
-  }, [data, form]);
-
-  const onSubmitForm = async (values: CategoryFormType) => {
-    const response = await handleSubmit(values);
-
-    if (response && response.redirect) {
-      form.reset();
-      queryClient.invalidateQueries({ queryKey: ['category'] })
-      if(data && data.id && data.id > 0){
-        queryClient.invalidateQueries({ queryKey: ['category_edit', data.id] })
-      }
-      navigate(response.redirect);
-    }
-    else if (response && response.errors && response.errors.length > 0) {
-      response.errors.map(obj => {
-        form.setError(
-          obj.field_name as FormFieldsProps,
-          { type: 'manual', message: obj.error }
-        )
-      })
-    }
-    else if (response && response.error) {
-      console.log(response.error);
-    }
-    else {
-      console.log("Fatal error");
-    }
-    return;
-  }
-
+      schema: FormScheme,
+      defaultValues: initFormDefaults(data),
+    });
+  // initFormDefaults={initFormDefaults}
   return (
     <div className={cn("flex flex-col gap-6", className)}>
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-2xl">Category</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <Form
-            className=""
-            form={form}
-            onSubmit={onSubmitForm}
-          >
+      <CrudForm
+        handleSubmit={handleSubmit}
+        data={data}
+        queryKeysList={['category']}
+        queryKeysEdit={['category_edit']}
+        form={form}
+        formTitle={"Category"}
+        is_dialog={is_dialog}
+        successCallBack={successCallBack}
+        className={className}
+      >
+
             <div className="flex flex-col gap-6">
               <div className="grid gap-2">
               <FormField
@@ -175,9 +126,8 @@ export function CategoryForm({
                 Submit
               </Button>
             </div>
-          </Form>
-        </CardContent>
-      </Card>
+          
+      </CrudForm>
     </div>
   )
 }
