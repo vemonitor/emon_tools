@@ -1,4 +1,5 @@
 import { FilesListPane } from "@/components/fina_viewer/feedList";
+import { Loader } from "@/components/layout/loader";
 import { getFinaFiles } from "@/emon-tools-api/dataViewerApi";
 import { useAuth } from "@/hooks/use-auth";
 import { DataViewerProps, SelectedFileItem } from "@/lib/graphTypes";
@@ -42,11 +43,11 @@ export function DataViewerList({path_id}: DataViewerProps){
       <div className='w-full h-full'>
         {queryResult.isPending ? (
             <Loader />
-        ) : queryResult.isError || !(queryResult.data && queryResult.data.data) ? (
+        ) : queryResult.isError || !(queryResult.data && queryResult.data.success) ? (
             <div>No data available...</div>
         ) : (
             <FilesListPane
-              data={queryResult.data.data}
+              data={queryResult.data}
               handleSelectItem={selectFileToGraph}
               classBody='h-full'
             />
