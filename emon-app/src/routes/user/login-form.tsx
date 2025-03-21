@@ -20,6 +20,8 @@ import { Input } from "@/components/ui/input";
 import { z } from 'zod';
 import { useAuth } from "@/hooks/use-auth";
 import { useNavigate } from "react-router";
+import { AlertError, AlertErrorProps } from "@/components/layout/alert-error";
+import { useState } from "react";
 
 export const FormScheme = z.object({
   username: z.string()
@@ -49,7 +51,7 @@ export function LoginForm({
 }: LoginFormProps) {
   const { login } = useAuth();
   const navigate = useNavigate();
-
+  const [ alert, setAlert ] = useState<AlertErrorProps | null>(null)
   const form = useZodForm({
       schema: FormScheme,
       defaultValues: {
@@ -57,14 +59,30 @@ export function LoginForm({
           password: ''
       },
   });
-
+  
   const onSubmitForm = async (values: LoginFormType) => {
     try {
       await login(values.username, values.password);
       navigate("/dashboard");
     } catch (error) {
-      console.error('Login failed:', error);
-      // Handle login error (e.g., show error message)
+      //console.error('Login failed:', error);
+      if (error instanceof Error) {
+        switch (error.message) {
+        case 'Login error':
+          setAlert({
+            title: 'Login failed',
+            message: 'Please verify your credentials and try again.'
+          })
+          break;
+        default:
+          setAlert({
+            title: 'Login failed',
+            message: 'An unknown error occurred.'
+          })
+        }
+      } else {
+        console.error('An unknown error occurred:', error);
+      }
     }
   }
   return (
@@ -75,6 +93,12 @@ export function LoginForm({
           <CardDescription>
             Enter your email below to login to your account
           </CardDescription>
+          {alert ? (
+            <AlertError
+              title={alert.title}
+              message={alert.message}
+            />
+          ) : (null)}
         </CardHeader>
         <CardContent>
           <Form
