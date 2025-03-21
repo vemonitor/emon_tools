@@ -3,13 +3,16 @@ import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 
 // https://vite.dev/config/
-export default defineConfig({
+export default defineConfig(({ mode }) => ({
   plugins: [react()],
   //envDir: "/media/tepochtli/zino/Dev/python/mano8_repo/emon_tools/",
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"),
     },
+  },
+  esbuild: {
+    drop: mode === 'production' ? ['console', 'debugger'] : [],
   },
   test: {
     globals: true,             // Enables global variables like describe, it, and expect
@@ -18,4 +21,4 @@ export default defineConfig({
     // You can also add include/exclude settings if needed:
     include: ['**/*.{test,spec}.{ts,tsx}'],
   },
-})
+}))
