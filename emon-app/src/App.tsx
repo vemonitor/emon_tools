@@ -3,6 +3,7 @@ import { Route, Routes } from 'react-router';
 import { publicRoutes, privateRoutes, RouteListType } from './routes/routes';
 import { createElement } from 'react';
 import { useAuth } from './hooks/use-auth';
+import Error404 from './routes/404';
 
 function App() {
   const { isAuthenticated } = useAuth();
@@ -40,7 +41,8 @@ function App() {
           <Routes>
             {[
               setRoutes(publicRoutes),
-              isAuthenticated ? setRoutes(privateRoutes) : null
+              isAuthenticated ? setRoutes(privateRoutes) : null,
+              <Route key={'error-404'} path="*" element={<Error404 />} />
             ]}
           </Routes>
         </Layout>
