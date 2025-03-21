@@ -1,34 +1,15 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useAuth } from "@/hooks/use-auth";
-import { MouseEvent, useEffect } from "react";
+import { validateStringId } from "@/lib/utils";
 import { Link, useNavigate, useParams } from "react-router";
-import { z } from 'zod';
-
-
-const idSchemeIn = z.string()
-  .min(1)
-  .max(9)
-  .regex(/^[0-9]+$/, {
-    message: 'Please enter a valid attribute (Only Alphabetical characters with accents and spaces are accepted)',
-  })
-
-const idSchemeOut = z.number()
-  .positive();
 
 function DeleteEmonHost() {
-  const { isAuthenticated, fetchWithAuth } = useAuth();
+  const { fetchWithAuth } = useAuth();
   const { host_id } = useParams();
   const navigate = useNavigate();
-  useEffect(() => {
-    if (!isAuthenticated) {
-      navigate("/login");
-    }
-  }, [isAuthenticated, navigate]);
-  idSchemeIn.parse(host_id);
-  const itemId = host_id ? parseInt(host_id) : 0
-  idSchemeOut.parse(itemId);
-  const DeleteEmonHostAction = async (e: MouseEvent<HTMLButtonElement>) => {
+  const itemId = validateStringId(host_id)
+  const DeleteEmonHostAction = async () => {
     if(!itemId || itemId <= 0){
       return new Error(
         "Unable to delete Item, id is invalid"
@@ -36,7 +17,7 @@ function DeleteEmonHost() {
     }
     try {
       const response = await fetchWithAuth(
-        `http://127.0.0.1:8000/api/v1/emon_host/delete/${itemId}/`,
+        `/api/v1/emon_host/delete/${itemId}/`,
         {
           method: 'DELETE',
           headers: {
@@ -71,7 +52,7 @@ function DeleteEmonHost() {
       </CardHeader>
       <CardContent>
         <div className="">
-          This action cannot be undone. This will permanently delete your account
+          This action cannot be undone. This will permanently delete host item
           and remove your data from our servers.
         </div>
         <Button
