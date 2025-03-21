@@ -8,7 +8,7 @@ import {
     DialogTrigger,
 } from "@/components/ui/dialog"
 import { ReactNode } from "react"
-
+import { VisuallyHidden } from "@radix-ui/react-visually-hidden";
 type DialogFormProps = {
     title: string;
     description?: string;
@@ -40,7 +40,11 @@ export default function DialogForm({
                         <DialogDescription>
                             {description}
                         </DialogDescription>
-                    ) : null}
+                    ) : (
+                        <DialogDescription>
+                            <VisuallyHidden>Dialog Form.</VisuallyHidden>
+                        </DialogDescription>
+                    )}
                 </DialogHeader>
                 {form}
                 {footer && (
