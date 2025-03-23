@@ -9,7 +9,7 @@ import {
 } from '@/components/ui/form';
 import { Input } from "@/components/ui/input";
 import { z } from 'zod';
-import { AddActionType, ArchiveFileEdit } from "@/lib/types";
+import { PromiseFormActionType, ArchiveFileEdit } from "@/lib/types";
 import { ComponentPropsWithoutRef, useEffect } from "react";
 import ComboBox from "@/components/form/combo-box";
 import { CrudForm } from "@/components/form/crud-form";
@@ -75,7 +75,7 @@ const initFormDefaults = (data?: ArchiveFileEdit) => {
 }
 
 export type ArchiveFileFormProps = ComponentPropsWithoutRef<"div"> & {
-  handleSubmit: (values: ArchiveFileFormType) => AddActionType;
+  handleSubmit: (values: ArchiveFileFormType) => PromiseFormActionType;
   data?: ArchiveFileEdit;
   is_dialog?: boolean,
   successCallBack?: () => void

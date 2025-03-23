@@ -1,26 +1,28 @@
-import { AddActionType, ArchiveFileEdit, EditCrudComponentProps } from "@/lib/types";
+import { PromiseFormActionType, ArchiveFileEdit, EditCrudComponentProps } from "@/lib/types";
 import { ArchiveFileForm, ArchiveFileFormType } from "@/routes/archive-file/form";
 import { useAuth } from "@/hooks/use-auth";
 import { useParams } from "react-router";
 import { useQuery } from "@tanstack/react-query";
 import { Loader } from "@/components/layout/loader";
 import { validateIds } from "@/lib/utils";
+import { requestCatchError, requestErrorResponse } from "@/helpers/formActions";
 
-const AddArchiveFileAction = async (
+const EditArchiveFileAction = async (
   file_id: number,
   values: ArchiveFileFormType,
   fetchWithAuth: (
     input: RequestInfo,
     init?: RequestInit
   ) => Promise<Response>
-): AddActionType => {
+): PromiseFormActionType => {
 
 
   const data = {
     ...values,
     id: file_id
   }
-
+  const requestTitle = "Edit File";
+  const redirect = `/archive-file`;
   try {
     const response = await fetchWithAuth(
       `/api/v1/archive_file/edit/${file_id}/`,
@@ -32,24 +34,14 @@ const AddArchiveFileAction = async (
         body: JSON.stringify(data)
       }
     ).then((response) => response.json())
-    if (!response.success) {
-      return {
-        success: false,
-        msg: response.msg,
-        errors: response.errors,
-        from_error: response.from_error,
-      }
-    }
+    return requestErrorResponse(
+      response,
+      requestTitle,
+      redirect
+    )
   } catch (error: unknown) {
-    console.log('Error fetching data:', error);
-    return {
-      success: false,
-      msg: 'Unable to save data, please control all fields',
-      error: error instanceof Error ? error.message : 'Unknown error'
-    }
+    return requestCatchError(error, requestTitle)
   }
-
-  return { success: true, redirect: `/archive-file` };
 };
 
 function EditArchiveFile({
@@ -83,7 +75,7 @@ function EditArchiveFile({
         <div>No data available: {currentItem.error ? currentItem.error.message : ''}</div>
       ) : (
         <ArchiveFileForm
-          handleSubmit={(values: ArchiveFileFormType) => AddArchiveFileAction(
+          handleSubmit={(values: ArchiveFileFormType) => EditArchiveFileAction(
             out_id,
             values,
             fetchWithAuth
