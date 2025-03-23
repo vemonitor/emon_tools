@@ -12,7 +12,7 @@ import {
 } from "react";
 
 export const AuthProvider: FC<{ children: ReactNode }> = ({ children }) => {
-  const [user, setUser] = useState<User | null>(null);
+  const [user, setUser] = useState<User | undefined>(undefined);
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
   const [accessToken, setAccessToken] = useState<string | null>(null);
   const [tokenExpiry, setTokenExpiry] = useState<number | null>(null);
@@ -67,7 +67,7 @@ export const AuthProvider: FC<{ children: ReactNode }> = ({ children }) => {
 
   const reset = () => {
     setIsAuthenticated(false);
-    setUser(null);
+    setUser(undefined);
     setAccessToken(null);
     setTokenExpiry(null);
   }
@@ -222,6 +222,10 @@ export const AuthProvider: FC<{ children: ReactNode }> = ({ children }) => {
     }
   };
 
+  const refreshUser = async (): Promise<void> => {
+    await getCurrentUser();
+  };
+
   useEffect(() => {
     // This effect checks auth status on mount.
     refreshAccessToken().then(async (token) => {
@@ -234,7 +238,14 @@ export const AuthProvider: FC<{ children: ReactNode }> = ({ children }) => {
   }, [refreshAccessToken]);
 
   return (
-    <AuthContext.Provider value={{ user, isAuthenticated, login, logout, fetchWithAuth }}>
+    <AuthContext.Provider value={{
+      user,
+      isAuthenticated,
+      login,
+      logout,
+      fetchWithAuth,
+      refreshUser
+    }}>
       {children}
     </AuthContext.Provider>
   );
