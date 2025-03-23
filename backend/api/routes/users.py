@@ -2,6 +2,7 @@
 import uuid
 from typing import Any
 from os.path import join as PathJoin
+from pathlib import Path
 from fastapi import (
     APIRouter,
     Depends,
@@ -9,6 +10,7 @@ from fastapi import (
     HTTPException,
     UploadFile
 )
+from pydantic import ValidationError
 from sqlmodel import (
     col,
     delete,
@@ -25,7 +27,6 @@ from backend.api.deps import (
 )
 from backend.core.security import get_password_hash
 from backend.core.security import verify_password
-from backend.models.base import ResponseModelBase
 from backend.models.db import (
     ArchiveFile,
     Category,
@@ -40,6 +41,8 @@ from backend.models.db import (
     UserUpdate,
     UserUpdateMe,
 )
+from backend.models.user import ResponseUploadedAvatar, ResponseUser
+from backend.utils.files import FilesHelper
 # pylint: disable=not-callable, broad-exception-caught
 
 router = APIRouter(prefix="/users", tags=["users"])
@@ -102,7 +105,7 @@ def create_new_user(*, session: SessionDep, user_in: UserCreate) -> Any:
 
 @router.post(
     "/upload_avatar/",
-    response_model=ResponseModelBase,
+    response_model=ResponseUploadedAvatar,
     responses=BaseController.get_error_responses()
 )
 def update_avatar(
@@ -115,19 +118,50 @@ def update_avatar(
     Update own user.
     """
     try:
+        # Validate MIME type
+        if file.content_type not in FilesHelper.ALLOWED_IMG_MIME_TYPES:
+            raise ValidationError(
+                "Invalid file mime type. Allowed types are: "
+                f"{', '.join(FilesHelper.ALLOWED_IMG_MIME_TYPES)}"
+            )
+        # Validate file extension
+        ext = FilesHelper.get_file_extension(file.filename)
+        if ext not in FilesHelper.ALLOWED_IMG_EXTENSIONS:
+            raise ValidationError(
+                "Invalid file extension. Allowed extensions are: "
+                f"{', '.join(FilesHelper.ALLOWED_IMG_EXTENSIONS)}"
+            )
+        # Optionally:
+        # Check file size by reading first bytes (if file size is not known)
+        # Note:
+        # In production, we might configure a server-side limit
+        # on the request size.
+        contents = file.file.read(FilesHelper.MAX_IMG_FILE_SIZE + 1)
+        if len(contents) > FilesHelper.MAX_IMG_FILE_SIZE:
+            raise ValidationError(
+                "File too large. Maximum allowed size is "
+                f"{FilesHelper.MAX_IMG_FILE_SIZE} bytes"
+            )
+        # Reset file pointer after reading
+        file.file.seek(0)
+        # Generate a safe and unique filename
+        unique_filename = f"{uuid.uuid4().hex}{ext}"
         file_path = PathJoin(
-            settings.STATIC_BASE_PATH,
-            file.filename
+            Path(settings.STATIC_BASE_PATH),
+            unique_filename
         )
-        with open(file_path, 'wb') as f:
-            while contents := file.file.read(1024 * 1024):
-                f.write(contents)
-        current_user.avatar = file_path
+
+        with open(file_path, "wb") as buffer:
+            while chunk := file.file.read(1024 * 1024):
+                buffer.write(chunk)
+        # Update the current user's avatar path (or URL)
+        current_user.avatar = str(unique_filename)
         session.add(current_user)
         session.commit()
-        return ResponseModelBase(
+        return ResponseUploadedAvatar(
             success=True,
-            msg=f"Successfully uploaded {file.filename}"
+            msg=f"Successfully uploaded {file.filename}",
+            avatar=unique_filename
         )
     except Exception as ex:
         BaseController.handle_exception(
@@ -139,8 +173,8 @@ def update_avatar(
 
 
 @router.patch(
-    "/me/",
-    response_model=UserPublic,
+    "/update/me/",
+    response_model=ResponseUser,
     responses=BaseController.get_error_responses()
 )
 def update_user_me(
@@ -169,7 +203,10 @@ def update_user_me(
         session.add(current_user)
         session.commit()
         session.refresh(current_user)
-        return current_user
+        return ResponseUser(
+            success=True,
+            user=current_user
+        )
     except Exception as ex:
         BaseController.handle_exception(
             ex=ex,
