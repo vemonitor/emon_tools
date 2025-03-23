@@ -1,11 +1,12 @@
 """
 Test suite for the emon_fina.fina_services module.
 """
+import numpy as np
 from pydantic import ValidationError
 import pytest
-from emon_tools.emon_fina.fina_services import FinaMeta
+from emon_tools.emon_fina.fina_services import FinaMeta, FinaOutputData
 from emon_tools.emon_fina.fina_services import FileReaderProps
-from emon_tools.emon_fina.fina_models import FinaByTimeParamsModel
+from emon_tools.emon_fina.fina_models import FinaByTimeParamsModel, OutputType
 
 
 class TestFinaMeta:
@@ -418,5 +419,320 @@ class TestFileReaderProps:
         """
         result = FileReaderProps.calc_time_correction(
             **kwargs
+        )
+        assert result == expected_result
+
+    @pytest.mark.parametrize(
+        (
+            "time_interval, start_time, time_window, "
+            "expected_time_interval, expected_start_time, expected_time_window"
+        ),
+        [
+            # Case 1: start_time and time_window are 0
+            (0, 0, 0, 10, 1609459200, 3600),
+            # Case 2: start_time is 0, time_window is non-zero
+            (0, 0, 7200, 10, 1609459200, 7200),
+            # Case 3: start_time is non-zero, time_window is 0
+            (0, 1609462800, 0, 10, 1609462800, 3600),
+            # Case 4: start_time and time_window are non-zero
+            (0, 1609462800, 7200, 10, 1609462800, 7200),
+            # Case 5: time_interval is non-zero and valid
+            (20, 0, 0, 20, 1609459200, 3600),
+            # Case 6: time_interval is non-zero
+            # but not a multiple of base_interval
+            (25, 0, 0, 30, 1609459200, 3600),
+        ]
+    )
+    def test_initialise_search(
+        self,
+        time_interval,
+        start_time,
+        time_window,
+        expected_time_interval,
+        expected_start_time,
+        expected_time_window,
+        valid_file_reader_props_params
+    ):
+        """
+        Test the initialise_search method.
+        """
+        params = valid_file_reader_props_params.copy()
+        params["search"].time_interval = time_interval
+        params["search"].start_time = start_time
+        params["search"].time_window = time_window
+
+        props = FileReaderProps(**params)
+        props.initialise_search()
+
+        assert props.search.time_interval == expected_time_interval
+        assert props.search.start_time == expected_start_time
+        assert props.search.time_window == expected_time_window
+
+    @pytest.mark.parametrize(
+        "base_interval, interval, expected_result",
+        [
+            (10, 25, 30),  # Interval is not a multiple of base_interval
+            (10, 20, 20),  # Interval is a multiple of base_interval
+            (10, 10, 10),  # Interval equals base_interval
+            (10, 5, 10),   # Interval is less than base_interval
+            (10, 0, 10),   # Interval is zero
+            (10, 100, 100),  # Interval is much larger than base_interval
+        ]
+    )
+    def test_get_nearest_valid_interval(
+        self,
+        base_interval,
+        interval,
+        expected_result
+    ):
+        """
+        Test the get_nearest_valid_interval method.
+        """
+        result = FileReaderProps.get_nearest_valid_interval(
+            base_interval, interval)
+        assert result == expected_result
+
+    @pytest.mark.parametrize(
+        "base_interval, interval, expected_exception",
+        [
+            (0, 10, ValueError),  # Base interval is zero
+            (-10, 20, ValueError),  # Base interval is negative
+        ]
+    )
+    def test_get_nearest_valid_interval_exceptions(
+        self,
+        base_interval,
+        interval,
+        expected_exception
+    ):
+        """
+        Test that get_nearest_valid_interval
+        raises exceptions for invalid inputs.
+        """
+        with pytest.raises(expected_exception):
+            FileReaderProps.get_nearest_valid_interval(base_interval, interval)
+
+    @pytest.mark.parametrize(
+        "base_time, timestamp, interval, base_interval, expected_result",
+        [
+            # Case 1: Valid inputs with aligned timestamp
+            (1609459200, 1609462800, 3600, 3600, (0, 1)),
+            # Case 2: Valid inputs with unaligned timestamp
+            (1609459200, 1609462800, 3600, 1800, (0, 2)),
+            # Case 3: Interval is larger than base_interval
+            (1609459200, 1609462800, 7200, 3600, (1, 1)),
+            # Case 4: Timestamp is before base_time
+            (1609462800, 1609459200, 3600, 3600, (0, -1)),
+            # Case 5: Timestamp is exactly base_time
+            (1609459200, 1609459200, 3600, 3600, (0, 0)),
+            # Case 6: Interval is not a multiple of base_interval
+            (1609459200, 1609461000, 3600, 1800, (1, 1)),
+            # Case 7: Timestamp is far ahead of base_time
+            (1609459200, 1609470000, 3600, 3600, (0, 3)),
+        ]
+    )
+    def test_calculate_nb_points(
+        self,
+        base_time,
+        timestamp,
+        interval,
+        base_interval,
+        expected_result
+    ):
+        """
+        Test the calculate_nb_points method.
+        """
+        result = FileReaderProps.calculate_nb_points(
+            base_time=base_time,
+            timestamp=timestamp,
+            interval=interval,
+            base_interval=base_interval
+        )
+        assert result == expected_result
+
+    @pytest.mark.parametrize(
+        "base_time, timestamp, interval, base_interval, expected_exception",
+        [
+            # Case 1: Interval is zero
+            (1609459200, 1609462800, 0, 3600, ValueError),
+            # Case 2: Base interval is zero
+            (1609459200, 1609462800, 3600, 0, ValueError),
+        ]
+    )
+    def test_calculate_nb_points_exceptions(
+        self,
+        base_time,
+        timestamp,
+        interval,
+        base_interval,
+        expected_exception
+    ):
+        """
+        Test that calculate_nb_points raises exceptions for invalid inputs.
+        """
+        with pytest.raises(expected_exception):
+            FileReaderProps.calculate_nb_points(
+                base_time=base_time,
+                timestamp=timestamp,
+                interval=interval,
+                base_interval=base_interval
+            )
+
+    @pytest.mark.parametrize(
+        "value, base, expected_result",
+        [
+            (10, 3, 12),  # Value is not a multiple of base
+            (10, 5, 10),  # Value is already a multiple of base
+            (0, 3, 0),    # Value is zero
+            (7, 1, 7),    # Base is 1
+            (7, 7, 7),    # Value equals base
+            (7, 10, 10),  # Base is larger than value
+        ]
+    )
+    def test_round_up(self, value, base, expected_result):
+        """
+        Test the _round_up method.
+        """
+        result = FileReaderProps._round_up(value, base)
+        assert result == expected_result
+
+    @pytest.mark.parametrize(
+        "value, base, expected_result",
+        [
+            (10, 3, 9),   # Value is not a multiple of base
+            (10, 5, 10),  # Value is already a multiple of base
+            (0, 3, 3),    # Value is zero
+            (7, 1, 7),    # Base is 1
+            (7, 7, 7),    # Value equals base
+            (7, 10, 10),  # Base is larger than value
+        ]
+    )
+    def test_round_down(self, value, base, expected_result):
+        """
+        Test the _round_down method.
+        """
+        result = FileReaderProps._round_down(value, base)
+        assert result == expected_result
+
+    @pytest.mark.parametrize(
+        "value, base, expected_exception",
+        [
+            (10, 0, ValueError),  # Base is zero
+        ]
+    )
+    def test_round_up_exceptions(self, value, base, expected_exception):
+        """
+        Test that _round_up raises exceptions for invalid inputs.
+        """
+        with pytest.raises(expected_exception):
+            FileReaderProps._round_up(value, base)
+
+    @pytest.mark.parametrize(
+        "value, base, expected_exception",
+        [
+            (10, 0, ValueError),  # Base is zero
+        ]
+    )
+    def test_round_down_exceptions(self, value, base, expected_exception):
+        """
+        Test that _round_down raises exceptions for invalid inputs.
+        """
+        with pytest.raises(expected_exception):
+            FileReaderProps._round_down(value, base)
+
+
+class TestFinaOutputData:
+    """
+    Test suite for the FinaOutputData class.
+    """
+
+    @pytest.mark.parametrize(
+        "output_type, expected_columns",
+        [
+            (OutputType.VALUES, ["values"]),
+            (OutputType.VALUES_MIN_MAX, ["min", "values", "max"]),
+            (OutputType.TIME_SERIES, ["time", "values"]),
+            (OutputType.TIME_SERIES_MIN_MAX, ["time", "min", "values", "max"]),
+            (OutputType.INTEGRITY, ["time", "nb_finite", "nb_total"]),
+        ]
+    )
+    def test_get_columns(self, output_type, expected_columns):
+        """
+        Test the get_columns method of FinaOutputData class.
+        """
+        result = FinaOutputData.get_columns(output_type=output_type)
+        assert result == expected_columns
+
+    @pytest.mark.parametrize(
+        "values, day_start, with_stats, with_time, expected_result",
+        [
+            # Case 2: Multiple values, with_stats=True, with_time=True
+            (
+                np.array([1.0, 2.0, 3.0]), 1609459200.0, True, True,
+                [1609459200.0, 1.0, 2.0, 3.0]
+            ),
+            # Case 3: Multiple values, with_stats=False, with_time=True
+            (
+                np.array([1.0, 2.0, 3.0]), 1609459200.0, False, True,
+                [1609459200.0, 2.0]
+            ),
+            # Case 4: Multiple values, with_stats=True, with_time=False
+            (
+                np.array([1.0, 2.0, 3.0]), 1609459200.0, True, False,
+                [1.0, 2.0, 3.0]
+            ),
+            # Case 5: Multiple values, with_stats=False, with_time=False
+            (
+                np.array([1.0, 2.0, 3.0]), 1609459200.0, False, False,
+                [2.0]
+            ),
+            # Case 6: Empty array, with_stats=True, with_time=True
+            (
+                np.array([]), 1609459200.0, True, True,
+                [1609459200.0, np.nan, np.nan, np.nan]
+            ),
+            # Case 7: Empty array, with_stats=False, with_time=True
+            (
+                np.array([]), 1609459200.0, False, True,
+                [1609459200.0, np.nan]
+            ),
+            # Case 8: Empty array, with_stats=True, with_time=False
+            (
+                np.array([]), 1609459200.0, True, False,
+                [np.nan, np.nan, np.nan]
+            ),
+            # Case 9: Empty array, with_stats=False, with_time=False
+            (
+                np.array([]), 1609459200.0, False, False,
+                [np.nan]
+            ),
+            # Case 10: Array with NaN values, with_stats=True, with_time=True
+            (
+                np.array([np.nan, np.nan]), 1609459200.0, True, True,
+                [1609459200.0, np.nan, np.nan, np.nan]
+            ),
+            # Case 11: Array with NaN values, with_stats=False, with_time=True
+            (
+                np.array([np.nan, np.nan]), 1609459200.0, False, True,
+                [1609459200.0, np.nan]
+            ),
+        ]
+    )
+    def test_get_values_stats(
+        self,
+        values,
+        day_start,
+        with_stats,
+        with_time,
+        expected_result
+    ):
+        """
+        Test the get_values_stats method of FinaOutputData class.
+        """
+        result = FinaOutputData.get_values_stats(
+            values=values,
+            day_start=day_start,
+            with_stats=with_stats,
+            with_time=with_time
         )
         assert result == expected_result
