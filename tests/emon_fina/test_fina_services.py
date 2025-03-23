@@ -11,7 +11,8 @@ class TestFinaMeta:
     Test suite for the FinaMeta class.
 
     This test suite includes the following tests:
-    - test_calculate_nb_days: Tests the calculate_nb_days method of FinaMeta class.
+    - test_calculate_nb_days:
+        Tests the calculate_nb_days method of FinaMeta class.
     - test_serialize: Tests the serialize method of FinaMeta class.
     - test_str: Tests the __str__ method of FinaMeta class.
     - test_validation_error: Tests that FinaMeta raises ValidationError for
@@ -100,8 +101,14 @@ class TestFinaMeta:
         ]
     )
     def test_validation_error(
-        self, interval, start_time, npoints, end_time,
-        expected_exception, valid_fina_meta_params):
+        self,
+        interval,
+        start_time,
+        npoints,
+        end_time,
+        expected_exception,
+        valid_fina_meta_params
+    ):
         """
         Test that FinaMeta raises ValidationError for invalid inputs.
         """
@@ -135,6 +142,9 @@ class TestFileReaderProps:
 
     @pytest.fixture
     def valid_file_reader_props_params(self):
+        """
+        Get valid FileReaderProps init
+        """
         return {
             "meta": FinaMeta(
                 interval=10,
