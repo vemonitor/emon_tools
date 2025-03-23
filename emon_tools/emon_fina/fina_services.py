@@ -329,10 +329,14 @@ class FileReaderProps(FileReaderPropsModel):
 
     @staticmethod
     def _round_up(value: int, base: int) -> int:
+        if base == 0:
+            raise ValueError("Base for rounding up cannot be zero.")
         return math.ceil(value / base) * base
 
     @staticmethod
     def _round_down(value: int, base: int) -> int:
+        if base == 0:
+            raise ValueError("Base for rounding down cannot be zero.")
         return max(base, math.floor(value / base) * base)
 
     def get_chunk_size(
@@ -526,7 +530,10 @@ class FileReaderProps(FileReaderPropsModel):
                 "Unable to calculate nearest aligned timestamp. "
                 "Interval must be non-zero"
             )
-        n = round((timestamp - base_time) / interval)
+        # Compute how many intervals away timestamp
+        # is (allowing for negative differences)
+        delta = timestamp - base_time
+        n = int(round(delta / interval))
         return base_time + n * interval
 
     @staticmethod
@@ -559,12 +566,9 @@ class FileReaderProps(FileReaderPropsModel):
         if base_interval <= 0:
             raise ValueError("Base interval must be greater than zero.")
         if interval < base_interval:
-            raise ValueError(
-                "Interval must be greater than or equal to base_interval. "
-                f"base_interval: {base_interval} - interval: {interval}"
-            )
+            return base_interval
 
-        n = round(interval / base_interval)
+        n = math.ceil(interval / base_interval)
         # Ensure that the result is not lower than base_interval.
         valid_interval = max(n * base_interval, base_interval)
         return valid_interval
@@ -575,24 +579,48 @@ class FileReaderProps(FileReaderPropsModel):
         timestamp: int,
         interval: int,
         base_interval: int
-    ) -> Tuple[int]:
+    ) -> Tuple[int, int]:
         """
         Calculate the number of base points offset from base_time.
+
+        Returns:
+            A tuple where:
+            - The first element is the number of complete base_interval
+                segments from the nearest aligned timestamp to the base_time.
+            - The second element is the total number of base_interval segments
+                representing the overall difference.
+        Raises:
+            ValueError: If interval or base_interval is zero.
         """
         if interval == 0:
             raise ValueError(
                 "Unable to calculate nb points from start. "
-                "Interval must be non-zero"
+                "Interval must be non-zero."
             )
+        if base_interval == 0:
+            raise ValueError(
+                "Unable to calculate nb points from start. "
+                "Base interval must be non-zero."
+            )
+
+        # Align the timestamp using base_interval.
         nearest_time = FileReaderProps.get_nearest_aligned_timestamp(
             base_time=base_time,
             timestamp=timestamp,
-            interval=base_interval)
+            interval=base_interval
+        )
         diff = nearest_time - base_time
-        n = round(diff / interval)
-        remainder = diff - (n * interval)
+
+        # Calculate how many full 'interval' segments fit in diff.
+        complete_intervals = diff // interval
+        # The remaining time after subtracting complete intervals.
+        remainder = diff - (complete_intervals * interval)
+        # How many base_interval segments fit in the remainder.
         nb_points = remainder // base_interval
-        return nb_points, round(diff / base_interval)
+        # Total base_interval segments between base_time and nearest_time.
+        total_base_points = diff // base_interval
+
+        return nb_points, total_base_points
 
     @staticmethod
     def calc_start_search(
@@ -619,11 +647,18 @@ class FileReaderProps(FileReaderPropsModel):
         Returns:
             int: The computed search start position in file points.
         """
-        block_size = math.ceil(time_interval / meta_interval)
+        block_size = math.floor(time_interval / meta_interval)
         # If a valid starting position already exists, use it.
         if start_pos > 0:
             if output_average == OutputAverageEnum.COMPLETE:
-                return (start_pos * -1) % block_size
+                # Align to the next complete block boundary.
+                # For example, if start_pos is already
+                # a multiple of block_size, this returns start_pos;
+                # otherwise, it returns the next multiple.
+                remainder = start_pos % block_size
+                if remainder == 0:
+                    return start_pos
+                return start_pos + (block_size - remainder)
             if output_average in (
                 OutputAverageEnum.PARTIAL, OutputAverageEnum.AS_IS
             ):
@@ -643,8 +678,7 @@ class FileReaderProps(FileReaderPropsModel):
                 interval=time_interval,
                 base_interval=meta_interval
             )
-            # if output_average == OutputAverageEnum.COMPLETE:
-            #    start_search = start_search % block_size
+            # For AS_IS mode, use the directly computed base point.
             if output_average == OutputAverageEnum.AS_IS:
                 start_search = points_ref
         elif time_ref_start == TimeRefEnum.BY_SEARCH:
@@ -654,8 +688,6 @@ class FileReaderProps(FileReaderPropsModel):
                 interval=time_interval,
                 base_interval=meta_interval
             )
-            # if output_average == OutputAverageEnum.COMPLETE:
-            #    start_search = start_search % block_size
             if output_average == OutputAverageEnum.AS_IS:
                 start_search = points_ref
         else:
@@ -675,10 +707,13 @@ class FileReaderProps(FileReaderPropsModel):
     ) -> int:
         """
         Adjust start_pos if the search start is earlier than expected.
-        (The original condition was rarely met; adjust as needed.)
+        When start_search is negative and output_average is COMPLETE,
+        align start_pos using modulo arithmetic.
         """
         if start_search < 0\
                 and output_average == OutputAverageEnum.COMPLETE:
+            # Python's modulo returns a non-negative result
+            # even for negative numbers.
             start_pos = max(
                 0,
                 start_search % block_size
@@ -693,14 +728,15 @@ class FileReaderProps(FileReaderPropsModel):
         meta: FinaMetaModel,
     ) -> int:
         """
-        Convert the user-defined time window into a number of file points.
+        onvert the user-defined time window into a number of file points.
+        Assumes meta.interval divides the window evenly.
         """
         if time_window == 0:
-            window_search = meta.npoints - start_pos
-        else:
-            window_search = (start_search // meta.interval) + (time_window //
-                                                               meta.interval)
-        return window_search
+            # Use all points remaining in the file.
+            return meta.npoints - start_pos
+        # Convert the time window (in seconds) to file points
+        # and add to the start_search.
+        return start_search + (time_window // meta.interval)
 
     @staticmethod
     def calc_window_max(
@@ -709,26 +745,26 @@ class FileReaderProps(FileReaderPropsModel):
     ) -> int:
         """
         Calculate the maximum file points available for the current search.
+        The logic handles cases where the search.start_time
+        may be before meta.start_time or after meta.end_time.
         """
-        diff_min = search.start_time - meta.start_time
-        diff_max = search.start_time - meta.end_time
+        diff_start = search.start_time - meta.start_time
+        diff_end = meta.end_time - search.start_time
         # nb_points
-        is_after = diff_max >= 0 and diff_max < search.time_window
-        if is_after:
-            window_max = diff_max
-        elif diff_min < 0:
+        if diff_start < 0:
+            # If search starts before meta.start_time, adjust available window.
             window_max = max(
                 0,
-                (search.time_window + diff_min) // meta.interval
+                (search.time_window + diff_start) // meta.interval
             )
         else:
-            window_max = max(
-                0,
-                min(
-                    abs(diff_max) // meta.interval,
-                    search.time_window // meta.interval
-                )
+            # If search.start_time is within the meta range,
+            # use the smaller window.
+            window_max = min(
+                diff_end // meta.interval,
+                search.time_window // meta.interval
             )
+
         return window_max
 
     @staticmethod
@@ -793,5 +829,7 @@ class FileReaderProps(FileReaderPropsModel):
             current_start = meta.start_time + (start_pos * meta.interval)
         else:
             current_start = meta.start_time + (start_search * meta.interval)
+        # Ensure current_start is at least meta.start_time.
+        # current_start = max(meta.start_time, current_start)
         next_start = current_start + search.time_interval
         return current_start, next_start
