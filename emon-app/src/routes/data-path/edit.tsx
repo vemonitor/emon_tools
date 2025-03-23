@@ -1,10 +1,11 @@
-import { AddActionType, DataPathEdit, EditCrudComponentProps } from "@/lib/types";
+import { PromiseFormActionType, DataPathEdit, EditCrudComponentProps } from "@/lib/types";
 import { DataPathForm, DataPathFormType } from "./form";
 import { useAuth } from "@/hooks/use-auth";
 import { useParams } from "react-router";
 import { useQuery } from "@tanstack/react-query";
 import { Loader } from "@/components/layout/loader";
 import { validateIds } from "@/lib/utils";
+import { requestCatchError, requestErrorResponse } from "@/helpers/formActions";
 
 const EditDataPathAction = async (
   path_id: number,
@@ -13,13 +14,14 @@ const EditDataPathAction = async (
     input: RequestInfo,
     init?: RequestInit
   ) => Promise<Response>
-): AddActionType => {
+): PromiseFormActionType => {
 
   const data = {
     ...values,
     id: path_id
   }
-
+  const requestTitle = "Edit Data Path";
+  const redirect = `/data-path`;
   try {
     const response = await fetchWithAuth(
       `/api/v1/data_path/edit/${path_id}/`,
@@ -31,24 +33,14 @@ const EditDataPathAction = async (
         body: JSON.stringify(data)
       }
     ).then((response) => response.json())
-    if (!response.success) {
-      return {
-        success: false,
-        msg: response.msg,
-        errors: response.errors,
-        from_error: response.from_error,
-      }
-    }
+    return requestErrorResponse(
+      response,
+      requestTitle,
+      redirect
+    )
   } catch (error: unknown) {
-    console.log('Error fetching data:', error);
-    return {
-      success: false,
-      msg: 'Unable to save data, please control all fields',
-      error: error instanceof Error ? error.message : 'Unknown error'
-    }
+    return requestCatchError(error, requestTitle)
   }
-
-  return { success: true, redirect: `/data-path` };
 };
 
 function EditDataPath({

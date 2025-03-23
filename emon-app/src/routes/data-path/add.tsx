@@ -1,17 +1,23 @@
-import { AddActionType } from "@/lib/types";
+import {
+  DataPathEdit,
+  EditCrudComponentProps,
+  PromiseFormActionType
+} from "@/lib/types";
 import { DataPathForm, DataPathFormType } from "./form";
 import { useAuth } from "@/hooks/use-auth";
+import { requestCatchError, requestErrorResponse } from "@/helpers/formActions";
 
 const AddDataPathAction = async(
   values: DataPathFormType,
-  fetchWithAuth: (input: RequestInfo, init?: RequestInit) => Promise<Response>
-): AddActionType => {
+  fetchWithAuth: (input: RequestInfo, init?: RequestInit) => Promise<Response>,
+): PromiseFormActionType => {
   
   const data = {
       ...values,
       id: undefined
   }
-
+  const requestTitle = "Add Data Path";
+  const redirect = `/data-path`;
   try {
     const response = await fetchWithAuth(
       `/api/v1/data_path/add/`,
@@ -23,32 +29,32 @@ const AddDataPathAction = async(
         body: JSON.stringify(data)
       }
     ).then((response) => response.json())
-    if (!response.success) {
-      return {
-        success: false,
-        msg: response.msg,
-        errors: response.errors,
-        from_error: response.from_error,
-      }
-    }
+    return requestErrorResponse(
+      response,
+      requestTitle,
+      redirect
+    )
   } catch (error: unknown) {
-    console.log('Error fetching data:', error);
-    return {
-      success: false,
-      msg: 'Unable to save data, please control all fields',
-      error: error instanceof Error ? error.message : 'Unknown error'
-    }
+    return requestCatchError(error, requestTitle)
   }
-
-  return {success: true, redirect: `/data-path`};
 };
 
-function AddDataPath() {
+function AddDataPath({
+  is_dialog,
+  successCallBack,
+}: EditCrudComponentProps<DataPathEdit>) {
   const { fetchWithAuth } = useAuth();
   return (
     <div>
       <DataPathForm
-        handleSubmit={(values: DataPathFormType) => AddDataPathAction(values, fetchWithAuth)}
+        handleSubmit={
+          (values: DataPathFormType) => AddDataPathAction(
+            values,
+            fetchWithAuth
+          )
+        }
+        is_dialog={is_dialog}
+        successCallBack={successCallBack}
       />
     </div>
   )

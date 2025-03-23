@@ -17,7 +17,7 @@ import {
 } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { z } from 'zod';
-import { AddActionType, DataPathEdit } from "@/lib/types";
+import { PromiseFormActionType, DataPathEdit } from "@/lib/types";
 import { ComponentPropsWithoutRef } from "react";
 import { CrudForm } from "@/components/form/crud-form";
 
@@ -53,7 +53,7 @@ const initFormDefaults = (data?: DataPathEdit) => {
 }
 
 export type DataPathFormProps = ComponentPropsWithoutRef<"div"> & {
-  handleSubmit: (values: DataPathFormType) => AddActionType;
+  handleSubmit: (values: DataPathFormType) => PromiseFormActionType;
   data?: DataPathEdit;
   is_dialog?: boolean;
   successCallBack?: () => void;
