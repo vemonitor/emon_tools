@@ -20,6 +20,11 @@ export function Profile() {
             <div
                 className="flex items-start justify-start py-4"
             >
+                {user?.full_name}
+            </div>
+            <div
+                className="flex items-start justify-start py-4"
+            >
                 {user?.email}
             </div>
         </div>
