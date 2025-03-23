@@ -79,6 +79,8 @@ class FinaReader:
         Ensure that the file size is within the allowed limit.
         """
         file_size = getsize(filepath)
+        if file_size == 0:
+            raise ValueError(f"Data file is empty: {filepath}")
         if file_size > expected_size:
             raise ValueError(
                 "File size exceeds the limit: "
