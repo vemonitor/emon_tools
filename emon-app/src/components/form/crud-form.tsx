@@ -10,13 +10,14 @@ import {
 import {
     Form,
 } from '@/components/ui/form';
-import { AddActionType } from "@/lib/types";
+import { PromiseFormActionType } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { FieldValues, UseFormReturn } from "react-hook-form";
 import { AlertError, AlertErrorProps } from "../layout/alert-error";
+import { useToast } from "@/hooks/use-toast";
 
 export type CrudFormProps<T1 extends FieldValues, T2> = PropsWithChildren & {
-    handleSubmit: (values: T1) => AddActionType;
+    handleSubmit: (values: T1) => PromiseFormActionType;
     data?: T2;
     queryKeysList: string[];
     queryKeysEdit: string[];
@@ -46,10 +47,11 @@ export function CrudForm<T1 extends FieldValues, T2>({
     const navigate = useNavigate();
     const queryClient = useQueryClient()
     const [ alert, setAlert ] = useState<AlertErrorProps | null>(null)
+    const {toast} = useToast()
     const onSubmitForm = async (values: T1) => {
         const response = await handleSubmit(values);
 
-        if (response && response.redirect) {
+        if (response && response.success && response.redirect) {
             form.reset();
             queryClient.invalidateQueries({ queryKey: queryKeysList })
             if (data) {
@@ -60,27 +62,35 @@ export function CrudForm<T1 extends FieldValues, T2>({
             }
             else { navigate(response.redirect); }
         }
-        else if (response && response.errors && response.errors.length > 0) {
-            response.errors.map(obj => {
+        else if (response && response.field_errors && response.field_errors.length > 0) {
+            response.field_errors.map(obj => {
                 form.setError(
                     obj.field_name as FormFieldsProps,
                     { type: 'manual', message: obj.error }
                 )
             })
+            console.log('Fields Errors: ', response.field_errors);
         }
-        else if (response && response.error) {
-            setAlert({
-                title: 'Form Error',
-                message: response.error
+        else if (response && response.alert_msgs && response.alert_msgs.length > 0) {
+            response.alert_msgs.map(obj => {
+                setAlert({
+                    title: obj.title,
+                    message: obj.error
+                })
             })
-            console.log(response.error);
+            console.log('Alert messages: ', response.alert_msgs);
         }
-        else {
-            setAlert({
-                title: 'Form Error',
-                message: 'An unknown error occurred.'
+        else if (response && response.toast_msgs && response.toast_msgs.length > 0) {
+            response.toast_msgs.map(obj => {
+                toast({
+                    title: obj.title,
+                    description: obj.error
+                })
             })
             console.log("Fatal error");
+        }
+        else{
+            console.error("Fatal error: Unknown Form error...");
         }
         return;
     }
