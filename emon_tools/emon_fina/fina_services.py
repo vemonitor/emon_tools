@@ -430,6 +430,8 @@ class FileReaderProps(FileReaderPropsModel):
                 timestamp=self.search.start_time,
                 interval=self.meta.interval
             )
+        if self.search.time_window == 0:
+            self.search.time_window = self.meta.end_time - self.meta.start_time
 
     def initialise_reader(self):
         """
