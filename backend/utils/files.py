@@ -6,7 +6,7 @@ such as checking if a path is a directory and scanning a directory for
 files.
 """
 from os import scandir
-from os.path import isdir, isfile, getsize
+from os.path import isdir, isfile, getsize, splitext
 
 
 class FilesHelper:
@@ -16,6 +16,17 @@ class FilesHelper:
     This class provides static methods to determine if a given path is a
     directory and to scan a directory for files.
     """
+    ALLOWED_IMG_MIME_TYPES = {"image/jpeg", "image/png", "image/gif"}
+    ALLOWED_IMG_EXTENSIONS = {".jpg", ".jpeg", ".png", ".gif"}
+    MAX_IMG_FILE_SIZE = 2 * 1024 * 1024  # e.g., 2MB size limit
+
+    @staticmethod
+    def get_file_extension(filename: str) -> str:
+        """
+        Get the file extension from the provided filename.
+        """
+        return splitext(filename)[1].lower()
+
     @staticmethod
     def is_readable_path(file_path):
         """
