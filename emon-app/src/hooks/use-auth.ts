@@ -2,11 +2,12 @@ import { User } from "@/lib/types";
 import { createContext, useContext } from "react";
 
 export interface AuthContextType {
-  user: User | null;
+  user?: User;
   isAuthenticated: boolean;
   login: (username: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
   fetchWithAuth: (input: RequestInfo, init?: RequestInit) => Promise<Response>;
+  refreshUser: () => Promise<void>;
 }
 
 export const AuthContext = createContext<AuthContextType | undefined>(undefined);
