@@ -99,7 +99,8 @@ class FinaData:
                 (-1, 1))
             nb_filled += to_copy
         self.start = (
-            self.reader.props.start_search * self.reader.props.search.time_interval
+            self.reader.props.start_search
+            * self.reader.props.search.time_interval
         ) + self.meta.start_time
         self.step = self.reader.props.search.time_interval
         self.lines = result.size
