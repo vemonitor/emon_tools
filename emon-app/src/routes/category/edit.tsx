@@ -1,4 +1,4 @@
-import { AddActionType, CategoryEdit, EditCrudComponentProps } from "@/lib/types";
+import { PromiseFormActionType, CategoryEdit, EditCrudComponentProps } from "@/lib/types";
 import { CategoryForm, CategoryFormType } from "./form";
 import { useAuth } from "@/hooks/use-auth";
 import { useParams } from "react-router";
@@ -6,6 +6,7 @@ import { useQuery } from "@tanstack/react-query";
 
 import { validateIds } from "@/lib/utils";
 import { Loader } from "@/components/layout/loader";
+import { requestCatchError, requestErrorResponse } from "@/helpers/formActions";
 
 const EditCategoryAction = async (
   category_id: number,
@@ -14,13 +15,14 @@ const EditCategoryAction = async (
     input: RequestInfo,
     init?: RequestInit
   ) => Promise<Response>
-): AddActionType => {
+): PromiseFormActionType => {
 
   const data = {
     ...values,
     id: category_id
   }
-
+  const requestTitle = "Edit Category";
+  const redirect = `/category`;
   try {
     const response = await fetchWithAuth(
       `/api/v1/category/edit/${category_id}/`,
@@ -32,24 +34,14 @@ const EditCategoryAction = async (
         body: JSON.stringify(data)
       }
     ).then((response) => response.json())
-    if (!response.success) {
-      return {
-        success: false,
-        msg: response.msg,
-        errors: response.errors,
-        from_error: response.from_error,
-      }
-    }
+    return requestErrorResponse(
+      response,
+      requestTitle,
+      redirect
+    )
   } catch (error: unknown) {
-    console.log('Error fetching data:', error);
-    return {
-      success: false,
-      msg: 'Unable to save data, please control all fields',
-      error: error instanceof Error ? error.message : 'Unknown error'
-    }
+    return requestCatchError(error, requestTitle)
   }
-
-  return { success: true, redirect: `/category` };
 };
 
 function EditCategory({

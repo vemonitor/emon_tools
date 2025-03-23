@@ -18,7 +18,7 @@ import {
 } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { z } from 'zod';
-import { AddActionType, CategoryEdit } from "@/lib/types";
+import { PromiseFormActionType, CategoryEdit } from "@/lib/types";
 import { ComponentPropsWithoutRef } from "react";
 import { CrudForm } from "@/components/form/crud-form";
 import { KeyString, NameString } from "@/lib/comon-schemas";
@@ -39,7 +39,7 @@ const initFormDefaults = (data?: CategoryEdit) => {
 
 //export type CategoryFormProps = ComponentPropsWithoutRef<"div"> & CrudFormProps<CategoryFormType, CategoryEdit>;
 export type CategoryFormProps = ComponentPropsWithoutRef<"div"> & {
-  handleSubmit: (values: CategoryFormType) => AddActionType;
+  handleSubmit: (values: CategoryFormType) => PromiseFormActionType;
   data?: CategoryEdit;
   is_dialog?: boolean;
   successCallBack?: () => void;
