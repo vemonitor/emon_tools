@@ -23,7 +23,7 @@ class FinaData:
     """
     A class to handle data retrieval and processing from a Fina data file.
     """
-    def __init__(self, file_name: int, data_dir: str):
+    def __init__(self, file_name: str, data_dir: str):
         """
         Initialize the FinaData object with a FinaReader instance.
 
@@ -368,7 +368,8 @@ class FinaData:
                 output_average=self.reader.props.search.output_average,
                 rest_array=rest_array
             )
-            if current_steps.shape[0] > 0:
+            if current_steps is not None\
+                    and current_steps.shape[0] > 0:
                 for i in range(current_steps.shape[0]):
                     if steps >= nb_result:
                         break
@@ -394,7 +395,8 @@ class FinaData:
             )
             self.reader.props.iter_update_after()
 
-        if rest_array.shape[0] > 0:
+        if rest_array is not None\
+                and rest_array.shape[0] > 0:
             current_steps, rest_array = self.rechape_by_rows(
                 values=rest_array,
                 block_size=self.reader.props.block_size,
