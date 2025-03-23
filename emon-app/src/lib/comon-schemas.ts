@@ -39,10 +39,24 @@ export const NameString = z.string()
     message: 'Please enter a valid attribute (Only Alphabetical characters with accents and spaces are accepted)',
   })
 
+export const FileNameString = z.string()
+  .min(1)
+  .max(50)
+  .regex(/^[A-Za-z0-9_.-]+$/, {
+    message: 'Please enter a valid attribute (Only Alphabetical characters with accents and spaces are accepted)',
+  })
+
 export const TextString = z.string()
   .min(1)
   .max(50)
   .regex(/^[A-Za-z0-9À-ÖØ-öø-ÿ_ -]+$/, {
+    message: 'Please enter a valid attribute (Only Alphabetical characters with accents and spaces are accepted)',
+  })
+
+export const UrlString = z.string()
+  .min(1)
+  .max(50)
+  .regex(/^(https?:\/\/)?([\w-]+\.)?\w{0,6}(\/[\w .-]*)*\/?(\?\w+=\w+)?$/, {
     message: 'Please enter a valid attribute (Only Alphabetical characters with accents and spaces are accepted)',
   })
 
