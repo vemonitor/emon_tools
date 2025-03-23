@@ -1,1 +1,1 @@
-"""emon-tools tests"""
+"""emon-tools.emon_api tests"""

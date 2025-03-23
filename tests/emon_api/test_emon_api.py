@@ -2,12 +2,12 @@
 from unittest.mock import patch, MagicMock
 import pytest
 import requests
-from emon_tools.api_utils import MESSAGE_KEY, SUCCESS_KEY
-from emon_tools.emon_api_core import RequestType
-from emon_tools.emon_api_core import InputGetType
-from emon_tools.emon_api import EmonRequest
-from emon_tools.emon_api import EmonInputsApi
-from emon_tools.emon_api import EmonFeedsApi
+from emon_tools.emon_api.api_utils import MESSAGE_KEY, SUCCESS_KEY
+from emon_tools.emon_api.emon_api_core import RequestType
+from emon_tools.emon_api.emon_api_core import InputGetType
+from emon_tools.emon_api.emon_api import EmonRequest
+from emon_tools.emon_api.emon_api import EmonInputsApi
+from emon_tools.emon_api.emon_api import EmonFeedsApi
 
 VALID_URL = "http://example.com"
 API_KEY = "testAPIKey123"
@@ -37,7 +37,7 @@ class TestEmonRequest:
         emon_request
     ):
         """Test that the URL is correctly formed."""
-        with patch("emon_tools.emon_api.requests.get") as mock_get:
+        with patch("emon_tools.emon_api.emon_api.requests.get") as mock_get:
             mock_response = MagicMock()
             mock_response.status_code = 200
             mock_response.json.return_value = MOCK_RESPONSE_SUCCESS
@@ -80,7 +80,7 @@ class TestEmonRequest:
             MOCK_RESPONSE_SUCCESS if status_code == 200 else MOCK_RESPONSE_FAIL
         )
         with patch(
-                "emon_tools.emon_api_core.EmonRequestCore.compute_response",
+                "emon_tools.emon_api.emon_api_core.EmonRequestCore.compute_response",
                 return_value={
                     SUCCESS_KEY: expected_success,
                     MESSAGE_KEY: expected_message}

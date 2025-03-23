@@ -1,8 +1,8 @@
 """Test Suite for EmonPy class."""
 from unittest.mock import MagicMock
 import pytest
-from emon_tools.api_utils import SUCCESS_KEY
-from emon_tools.emonpy import EmonPy
+from emon_tools.emon_api.api_utils import SUCCESS_KEY
+from emon_tools.emonpy.emonpy import EmonPy
 from tests.emonpy.emonpy_test_data import EmonpyDataTest as dtest
 
 

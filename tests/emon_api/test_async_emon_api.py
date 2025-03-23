@@ -3,11 +3,11 @@ from unittest.mock import AsyncMock, patch
 from aiohttp import web, ClientSession
 from aiohttp.client_exceptions import ClientError
 import pytest
-from emon_tools.emon_api_core import InputGetType
-from emon_tools.emon_api_core import RequestType
-from emon_tools.async_emon_api import AsyncEmonRequest
-from emon_tools.async_emon_api import AsyncEmonInputs
-from emon_tools.async_emon_api import AsyncEmonFeeds
+from emon_tools.emon_api.emon_api_core import InputGetType
+from emon_tools.emon_api.emon_api_core import RequestType
+from emon_tools.emon_api.async_emon_api import AsyncEmonRequest
+from emon_tools.emon_api.async_emon_api import AsyncEmonInputs
+from emon_tools.emon_api.async_emon_api import AsyncEmonFeeds
 from tests.emon_api.emon_api_data_test import EmonApiDataTest as dtest
 
 API_KEY = "12345"
@@ -72,11 +72,11 @@ class TestAsyncEmonRequest:
         return web.json_response({"success": True, "message": "Mock response"})
 
     @pytest.fixture
-    def aiohttp_server_mock(self, loop, aiohttp_server):
+    def aiohttp_server_mock(self, event_loop, aiohttp_server):
         """Fixture to mock an aiohttp server."""
         app = web.Application()
         app.router.add_get("/valid-path", self.mock_handler)
-        return loop.run_until_complete(aiohttp_server(app))
+        return event_loop.run_until_complete(aiohttp_server(app))
 
     @pytest.mark.asyncio
     async def test_async_request_success(

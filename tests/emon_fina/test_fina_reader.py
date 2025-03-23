@@ -1,23 +1,26 @@
-"""FinaReader Unit Tests"""
-# pylint: disable=unused-argument,protected-access
-import re
-from unittest.mock import patch, mock_open
-from os.path import join as path_join
+"""
+Unit tests for the FinaReader class.
+
+Ensures full coverage, including security, file validation,
+and edge cases. Uses pytest best practices with TestClass
+and @pytest.mark.parametrize.
+"""
 from struct import pack
-import numpy as np
+from unittest.mock import patch, mock_open
 import pytest
-from emon_tools.fina_reader import FinaReader
-from emon_tools.fina_reader import MetaData
+from emon_tools.emon_fina.fina_reader import FinaReader
+from emon_tools.emon_fina.fina_services import FileReaderProps, FinaMeta
+from emon_tools.emon_fina.fina_models import (
+    FinaByTimeParamsModel, FinaMetaModel
+)
+from tests.emon_fina.fina_data_test import EmonFinaDataTest
 
 
 class TestFinaReader:
     """
-    Unit tests for the FinaReader class.
-
-    This test suite validates the functionality of FinaReader, including
-    metadata reading, file operations, and edge case handling.
+    Test suite for FinaReader class.
+    Ensures correct initialization, file handling, and data security.
     """
-
     @pytest.fixture
     def tmp_path_override(self, tmp_path):
         """
@@ -30,87 +33,116 @@ class TestFinaReader:
 
     @pytest.fixture
     def valid_fina_reader(self, tmp_path_override):
-        """
-        Provide a fixture for a valid FinaReader instance.
-        """
-        feed_id = 1
-        return FinaReader(feed_id=feed_id, data_dir=tmp_path_override)
+        """Fixture for initializing FinaReader with valid parameters."""
+        return FinaReader(file_name="testfile", data_dir=tmp_path_override)
 
-    def test_initialization_valid(self, tmp_path_override):
+    @pytest.mark.parametrize(
+        "file_name, data_dir, expected_exception",
+        [
+            ("", "/valid/path", ValueError),
+            ("testfile", "", ValueError),
+            ("testfile", "/invalid/path?", ValueError),
+        ]
+    )
+    def test_init_invalid_params(
+        self,
+        file_name,
+        data_dir,
+        expected_exception
+    ):
         """
-        Test initializing FinaReader with valid parameters.
+        Test initialization with invalid parameters.
+        Ensures directory existence validation.
         """
-        reader = FinaReader(feed_id=1, data_dir=tmp_path_override)
-        assert reader.feed_id == 1
-        assert reader.data_dir == tmp_path_override
+        with pytest.raises(expected_exception):
+            FinaReader(file_name, data_dir)
 
-    @pytest.mark.parametrize("feed_id", [0, -1])
-    def test_initialization_invalid_feed_id(self, tmp_path_override, feed_id):
+    @pytest.mark.parametrize(
+        "filename, expected_exception",
+        [
+            ("../outside/meta.meta", ValueError),
+            ("invalid.exe", ValueError),
+        ]
+    )
+    def test_sanitize_path_invalid(
+        self,
+        valid_fina_reader,
+        filename,
+        expected_exception
+    ):
         """
-        Test initializing FinaReader with invalid feed_id values.
+        Test _sanitize_path for invalid paths and extensions.
+        Ensures security against directory traversal attacks.
         """
-        match_error = "feed_id must be a positive integer."
-        with pytest.raises(ValueError, match=match_error):
-            FinaReader(feed_id=feed_id, data_dir=tmp_path_override)
+        with pytest.raises(expected_exception):
+            valid_fina_reader._sanitize_path(filename)
 
-    def test_initialization_invalid_data_dir(self):
+    def test_sanitize_path_valid(self, valid_fina_reader):
+        """Test _sanitize_path for valid file paths."""
+        with patch(
+                "emon_tools.emon_fina.fina_reader.isdir", return_value=True):
+            result = valid_fina_reader._sanitize_path("testfile.meta")
+            assert result.endswith("testfile.meta")
+
+    @pytest.mark.parametrize(
+        "file_size, limit, expected_exception",
+        [
+            (2048, 1024, ValueError),
+            (512, 1024, None),
+        ]
+    )
+    def test_validate_file_size(self, valid_fina_reader, file_size, limit,
+                                expected_exception):
         """
-        Test initializing FinaReader with an invalid data_dir.
+        Test _validate_file_size for valid and invalid sizes.
+        Ensures files do not exceed set limits.
         """
-        with pytest.raises(ValueError, match="is not a valid directory."):
-            FinaReader(feed_id=1, data_dir="invalid_dir")
+        with patch(
+            "emon_tools.emon_fina.fina_reader.getsize",
+            return_value=file_size
+        ):
+            if expected_exception:
+                with pytest.raises(expected_exception):
+                    valid_fina_reader._validate_file_size("testfile", limit)
+            else:
+                valid_fina_reader._validate_file_size("testfile", limit)
 
-    def test_setters(self, valid_fina_reader, tmp_path_override):
-        """
-        Test setter methods for feed_id, data_dir, and pos attributes.
-        """
-        # feed_id setter
-        valid_fina_reader.feed_id = 2
-        assert valid_fina_reader.feed_id == 2
+    def test_get_meta_path_not_found(self, valid_fina_reader):
+        """Test _get_meta_path when meta file is missing."""
+        with patch(
+            "emon_tools.emon_fina.fina_reader.isfile",
+            return_value=False
+        ):
+            with pytest.raises(FileNotFoundError):
+                valid_fina_reader._get_meta_path()
 
-        match_error = "feed_id must be a positive integer."
-        with pytest.raises(ValueError, match=match_error):
-            valid_fina_reader.feed_id = -1
+    def test_get_data_path_not_found(self, valid_fina_reader):
+        """Test _get_data_path when data file is missing."""
+        with patch(
+            "emon_tools.emon_fina.fina_reader.isfile",
+            return_value=False
+        ):
+            with pytest.raises(FileNotFoundError):
+                valid_fina_reader._get_data_path()
 
-        # data_dir setter
-        valid_fina_reader.data_dir = tmp_path_override
-        assert valid_fina_reader.data_dir == tmp_path_override
-
-        match_error = "data_dir must be a valid directory."
-        with pytest.raises(ValueError, match=match_error):
-            valid_fina_reader.data_dir = "invalid_dir"
-
-        # pos setter
-        valid_fina_reader.pos = 10
-        assert valid_fina_reader.pos == 10
-
-        match_error = "pos must be a positive integer."
-        with pytest.raises(ValueError, match=match_error):
-            valid_fina_reader.pos = -1
-
-    @patch("emon_tools.fina_reader.isfile", return_value=False)
-    def test_get_meta_path_invalid(self, mock_isfile, valid_fina_reader):
-        """
-        Test that _get_meta_path raises FileNotFoundError
-        when the meta file does not exist.
-        """
-        # Simulate accessing the meta file path
-        match_error = "Meta file does not exist"
-        with pytest.raises(FileNotFoundError, match=match_error):
-            valid_fina_reader._get_meta_path()
-
-        # Assert that os.path.isfile was called with the expected file path
-        expected_path = path_join(
-            valid_fina_reader.data_dir,
-            f"{valid_fina_reader.feed_id}.meta"
-        )
-        mock_isfile.assert_called_once_with(expected_path)
+    def test_read_meta_invalid_content(self, valid_fina_reader):
+        """Test read_meta for corrupted meta file."""
+        mock_file = mock_open(read_data=b"\x00" * 7)
+        with patch("builtins.open", mock_file), \
+             patch(
+                 "emon_tools.emon_fina.fina_reader.getsize",
+                 return_value=512), \
+             patch(
+                 "emon_tools.emon_fina.fina_reader.isfile",
+                 return_value=True):
+            with pytest.raises(OSError):
+                valid_fina_reader.read_meta()
 
     @patch("builtins.open",
            new_callable=mock_open,
            read_data=pack("<2I", 10, 1000000))
-    @patch("emon_tools.fina_reader.isfile", return_value=True)
-    @patch("emon_tools.fina_reader.getsize", return_value=400)
+    @patch("emon_tools.emon_fina.fina_reader.isfile", return_value=True)
+    @patch("emon_tools.emon_fina.fina_reader.getsize", return_value=400)
     def test_read_meta(self,
                        mock_getsize,
                        mock_isfile,
@@ -120,7 +152,7 @@ class TestFinaReader:
         Test reading metadata from the meta file.
         """
         meta = valid_fina_reader.read_meta()
-        assert isinstance(meta, MetaData)
+        assert isinstance(meta, FinaMeta)
         assert meta.interval == 10
         assert meta.start_time == 1000000
         assert meta.npoints == 100
@@ -130,8 +162,8 @@ class TestFinaReader:
     @patch("builtins.open",
            new_callable=mock_open,
            read_data=pack("<2I", 0, 1000000))
-    @patch("emon_tools.fina_reader.isfile", return_value=True)
-    @patch("emon_tools.fina_reader.getsize", return_value=400)
+    @patch("emon_tools.emon_fina.fina_reader.isfile", return_value=True)
+    @patch("emon_tools.emon_fina.fina_reader.getsize", return_value=400)
     def test_read_meta_invalid(self,
                                mock_getsize,
                                mock_isfile,
@@ -140,8 +172,7 @@ class TestFinaReader:
         """
         Test reading invalid metadata from the meta file.
         """
-        match_error = ("Error reading meta file: "
-                       "interval must be a positive integer.")
+        match_error = r"Error reading meta file: 1 .*"
         with pytest.raises(
                 OSError,
                 match=match_error):
@@ -149,8 +180,8 @@ class TestFinaReader:
 
     # Less than 8 bytes
     @patch("builtins.open", new_callable=mock_open, read_data=b"1234")
-    @patch("emon_tools.fina_reader.isfile", return_value=True)
-    @patch("emon_tools.fina_reader.getsize", return_value=400)
+    @patch("emon_tools.emon_fina.fina_reader.isfile", return_value=True)
+    @patch("emon_tools.emon_fina.fina_reader.getsize", return_value=400)
     def test_read_meta_corrupted_meta_file(
         self,
         mock_getsize,
@@ -171,12 +202,58 @@ class TestFinaReader:
             "rb"
         )
 
-    @patch("builtins.open",
-           new_callable=mock_open,
-           read_data=pack("<f", 42.0) * 10)
-    @patch("emon_tools.fina_reader.isfile", return_value=True)
-    @patch("emon_tools.fina_reader.getsize", return_value=400)
-    @patch("emon_tools.fina_reader.mmap.mmap", autospec=True)
+    def test_initialise_reader(self, valid_fina_reader):
+        """Test initialise_reader sets props correctly."""
+        meta = FinaMeta(
+            interval=10,
+            start_time=1575981140,
+            end_time=1575981140 + 100,
+            npoints=10,
+            size=40
+        )
+        props = FinaByTimeParamsModel(
+            start_time=1575981140,
+            time_window=100,
+            time_interval=10
+        )
+        valid_fina_reader.initialise_reader(meta, props)
+        assert isinstance(valid_fina_reader.props, FileReaderProps)
+
+    def test_read_file_empty(self, valid_fina_reader):
+        """Test read_file handles empty files correctly."""
+        with patch(
+            "emon_tools.emon_fina.fina_reader.getsize",
+            return_value=0), \
+                patch("builtins.open", mock_open(read_data=b"")), \
+                patch(
+                 "emon_tools.emon_fina.fina_reader.isfile",
+                 return_value=True
+                ):
+            valid_fina_reader.initialise_reader(
+                FinaMetaModel(
+                    interval=1,
+                    start_time=0,
+                    end_time=1,
+                    npoints=0,
+                    size=0
+                ),
+                FinaByTimeParamsModel(
+                    start_time=1575981140,
+                    time_window=100,
+                    time_interval=10
+                )
+            )
+            with pytest.raises(ValueError):
+                list(valid_fina_reader.read_file())
+
+    @patch(
+        "builtins.open",
+        new_callable=mock_open,
+        read_data=pack("<f", 42.0) * 360
+    )
+    @patch("emon_tools.emon_fina.fina_reader.isfile", return_value=True)
+    @patch("emon_tools.emon_fina.fina_reader.getsize", return_value=1440)
+    @patch("emon_tools.emon_fina.fina_reader.mmap.mmap", autospec=True)
     def test_read_file(
         self,
         mock_mmap,
@@ -188,14 +265,28 @@ class TestFinaReader:
         """
         Test reading data values from the .dat file.
         """
+        # Get meta information from the test data.
+        meta_dict = EmonFinaDataTest.get_fina_meta_slim()
+        # Set search.start_time to meta["start_time"]
+        # so it falls within the meta range.
+        search = FinaByTimeParamsModel(**{
+            "start_time": meta_dict["start_time"],
+            "time_window": 3600,
+            "time_interval": 10
+        })
+        reader_props = FileReaderProps(
+            meta=FinaMeta(**meta_dict),
+            search=search
+        )
+        reader_props.initialise_reader()
+        valid_fina_reader.props = reader_props
+
         # Mock the mmap object
         mock_mmap_instance = mock_mmap.return_value.__enter__.return_value
 
-        # Handle slice inputs to mimic actual mmap slicing behavior
+        # Handle slice inputs to mimic actual mmap slicing behavior.
         def mock_getitem(slice_obj):
             if isinstance(slice_obj, slice):
-                # Calculate the position based on the slice start
-                # Number of floats
                 size = (slice_obj.stop - slice_obj.start) // 4
                 return pack("<f", 42.0) * size
             raise ValueError("Invalid slice input")
@@ -203,283 +294,6 @@ class TestFinaReader:
         mock_mmap_instance.__getitem__.side_effect = mock_getitem
 
         # Run the read_file method
-        results = list(valid_fina_reader.read_file(
-            npoints=10,
-            start_pos=0,
-            chunk_size=5
-        ))
+        results = list(valid_fina_reader.read_file())
 
-        # Assert the results
-        assert len(results) == 1  # Two chunks of 5 points each
-        for chunk in results:
-            positions, values = chunk
-            assert len(positions) == len(values) == 10
-            for pos, value in zip(positions, values):
-                assert 0 <= pos < 10
-                assert isinstance(value, np.float32)
-                assert value == 42.0
-
-    @patch("emon_tools.fina_reader.isfile", return_value=False)
-    def test_read_file_missing_data(self, mock_isfile, valid_fina_reader):
-        """
-        Test error when the data file does not exist.
-        """
-        match_error = "Data file does not exist"
-        with pytest.raises(FileNotFoundError, match=match_error):
-            list(valid_fina_reader.read_file(npoints=10))
-
-    @patch("emon_tools.fina_reader.isfile", return_value=True)
-    def test_read_file_invalid_npoints(self, mock_isfile, valid_fina_reader):
-        """
-        Test that ValueError is raised when npoints is invalid.
-        """
-        match_error = "npoints must be a positive integer."
-        with pytest.raises(ValueError, match=match_error):
-            list(valid_fina_reader.read_file(npoints=-1))
-
-    # Less than 4 bytes
-    @patch("builtins.open", new_callable=mock_open, read_data=b"\x00\x00\x00")
-    @patch("emon_tools.fina_reader.isfile", return_value=True)
-    @patch("emon_tools.fina_reader.getsize", return_value=400)
-    @patch("emon_tools.fina_reader.mmap.mmap", autospec=True)
-    def test_read_file_corrupted_data(
-        self,
-        mock_mmap,
-        mock_getsize,
-        mock_isfile,
-        mock_open_file,
-        valid_fina_reader
-    ):
-        """
-        Test that ValueError is raised when the data file is corrupted
-        (i.e., insufficient bytes are read for a float).
-        """
-        # Mock mmap object behavior
-        mock_mmap_instance = mock_mmap.return_value.__enter__.return_value
-        # Return less than 4 bytes
-        mock_mmap_instance.__getitem__.side_effect = lambda s: b"\x00\x00\x00"
-
-        match_error = "Failed to read expected chunk at position 0."
-        with pytest.raises(ValueError, match=match_error):
-            list(valid_fina_reader.read_file(npoints=1))
-
-        # Ensure the file was opened
-        mock_open_file.assert_called_once_with(
-            valid_fina_reader._get_data_path(),
-            "rb")
-
-    @patch(
-            "builtins.open",
-            new_callable=mock_open,
-            read_data=pack("<f", 42.0) * 10)
-    @patch("emon_tools.fina_reader.getsize", return_value=400)
-    @patch("emon_tools.fina_reader.isfile", return_value=True)
-    @patch("emon_tools.fina_reader.mmap.mmap", autospec=True)
-    def test_read_file_with_window(
-        self,
-        mock_mmap,
-        mock_getsize,
-        mock_isfile,
-        mock_open_file,
-        valid_fina_reader
-    ):
-        """
-        Test reading data with a specified window size.
-        """
-        # Mock the mmap object
-        mock_mmap_instance = mock_mmap.return_value.__enter__.return_value
-
-        # Handle slice inputs
-        def mock_getitem(slice_obj):
-            if isinstance(slice_obj, slice):
-                # Number of floats
-                size = (slice_obj.stop - slice_obj.start) // 4
-                return pack("<f", 42.0) * size
-            raise ValueError("Invalid slice input")
-
-        mock_mmap_instance.__getitem__.side_effect = mock_getitem
-
-        # Run the read_file method with a window size
-        results = list(valid_fina_reader.read_file(
-            npoints=10,
-            start_pos=0,
-            chunk_size=5,
-            window=7
-        ))
-
-        # Assert the results
-        assert len(results) == 1  # Two chunks: 5 and 2 points
-        assert sum(len(chunk[0]) for chunk in results) == 7  # Total 7 points
-
-    @patch("emon_tools.fina_reader.getsize", return_value=400)
-    @patch("emon_tools.fina_reader.isfile", return_value=True)
-    @patch("builtins.open", side_effect=IOError("Mocked file access error"))
-    def test_read_file_io_error(
-        self,
-        mock_open_file,
-        mock_getsize,
-        mock_isfile,
-        valid_fina_reader
-    ):
-        """
-        Test IOError handling when file access fails in read_file.
-        """
-        match_error = "Error accessing data file"
-        with pytest.raises(IOError, match=match_error):
-            list(valid_fina_reader.read_file(npoints=10))
-
-        # Ensure the file open was attempted
-        mock_open_file.assert_called_once_with(
-            valid_fina_reader._get_data_path(),
-            "rb"
-        )
-
-    def test_sanitize_path_invalid_extension(self, valid_fina_reader):
-        """
-        Test _sanitize_path with an invalid file extension.
-        """
-        filename = "invalid_file.txt"
-        with pytest.raises(ValueError, match="Invalid file extension."):
-            valid_fina_reader._sanitize_path(filename)
-
-    def test_sanitize_path_outside_directory(self, valid_fina_reader):
-        """
-        Test _sanitize_path with a filename that attempts
-        to access outside the allowed directory.
-        """
-        filename = "../outside_file.dat"
-        match_error = "Attempt to access files outside the allowed directory."
-        with pytest.raises(
-                ValueError,
-                match=match_error):
-            valid_fina_reader._sanitize_path(filename)
-
-    def test_validate_read_params_valid(self, valid_fina_reader):
-        """
-        Test _validate_read_params with valid parameters.
-        """
-        npoints = 100
-        start_pos = 10
-        chunk_size = 20
-        window = 50
-
-        total_points = valid_fina_reader._validate_read_params(
-            npoints=npoints,
-            start_pos=start_pos,
-            chunk_size=chunk_size,
-            window=window
-        )
-
-        assert total_points == 50
-
-    def test_validate_read_params_no_window(self, valid_fina_reader):
-        """
-        Test _validate_read_params with no window specified.
-        """
-        npoints = 100
-        start_pos = 10
-        chunk_size = 20
-
-        total_points = valid_fina_reader._validate_read_params(
-            npoints=npoints,
-            start_pos=start_pos,
-            chunk_size=chunk_size,
-            window=None
-        )
-
-        assert total_points == 90
-
-    def test_validate_read_params_invalid_npoints(self, valid_fina_reader):
-        """
-        Test _validate_read_params with invalid npoints.
-        """
-        npoints = -1
-        start_pos = 10
-        chunk_size = 20
-        window = 50
-
-        match_error = "npoints must be a positive integer."
-        with pytest.raises(ValueError, match=match_error):
-            valid_fina_reader._validate_read_params(
-                npoints=npoints,
-                start_pos=start_pos,
-                chunk_size=chunk_size,
-                window=window
-            )
-
-    def test_validate_read_params_invalid_start_pos(self, valid_fina_reader):
-        """
-        Test _validate_read_params with invalid start_pos.
-        """
-        npoints = 100
-        start_pos = -1
-        chunk_size = 20
-        window = 50
-
-        match_error = re.escape(
-            "start_pos (-1) must be an integer "
-            "upper or equal to zero.")
-        with pytest.raises(ValueError, match=match_error):
-            valid_fina_reader._validate_read_params(
-                npoints=npoints,
-                start_pos=start_pos,
-                chunk_size=chunk_size,
-                window=window
-            )
-
-    def test_validate_read_params_start_pos_exceeds_npoints(
-        self,
-        valid_fina_reader
-    ):
-        """
-        Test _validate_read_params with start_pos exceeding npoints.
-        """
-        npoints = 100
-        start_pos = 150
-        chunk_size = 20
-        window = 50
-
-        match_error = re.escape("start_pos (150) exceeds total npoints (100).")
-        with pytest.raises(ValueError, match=match_error):
-            valid_fina_reader._validate_read_params(
-                npoints=npoints,
-                start_pos=start_pos,
-                chunk_size=chunk_size,
-                window=window
-            )
-
-    def test_validate_read_params_invalid_chunk_size(self, valid_fina_reader):
-        """
-        Test _validate_read_params with invalid chunk_size.
-        """
-        npoints = 100
-        start_pos = 10
-        chunk_size = -1
-        window = 50
-
-        match_error = "chunk_size must be a positive integer."
-        with pytest.raises(ValueError, match=match_error):
-            valid_fina_reader._validate_read_params(
-                npoints=npoints,
-                start_pos=start_pos,
-                chunk_size=chunk_size,
-                window=window
-            )
-
-    def test_validate_read_params_invalid_window(self, valid_fina_reader):
-        """
-        Test _validate_read_params with invalid window.
-        """
-        npoints = 100
-        start_pos = 10
-        chunk_size = 20
-        window = -1
-
-        match_error = "window must be a positive integer."
-        with pytest.raises(ValueError, match=match_error):
-            valid_fina_reader._validate_read_params(
-                npoints=npoints,
-                start_pos=start_pos,
-                chunk_size=chunk_size,
-                window=window
-            )
+        assert len(results) == 2

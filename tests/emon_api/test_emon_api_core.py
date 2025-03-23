@@ -1,12 +1,12 @@
 """Tests for the EmonRequest class using async"""
 import pytest
-from emon_tools.api_utils import MESSAGE_KEY
-from emon_tools.api_utils import SUCCESS_KEY
-from emon_tools.emon_api_core import InputGetType
-from emon_tools.emon_api_core import EmonApiCore
-from emon_tools.emon_api_core import EmonRequestCore
-from emon_tools.emon_api_core import EmonInputsCore
-from emon_tools.emon_api_core import EmonFeedsCore
+from emon_tools.emon_api.api_utils import MESSAGE_KEY
+from emon_tools.emon_api.api_utils import SUCCESS_KEY
+from emon_tools.emon_api.emon_api_core import InputGetType
+from emon_tools.emon_api.emon_api_core import EmonApiCore
+from emon_tools.emon_api.emon_api_core import EmonRequestCore
+from emon_tools.emon_api.emon_api_core import EmonInputsCore
+from emon_tools.emon_api.emon_api_core import EmonFeedsCore
 
 
 class TestEmonApiCore:
