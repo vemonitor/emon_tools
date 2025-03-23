@@ -44,7 +44,12 @@ class TestFinaReader:
             ("testfile", "/invalid/path?", ValueError),
         ]
     )
-    def test_init_invalid_params(self, file_name, data_dir, expected_exception):
+    def test_init_invalid_params(
+        self,
+        file_name,
+        data_dir,
+        expected_exception
+    ):
         """
         Test initialization with invalid parameters.
         Ensures directory existence validation.
@@ -74,7 +79,8 @@ class TestFinaReader:
 
     def test_sanitize_path_valid(self, valid_fina_reader):
         """Test _sanitize_path for valid file paths."""
-        with patch("emon_tools.emon_fina.fina_reader.isdir", return_value=True):
+        with patch(
+                "emon_tools.emon_fina.fina_reader.isdir", return_value=True):
             result = valid_fina_reader._sanitize_path("testfile.meta")
             assert result.endswith("testfile.meta")
 
@@ -261,7 +267,8 @@ class TestFinaReader:
         """
         # Get meta information from the test data.
         meta_dict = EmonFinaDataTest.get_fina_meta_slim()
-        # Set search.start_time to meta["start_time"] so it falls within the meta range.
+        # Set search.start_time to meta["start_time"]
+        # so it falls within the meta range.
         search = FinaByTimeParamsModel(**{
             "start_time": meta_dict["start_time"],
             "time_window": 3600,
