@@ -27,6 +27,7 @@ import {
   } from "@/components/ui/sidebar"
 import { useAuth } from "@/hooks/use-auth"
 import { Link } from "react-router"
+import { getImagePath } from "@/lib/utils"
   
   export function NavUser() {
     const { isMobile } = useSidebar()
@@ -34,6 +35,7 @@ import { Link } from "react-router"
     if (!isAuthenticated || !user) {
       return null
     }
+    const imagePath = getImagePath(user?.avatar)
     return (
       <SidebarMenu>
         <SidebarMenuItem>
@@ -43,8 +45,8 @@ import { Link } from "react-router"
                 size="lg"
                 className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
               >
-                <Avatar className="h-8 w-8 rounded-lg">
-                  <AvatarImage src={user.avatar} alt={user.full_name} />
+                <Avatar className="h-8 w-8 rounded-3xl">
+                  <AvatarImage src={imagePath} alt={user.full_name} />
                   <AvatarFallback className="rounded-lg">CN</AvatarFallback>
                 </Avatar>
                 <div className="grid flex-1 text-left text-sm leading-tight">
@@ -62,8 +64,8 @@ import { Link } from "react-router"
             >
               <DropdownMenuLabel className="p-0 font-normal">
                 <div className="flex items-center gap-2 px-1 py-1.5 text-left text-sm">
-                  <Avatar className="h-8 w-8 rounded-lg">
-                    <AvatarImage src={user.avatar} alt={user.full_name} />
+                  <Avatar className="h-8 w-8 rounded-3xl">
+                    <AvatarImage src={imagePath} alt={user.full_name} />
                     <AvatarFallback className="rounded-lg">CN</AvatarFallback>
                   </Avatar>
                   <div className="grid flex-1 text-left text-sm leading-tight">
@@ -89,9 +91,11 @@ import { Link } from "react-router"
                 </DropdownMenuItem>
               </DropdownMenuGroup>
               <DropdownMenuSeparator />
-              <DropdownMenuItem>
-                <LogOut />
-                <Link to="/logout">Log out</Link>
+              <DropdownMenuItem asChild>
+                <div className="w-full">
+                  <LogOut />
+                  <Link to="/logout" className="w-full">Log out</Link>
+                </div>
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
