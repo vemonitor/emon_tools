@@ -1,17 +1,19 @@
-import { AddActionType, EditCrudComponentProps, EmonHostEdit } from "@/lib/types";
+import { PromiseFormActionType, EditCrudComponentProps, EmonHostEdit } from "@/lib/types";
 import { EmonHostForm, EmonHostFormType } from "./form";
 import { useAuth } from "@/hooks/use-auth";
+import { requestCatchError, requestErrorResponse } from "@/helpers/formActions";
 
 const AddEmonHostAction = async(
   values: EmonHostFormType,
   fetchWithAuth: (input: RequestInfo, init?: RequestInit) => Promise<Response>
-): AddActionType => {
+): PromiseFormActionType => {
 
   const data = {
       ...values,
       id: undefined
   }
-
+  const requestTitle = "Add Emoncms Host";
+  const redirect = `/emon-host`;
   try {
     const response = await fetchWithAuth(
       `/api/v1/emon_host/add/`,
@@ -23,24 +25,14 @@ const AddEmonHostAction = async(
         body: JSON.stringify(data)
       }
     ).then((response) => response.json())
-    if (!response.success) {
-      return {
-        success: false,
-        msg: response.msg,
-        errors: response.errors,
-        from_error: response.from_error,
-      }
-    }
+    return requestErrorResponse(
+      response,
+      requestTitle,
+      redirect
+    )
   } catch (error: unknown) {
-    console.log('Error fetching data:', error);
-    return {
-      success: false,
-      msg: 'Unable to save data, please control all fields',
-      error: error instanceof Error ? error.message : 'Unknown error'
-    }
+    return requestCatchError(error, requestTitle)
   }
-
-  return {success: true, redirect: `/emon-host`};
 };
 
 function AddEmonHost({

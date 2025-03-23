@@ -9,7 +9,7 @@ import {
 } from '@/components/ui/form';
 import { Input } from "@/components/ui/input";
 import { z } from 'zod';
-import { AddActionType, EmonHostEdit } from "@/lib/types";
+import { PromiseFormActionType, EmonHostEdit } from "@/lib/types";
 import { ComponentPropsWithoutRef } from "react";
 import ComboBox from "@/components/form/combo-box";
 import { CrudForm } from "@/components/form/crud-form";
@@ -56,7 +56,7 @@ const initFormDefaults = (data?: EmonHostEdit) => {
 }
 
 export type EmonHostFormProps = ComponentPropsWithoutRef<"div"> & {
-  handleSubmit: (values: EmonHostFormType) => AddActionType;
+  handleSubmit: (values: EmonHostFormType) => PromiseFormActionType;
   data?: EmonHostEdit;
   is_dialog?: boolean;
   successCallBack?: () => void;
