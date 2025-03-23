@@ -1,22 +1,11 @@
-export type SubmitHandlerProps = Promise<{ 
-    success: boolean,
-    act?: "add" | "edit",
-    itemId?: string,
-    error?: string,
-    msg?: string,
-    field?: string,
-    redirect?: string
- } | void
->
-
+// Type definitions for the emon-app
 export type BaseActionErrorType = {
     table?: string,
     field_name?: string,
     error?: string
 }
 
-export type AddActionType = Promise<
-  void | {
+export type FormRequestActionType = {
     success: boolean;
     act?: "add" | "edit";
     itemId?: string;
@@ -27,6 +16,29 @@ export type AddActionType = Promise<
     field?: string;
     redirect?: string;
   }
+
+export type FieldErrorType = {
+    field_name: string,
+    error: string
+}
+
+export type AlertErrorType = {
+    title: string,
+    error: string
+}
+
+export type FormActionType = {
+    success: boolean;
+    act?: "add" | "edit" | "delete";
+    itemId?: string;
+    from_error?: string;
+    field_errors?: FieldErrorType[];
+    alert_msgs?: AlertErrorType[];
+    toast_msgs?: AlertErrorType[];
+    redirect?: string;
+  }
+
+export type PromiseFormActionType = Promise<FormActionType
 >
 
 export interface  EditCrudComponentProps<T> {
