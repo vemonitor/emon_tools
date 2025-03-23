@@ -267,31 +267,11 @@ class FileReaderProps(FileReaderPropsModel):
             timestamp=self.search.start_time,
             interval=self.meta.interval
         )
-        diff_min = self.search.start_time - self.meta.start_time
-        diff_max = self.search.start_time - self.meta.end_time
-        # nb_points
-        is_after = diff_max >= 0 and diff_max < self.search.time_window
-        if is_after:
-            self.window_max = diff_max
-        elif diff_min < 0:
-            self.window_max = max(
-                0,
-                (self.search.time_window + diff_min) // self.meta.interval
-            )
-        else:
-            self.window_max = max(
-                0,
-                min(
-                    abs(diff_max) // self.meta.interval,
-                    self.search.time_window // self.meta.interval
-                )
-            )
-        # self.window_max = self.calc_window_max(
-        #    window_search=self.window_search,
-        #    npoints=self.meta.npoints,
-        #    start_pos=self.start_pos,
-        #    start_search=self.start_search
-        # )
+
+        self.window_max = self.calc_window_max(
+            search=self.search,
+            meta=self.meta,
+        )
 
         self.remaining_points = self.calc_remaining_points(
             window_max=self.window_max,
@@ -724,18 +704,31 @@ class FileReaderProps(FileReaderPropsModel):
 
     @staticmethod
     def calc_window_max(
-        window_search: int,
-        npoints: int,
-        start_pos: int,
-        start_search: int
+        search: FinaByTimeParamsModel,
+        meta: FinaMetaModel,
     ) -> int:
         """
         Calculate the maximum file points available for the current search.
         """
-        if window_search > 0:
-            window_max = window_search - abs(start_search)
+        diff_min = search.start_time - meta.start_time
+        diff_max = search.start_time - meta.end_time
+        # nb_points
+        is_after = diff_max >= 0 and diff_max < search.time_window
+        if is_after:
+            window_max = diff_max
+        elif diff_min < 0:
+            window_max = max(
+                0,
+                (search.time_window + diff_min) // meta.interval
+            )
         else:
-            window_max = max(0, npoints - start_pos)
+            window_max = max(
+                0,
+                min(
+                    abs(diff_max) // meta.interval,
+                    search.time_window // meta.interval
+                )
+            )
         return window_max
 
     @staticmethod
