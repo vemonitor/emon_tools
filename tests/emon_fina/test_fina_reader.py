@@ -137,7 +137,7 @@ class TestFinaReader:
                  return_value=True):
             with pytest.raises(OSError):
                 valid_fina_reader.read_meta()
-    
+
     @patch("builtins.open",
            new_callable=mock_open,
            read_data=pack("<2I", 10, 1000000))
@@ -172,7 +172,7 @@ class TestFinaReader:
         """
         Test reading invalid metadata from the meta file.
         """
-        match_error = (r"Error reading meta file: 1 .*")
+        match_error = r"Error reading meta file: 1 .*"
         with pytest.raises(
                 OSError,
                 match=match_error):

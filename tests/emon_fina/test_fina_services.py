@@ -1,4 +1,6 @@
-
+"""
+Test suite for the emon_fina.fina_services module.
+"""
 from pydantic import ValidationError
 import pytest
 from emon_tools.emon_fina.fina_services import FinaMeta
