@@ -533,7 +533,7 @@ class FileReaderProps(FileReaderPropsModel):
     def get_nearest_valid_interval(base_interval: int, interval: int) -> int:
         """
         Calculate the nearest valid interval
-        that is a multiple of 'base_interval' 
+        that is a multiple of 'base_interval'
         and is as close as possible to the provided 'interval'.
         The result will always be greater than or equal to base_interval.
 
