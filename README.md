@@ -110,19 +110,22 @@ The `emon_fina` module facilitates the analysis and processing of time-series da
 ```python
 from emon_tools.fina_time_series import FinaDataFrame
 from emon_tools.emon_fina.fina_plot import PlotData
+from emon_tools.emon_fina.fina_models import FinaByTimeParamsModel
 
 fdf = FinaDataFrame(
-    feed_id=1,
+    file_name="1",
     data_dir="/path/to/phpfina/files"
 )
 # Access metadata of the .meta file:
 print("Meta: ", fdf.meta)
 
 # get height days of data points from meta start_time
-ts = fdf.get_fina_df_time_series(
-    start=fdf.meta.start_time,
-    step=10,
-    window=8 * 24 * 3600
+ts = fdf.get_df_data(
+    props=FinaByTimeParamsModel(
+        start_time=fr.meta.start_time,
+        time_window=8 * 24 * 3600,
+        time_interval=10
+    )
 )
 
 PlotData.plot(data=ts)
