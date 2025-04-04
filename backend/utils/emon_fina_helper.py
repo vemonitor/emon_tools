@@ -185,21 +185,8 @@ class EmonFinaHelper:
                             "meta": fina.meta.serialize(),
                             "file_db": file_item.get('file_db'),
                         })
-                    else:
-                        output_files.append({
-                            "file_name": file_name,
-                            "name": file_item.get('dat_file'),
-                            "meta": {},
-                            "file_db": file_item.get('file_db'),
-                            "error": "Meta or dat file is not present"
-                        })
                 except (ValueError, TypeError, OSError) as ex:
-                    output_files.append({
-                        "file_name": file_name,
-                        "name": file_item.get('dat_file'),
-                        "meta": {},
-                        "error": str(ex)
-                    })
+                    pass
             files['files'] = sorted(output_files, key=lambda d: d['name'])
             result = files
         return result
