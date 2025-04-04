@@ -16,7 +16,7 @@ class ResponseSuccess(BaseModel):
     data: Any
 
 
-class FileMetaDict(TypedDict):
+class MetaDict(TypedDict):
     """
     File Meta Dict Type
     """
@@ -46,7 +46,7 @@ class PathFileItem(TypedDict):
     """
     file_name: str
     name: str
-    meta: FileMetaDict
+    meta: MetaDict
     file_db: FileDataDict
 
 
@@ -70,7 +70,7 @@ class SelectedFileMeta(BaseModel):
     file_id: int = 0
     datapath_id: int = 0
     emonhost_id: int = 0
-    meta: FileMetaDict | None = None
+    meta: MetaDict | None = None
 
 
 class FileDataPoints(BaseModel):
