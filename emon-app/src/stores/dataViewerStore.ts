@@ -1,33 +1,14 @@
-import { LineChartDataProps } from '@/components/fina_viewer/feedChart'
 import { GraphHelper } from '@/helpers/graphHelper'
 import Ut from '@/helpers/utils'
-import { FinaSourceProps, SelectedFileItem } from '@/lib/graphTypes'
+import { GraphSelector, GraphSource, GraphZoom, LineChartDataProps, NavigationMenu, SelectedToGraph } from '@/lib/graphTypes'
 import { create, StateCreator } from 'zustand'
 import { devtools } from 'zustand/middleware'
 
-export type VerticalRange = {
-  left_top: number[],
-  left_bottom: number[],
-  right_top: number[],
-  right_bottom: number[]
-}
 
 export const get_view_time_rage = () => {
   const time_start = useDataViewer.getState().time_start
   const time_window = useDataViewer.getState().time_window
   return {left: time_start, right: time_window}
-}
-
-export type NavigationMenu = {
-  can_reload: boolean,
-  can_go_start: boolean;
-  can_go_back: boolean;
-  can_go_after: boolean;
-  can_go_end: boolean;
-  can_zoom_in: boolean;
-  can_zoom_out: boolean;
-  zoom_level: number;
-  move_level: number;
 }
 
 export const initialNavGaph = {
@@ -54,12 +35,6 @@ export const initialNavView = {
   move_level: 0.25,
 } as NavigationMenu
 
-export type GraphSelector = {
-  left: string | number,
-  right: string | number,
-  refAreaLeft: number,
-  refAreaRight: number
-}
 
 export const initialSelector = {
   left: 'dataMin',
@@ -67,14 +42,6 @@ export const initialSelector = {
   refAreaLeft: 0,
   refAreaRight: 0
 } as GraphSelector
-
-export type GraphZoom = {
-  topLeft: string | number,
-  bottomLeft: string | number,
-  topRight: string | number,
-  bottomRight: string | number,
-  animation: boolean
-}
 
 export const initialZoom = {
   topLeft: 'dataMax+0.5',
@@ -85,9 +52,9 @@ export const initialZoom = {
 } as GraphZoom
 
 type DataViewerStore = {
-    selected_feeds: SelectedFileItem[],
+    graph_source: GraphSource | null,
+    selected_feeds: SelectedToGraph[],
     data_points: LineChartDataProps,
-    source: FinaSourceProps,
     time_start: number,
     time_window: number,
     interval: number,
@@ -97,15 +64,15 @@ type DataViewerStore = {
     can_zoom_view:  boolean,
     is_view_zoomed:  boolean,
     connect_nulls: boolean,
-    add_feed: (selected_item: SelectedFileItem) => void,
-    remove_feed: (selected_item: SelectedFileItem) => void,
-    reset_feeds: (file_name: string) => void,
+    setGraphSource: (graph_source: GraphSource) => void,
+    add_feed: (selected_item: SelectedToGraph) => void,
+    remove_feed: (selected_item: SelectedToGraph) => void,
+    reset_feeds: () => void,
     set_data_points: (data_points: LineChartDataProps) => void,
     init_time_start: (time_start: number) => void,
     set_time_start: (time_start: number) => void,
     set_time_window: (time_window: number) => void,
     set_interval: (interval: number) => void,
-    set_source: (source: FinaSourceProps) => void,
     reset_refAreas: () => void,
     set_refAreaLeft: (value: number) => void,
     set_refAreaRight: (value: number) => void,
@@ -131,9 +98,9 @@ DataViewerStore,
 [],
 DataViewerStore
 > = (set) => ({
+      graph_source: null,
       selected_feeds: [],
       data_points: {data: [], feeds: []},
-      source: 'archive',
       time_start: 0,
       time_window: 3600 * 24,
       interval: 120,
@@ -144,14 +111,15 @@ DataViewerStore
       is_view_zoomed:  false,
       connect_nulls: false,
       // store methods
-      add_feed: (selected_item: SelectedFileItem) => set( (state) => (
+      setGraphSource: (graph_source: GraphSource) => set( () => (
+          { graph_source: graph_source }
+      ), undefined, 'DataViewer/add_feed'),
+      add_feed: (selected_item: SelectedToGraph) => set( (state) => (
           { selected_feeds: [...state.selected_feeds, selected_item] }
       ), undefined, 'DataViewer/add_feed'),
-      remove_feed: (selected_item: SelectedFileItem) => set((state) => {
+      remove_feed: (selected_item: SelectedToGraph) => set((state) => {
           const current_feeds = state.selected_feeds
-            .filter((item) => (
-              item.file_db?.file_id !== selected_item.file_db?.file_id && item.side !== selected_item.side
-            ) || (item.file_db?.file_id !== selected_item.file_db?.file_id && item.side === selected_item.side))
+            .filter((item) => item.id !== selected_item.id)
           if(current_feeds.length === 0){
             state.reset_store()
           }
@@ -192,9 +160,6 @@ DataViewerStore
       set_interval: (interval: number) => set(() => (
           { interval: interval }
       ), undefined, 'DataViewer/set_interval'),
-      set_source: (source: FinaSourceProps) => set(() => (
-          { source: source }
-      ), undefined, 'DataViewer/set_source'),
       set_refAreaLeft: (value: number) => set((state) => (
           { selector: { ...state.selector, refAreaLeft: value } }
       ), undefined, 'DataViewer/set_refAreaLeft'),
