@@ -1,18 +1,6 @@
 import Ut from '@/helpers/utils';
 import { getWithFetch } from '@/helpers/fetcher';
-
-
-export interface EmonTimeSerieData {
-  data: {string: number}[],
-  nb_points: number,
-  success: boolean,
-  columns: [string],
-  window: {
-    start: number,
-    iterval: number,
-    end: number
-  }
-}
+import { urlSearchParamsType } from '@/lib/types';
 
 export interface FeedDataArgs {
     feed_id: number,
@@ -25,19 +13,6 @@ export interface FeedDataArgs {
     skip_missing?: boolean,
     limit_interval?: boolean,
     delta?: boolean,
-}
-
-export interface FeedsDataArgs {
-  feed_ids: [number],
-  start?: number,
-  end?: number,
-  window?: number,
-  interval?: number,
-  average?: boolean,
-  time_format?: string,
-  skip_missing?: boolean,
-  limit_interval?: boolean,
-  delta?: boolean
 }
 
 export interface FeedMetaArgs {
@@ -91,7 +66,7 @@ export class EmonFeedApi {
     if(Ut.isObject(args) && Ut.isNumber(args.feed_id)){
       const meta = await this.getFeedMeta(args.feed_id);
       if(EmonFeedApi.isValidFeedDataArgs(args, meta)){
-        const searchParams = new URLSearchParams(args);
+        const searchParams = new URLSearchParams(args as urlSearchParamsType);
         searchParams.append('apikey', this.api_key? this.api_key : '');
 
         const url = this.base_url + '/feed/data.json?' + searchParams.toString();
@@ -114,25 +89,6 @@ export class EmonFeedApi {
       }
     }
     return undefined
-  }
-
-  async fetchFeedsData(args: FeedsDataArgs){
-    if(Ut.isObject(args) && Ut.isNotEmpty(args.feed_ids)){
-      if(Ut.isArray(args.feed_ids)){
-        for(const feed_id of args.feed_ids){
-          if(!Ut.isNumber(feed_id)){
-            throw new Error(
-              `Invalid feed_id value, expected number, got ${typeof feed_id}`);
-          }
-
-          const feed_data = await this.fetchFeedData({
-            feed_id: feed_id,
-            ...args
-          })
-          const a = 2
-        }
-      }
-    }
   }
 
 }
@@ -158,7 +114,7 @@ export const getFeedData = ({
     const get_req_args = (args: FeedDataArgs) => {
         let result = ""
         if(Ut.isObject(args)){
-            result += get_ids_req(args.feed_ids)
+            result += get_ids_req(args.feed_ids as [number])
             if(Ut.isNumber(args.start)){
                 result += (result === "") ? '' : '&';
                 result += 'start=' + args.start
