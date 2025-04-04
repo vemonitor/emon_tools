@@ -6,6 +6,7 @@ from sqlmodel import func
 
 from backend.api.deps import CurrentUser, SessionDep
 from backend.controllers.base import BaseController
+from backend.controllers.emon_host import EmonHostController
 from backend.models.base import (
     ResponseMessage,
     ResponseModelBase
@@ -77,6 +78,43 @@ def read_item(
     """
     try:
         item = session.get(EmonHost, item_id)
+        if not item:
+            raise HTTPException(
+                status_code=404, detail="Item not found")
+        if not current_user.is_superuser\
+                and (item.owner_id != current_user.id):
+            raise HTTPException(
+                status_code=400, detail="Not enough permissions")
+        return ResponseModelBase(
+            success=True,
+            data=dict(item)
+        )
+    except Exception as ex:
+        BaseController.handle_exception(
+            ex=ex,
+            session=session
+        )
+
+
+@router.get(
+    "/by/{item_slug}/",
+    response_model=ResponseModelBase,
+    responses=BaseController.get_error_responses()
+)
+def read_item_by_slug(
+    session: SessionDep,
+    current_user: CurrentUser,
+    item_slug: str
+) -> Any:
+    """
+    Get item by ID.
+    """
+    try:
+        item = EmonHostController.get_emon_host_by_slug(
+            session=session,
+            current_user=current_user,
+            slug=item_slug
+        )
         if not item:
             raise HTTPException(
                 status_code=404, detail="Item not found")
