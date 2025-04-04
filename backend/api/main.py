@@ -11,7 +11,8 @@ from backend.api.routes import (
     emon_hosts,
     category,
     archive_file,
-    dashboard
+    dashboard,
+    emon_api
 )
 
 api_router = APIRouter()
@@ -23,3 +24,4 @@ api_router.include_router(category.router)
 api_router.include_router(data_path.router)
 api_router.include_router(archive_file.router)
 api_router.include_router(fina_data.router)
+api_router.include_router(emon_api.router)
