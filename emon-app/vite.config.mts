@@ -6,6 +6,11 @@ import react from '@vitejs/plugin-react'
 export default defineConfig(({ mode }) => ({
   plugins: [react()],
   //envDir: "/media/tepochtli/zino/Dev/python/mano8_repo/emon_tools/",
+  server: {
+    host: 'localhost',
+    port: 5173,
+  },
+  base: "http://localhost:5173",
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"),
