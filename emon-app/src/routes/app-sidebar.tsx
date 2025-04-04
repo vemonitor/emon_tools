@@ -43,19 +43,19 @@ const navMain = [
   },
   {
     key_group: "dataViewer",
-    title: "PhpFina Viewer",
+    title: "Data Viewer",
     icon: ChartSpline,
     isActive: false,
     isPublic: false,
     items: [
       {
-        title: "Archived",
-        url: "/dataViewer/archive",
+        title: "Hosted",
+        url: "/dataViewer/hosted",
         icon: FileArchive,
       },
       {
-        title: "Emoncms",
-        url: "/dataViewer/emoncms",
+        title: "PhpFina",
+        url: "/dataViewer/fina",
         icon: Globe,
       }
     ],
