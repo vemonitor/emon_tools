@@ -14,7 +14,6 @@ import {
 import Dashboard from '@/routes/dashboard/dashboard';
 import Login from '@/routes/user/login';
 import Home from '@/routes/home/home';
-import { DataViewer } from "./data-viewer/dataViewer";
 import AddEmonHost from "./emon-host/add";
 import ViewEmonHost from "./emon-host/view";
 import EditEmonHost from "./emon-host/edit";
@@ -37,6 +36,9 @@ import { ComponentType } from "react";
 import Logout from "./user/logout";
 import EditProfile from "./user/edit-profile";
 import { Profile } from "./user/profile";
+import { HostedViewer } from "./graph-feed/hostedViewer";
+import { FinaViewer } from "./graph-fina/finaViewer";
+import ViewArchiveFile from "./archive-file/view";
 
 export const crudRoutes = [
   {
@@ -125,8 +127,20 @@ export const privateRoutes: RouteListType[] = [
     key_group: "dataViewer",
     title: "PhpFina Viewer",
     icon: ChartSpline,
-    path: "/dataViewer/:source_ref",
-    element: DataViewer,
+    path: "/dataViewer/",
+    element: FinaViewer,
+    routes: [
+      {
+        title: "Hosted",
+        path: "hosted/:host_slug?",
+        element: HostedViewer,
+      },
+      {
+        title: "Fina",
+        path: "fina/:host_slug?",
+        element: FinaViewer,
+      },
+    ],
   },
   {
     key_group: "emonHosts",
@@ -142,7 +156,7 @@ export const privateRoutes: RouteListType[] = [
       },
       {
         title: "View",
-        path: "view/:host_id",
+        path: "view/:host_slug",
         element: ViewEmonHost,
       },
       {
@@ -200,7 +214,7 @@ export const privateRoutes: RouteListType[] = [
       },
       {
         title: "View",
-        path: "view/:path_id",
+        path: "view/:path_slug",
         element: ViewDataPath,
       },
       {
@@ -230,7 +244,7 @@ export const privateRoutes: RouteListType[] = [
       {
         title: "View",
         path: "view/:file_id",
-        element: DataViewer,
+        element: ViewArchiveFile,
       },
       {
         title: "Edit",
