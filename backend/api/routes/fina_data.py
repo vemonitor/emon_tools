@@ -4,19 +4,20 @@ Fina Data Routes
 import math
 import numpy as np
 from fastapi import APIRouter, HTTPException
+
 from emon_tools.emon_fina.fina_models import FinaByTimeParamsModel, OutputType
 from emon_tools.emon_fina.emon_fina import FinaData
 from backend.api.deps import CurrentUser, SessionDep
 from backend.controllers.base import BaseController
+from backend.models.base import ResponseModelBase
 from backend.controllers.data_path import DataPathController
 from backend.controllers.files import FilesController
-from backend.models.base import ResponseModelBase
+from backend.controllers.fina_data import FinaDataController
 from backend.models.fina_data import (
     FileDataPoints,
     PathFiles,
     SelectedFileMeta
 )
-from backend.utils.emon_fina_helper import EmonFinaHelper
 from backend.models.emon_fina import EmonFinaDataArgsModel
 from backend.models.emon_fina import GetFinaDataModel
 from backend.utils.files import FilesHelper
@@ -72,20 +73,53 @@ async def get_files_list(
 ) -> PathFiles:
     """Get phpfina files list from source."""
     try:
-        files = FilesController.get_files_from_data_path(
+        output_files, nb_added = FinaDataController.get_files_list(
             session=session,
             current_user=current_user,
-            item_id=path_id
-        )
-        output_files = EmonFinaHelper.append_fina_data(
-            files=files
-        )
-        nb_added = FilesController.register_files(
-            session=session,
-            current_user=current_user,
-            files=output_files
+            path_id=path_id
         )
         if output_files is not None:
+            return PathFiles(
+                success=True,
+                path_id=output_files.get('file_path').id,
+                nb_added=nb_added,
+                files=output_files.get('files')
+            )
+        return PathFiles(
+            success=False,
+        )
+    except Exception as ex:
+        BaseController.handle_exception(
+            ex=ex,
+            session=session
+        )
+
+
+@router.get(
+    "/files/by/{host_slug}/",
+    response_model=PathFiles,
+    responses=BaseController.get_error_responses()
+)
+async def get_files_list_by_slug(
+    *,
+    session: SessionDep,
+    current_user: CurrentUser,
+    host_slug: str
+) -> PathFiles:
+    """Test if if is valid source directory."""
+    try:
+        data_path = DataPathController.get_data_path_by_slug(
+            session=session,
+            current_user=current_user,
+            slug=host_slug
+        )
+        output_files, nb_added = FinaDataController.get_files_list(
+            session=session,
+            current_user=current_user,
+            path_id=data_path.id
+        )
+        if output_files is not None\
+                and nb_added is not None:
             return PathFiles(
                 success=True,
                 path_id=output_files.get('file_path').id,
@@ -218,9 +252,9 @@ async def get_file_data(
                 return FileDataPoints(
                     success=True,
                     file_id=file_id,
-                    feed_id=file_item.feed_id,
-                    datapath_id=file_item.datapath_id,
-                    emonhost_id=file_item.emonhost_id,
+                    feed_id=file_item.feed_id or 0,
+                    datapath_id=file_item.datapath_id or 0,
+                    emonhost_id=file_item.emonhost_id or 0,
                     file_name=file_item.file_name,
                     name=file_item.name,
                     data=datas.tolist(),
@@ -228,8 +262,8 @@ async def get_file_data(
             return FileDataPoints(
                 success=True,
                 file_id=file_id,
-                datapath_id=file_item.datapath_id,
-                emonhost_id=file_item.emonhost_id,
+                datapath_id=file_item.datapath_id or 0,
+                emonhost_id=file_item.emonhost_id or 0,
             )
         return FileDataPoints(
             success=True,
