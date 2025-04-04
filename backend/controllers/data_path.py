@@ -32,6 +32,28 @@ class DataPathController:
         return result
 
     @staticmethod
+    def get_data_path_by_slug(
+        *,
+        session: Session,
+        current_user: CurrentUser,
+        slug: str
+    ) -> DataPath | None:
+        """
+        Count DataPaths present.
+
+        Args:
+            session (Session): The database session to use for the query.
+
+        Returns:
+            int: Number of DataPaths in data base
+        """
+        statement = select(DataPath).where(DataPath.slug == slug)
+        if not current_user.is_superuser:
+            statement.where(DataPath.owner_id == current_user.id)
+        result = session.exec(statement).first()
+        return result
+
+    @staticmethod
     def count_data_path(
         *,
         session: Session
