@@ -7,8 +7,8 @@ import { CrudIconRowActions } from "@/components/data-table/crud-icons-row-actio
 export type EmonHost = {
   id: number
   name: string
+  slug: string
   host: string
-  api_key: string
 }
  
 export const columns: ColumnDef<EmonHost>[] = [
@@ -20,7 +20,7 @@ export const columns: ColumnDef<EmonHost>[] = [
   },
   {
     id: "actions",
-    cell: ({ row }) => <CrudIconRowActions row={row} base_path="/emon-host/" />,
+    cell: ({ row }) => <CrudIconRowActions row={row} base_path="/emon-host/" by_slug={true} />,
   },
   {
     accessorKey: "name",
