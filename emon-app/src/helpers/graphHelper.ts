@@ -205,7 +205,7 @@ export class GraphHelper {
           data.data,
           refAreaLeft,
           refAreaRight,
-          `${item.feed_id}`
+          `${item.id}`
         );
 
         if (item.location === "left") {
