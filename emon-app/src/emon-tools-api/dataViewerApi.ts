@@ -2,27 +2,40 @@ import Ut from '@/helpers/utils';
 import { getWithFetch } from '@/helpers/fetcher';
 import { UseQueryResult } from '@tanstack/react-query';
 import {
+  FeedDataIn,
+  FinaDataIn,
+  GraphDataIn,
   GraphDataProps,
   GraphFeedProps,
   GraphLocationProps,
-  LineChartDataProps
-} from '@/components/fina_viewer/feedChart';
-import { SelectedFileItem } from '@/lib/graphTypes';
+  LineChartDataProps,
+  SelectedFileItem,
+  timeSerie
+} from '@/lib/graphTypes';
 import { getApiUrl } from '@/lib/utils';
 
 export interface ExecQueriesParams {
   file_name: string;
 }
 
+
+
 export type FinaDataFetchItem = {
   success: boolean,
-  datapath_id: number,
-  emonhost_id: number,
-  file_id: number,
-  feed_id: number,
-  file_name: string,
+  id: number,
+  name: string,
   location: GraphLocationProps,
   data: number[][],
+}
+
+
+
+export type FeedDataFetchItem = {
+  success: boolean,
+  id: number,
+  name: string,
+  location: GraphLocationProps,
+  data: timeSerie[],
 }
 
 export type QueryResultIn = UseQueryResult<
@@ -32,8 +45,9 @@ export type QueryResultIn = UseQueryResult<
 
 export type combineResultsOut = {
   data: FinaDataFetchItem[] | undefined;
-  pending: boolean,
-  error: any[]
+  isLoading: boolean;
+  isError: boolean;
+  error: any[];
 }
 
 
@@ -50,46 +64,72 @@ export const getFinaFiles = (path_id: number) => {
     }
 }
 
-export const format_data = (
-    dataFetch: FinaDataFetchItem[],
+const get_time_series = (data: timeSerie[], itemId: number): GraphDataProps[] | null => {
+  if(Ut.isArray(data, {notEmpty: true})){
+    return data
+      .map((value: timeSerie) => {
+        const nb_items: number = value.length
+        if(nb_items === 2){
+          return {
+            date: value[0],
+            [itemId]: value[1]
+          } as GraphDataProps
+        }
+        else if(nb_items >= 4){
+          return {
+            date: value[0],
+            [`${itemId}`]: value[2],
+            [`${itemId}_range`]: nb_items >= 4 ? [value[1], value[3]] : [],
+            
+          } as GraphDataProps
+        }
+        return undefined
+      })
+      .filter((item): item is GraphDataProps => item !== undefined);
+  }
+  return null
+}
+
+export type GraphDataType = {
+  feeds: GraphFeedProps[],
+  data: GraphDataProps[]
+}
+
+export const format_graph_data = (
+  name: string,
+  itemId: number,
+  data: timeSerie[],
+  location: GraphLocationProps,
+  current : GraphDataType
+): GraphDataType => {
+  if(Ut.isArray(data)){
+    const feed_data: GraphDataProps[] | null = get_time_series(data, itemId)
+    current.data = feed_data ? current.data.concat(feed_data) : current.data
+    current.feeds.push({
+      id: itemId,
+      name: name,
+      location: location
+    })
+  }
+  return current
+}
+
+export const format_feed_data = (
+    dataFetch: FeedDataIn[],
     location: GraphLocationProps
   ): LineChartDataProps => {
     if(Ut.isArray(dataFetch) && dataFetch.length > 0){
-      return dataFetch.reduce((obj, item) => {
-        const datapath_id = item.datapath_id
-        const emonhost_id = item.emonhost_id
-        const file_name = item.file_name
-        const file_id = item.file_id
-        const feed_id = item.feed_id
+      return dataFetch.reduce((obj, item: FeedDataIn) => {
+        const name = item.name
+        const itemId = item.id
         const data = item.data
-        if(Ut.isArray(data)){
-          const feed_data: GraphDataProps[] = data.map((value) => {
-            if(value.length === 2){
-              return {
-                date: value[0],
-                [file_id]: value[1],
-                [`${file_id}_range`]: []
-              }
-            }
-            else if(value.length >= 4){
-              return {
-                date: value[0],
-                [`${file_id}_range`]: [value[1], value[3]],
-                [`${file_id}`]: value[2],
-              }
-            }
-          })
-          obj.data = obj.data.concat(feed_data)
-          obj.feeds.push({
-            file_id: file_id,
-            feed_id: feed_id,
-            datapath_id: datapath_id,
-            emonhost_id: emonhost_id,
-            file_name: file_name,
-            location: location
-          })
-        }
-        return obj
+        return format_graph_data(
+          name,
+          itemId,
+          data,
+          location,
+          obj
+        )
       }, {
         feeds: [] as GraphFeedProps[],
         data: [] as GraphDataProps[]
@@ -101,16 +141,52 @@ export const format_data = (
     }
 }
 
+export const format_file_data = (
+  dataFetch: FinaDataIn[],
+  location: GraphLocationProps
+): LineChartDataProps => {
+  if(Ut.isArray(dataFetch) && dataFetch.length > 0){
+    return dataFetch.reduce((obj, item) => {
+      const name = item.name
+      const itemId = item.file_id
+      const data = item.data
+      return format_graph_data(
+        name,
+        itemId,
+        data,
+        location,
+        obj
+      )
+    }, {
+      feeds: [] as GraphFeedProps[],
+      data: [] as GraphDataProps[]
+    })
+  }
+  return {
+    feeds: [],
+    data: []
+  }
+}
+
 export const format_datas = (
-    leftFetch: FinaDataFetchItem[],
-    rightFetch: FinaDataFetchItem[]
+    leftFetch: GraphDataIn[],
+    rightFetch: GraphDataIn[],
+    graph_source: "files" | "feeds"
   ): LineChartDataProps => {
-    const leftData = format_data(leftFetch, 'left')
-    const rightData = format_data(rightFetch, 'right')
+    let leftData: GraphDataType | null = null
+    let rightData: GraphDataType | null = null
+    if(graph_source === "files"){
+      leftData = format_file_data(leftFetch as FinaDataIn[], 'left')
+      rightData = format_file_data(rightFetch as FinaDataIn[], 'right')
+    }
+    else if(graph_source === "feeds"){
+      leftData = format_feed_data(leftFetch as FeedDataIn[], 'left')
+      rightData = format_feed_data(rightFetch as FeedDataIn[], 'right')
+    }
 
     return {
-      data: leftData.data.concat(rightData.data).flat(),
-      feeds: leftData.feeds.concat(rightData.feeds).flat()
+      data: leftData && rightData ? leftData.data.concat(rightData.data).flat() : [],
+      feeds: leftData && rightData ? leftData.feeds.concat(rightData.feeds).flat() : []
     }
 }
 
@@ -122,18 +198,18 @@ export const getFeedIdFromFileName = (file_name: string) => {
   return 0
 }
 
-export const execFinaMetaQueries = (
-  item: ExecQueriesParams,
-  path_id: number
+export const getSearchParams = (
+  time_start: number,
+  window: number,
+  interval: number
 ) => {
-  const feed_id = getFeedIdFromFileName(item.file_name);
-  const url = getApiUrl(`/api/v1/fina_data/meta/${path_id}/${feed_id}`);
-  return {
-    queryKey: ['emon_fina_metas', path_id, feed_id],
-    queryFn: () => getWithFetch({ url: url }),
-    retry: false
-  };
-};
+  const searchParams = new URLSearchParams({
+    start: time_start.toString(),
+    window: window.toString(),
+    interval: interval.toString(),
+  });
+  return searchParams.toString()
+}
 
 export const execFinaDataQueries = (
   item: SelectedFileItem,
