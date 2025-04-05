@@ -198,15 +198,18 @@ DataViewerStore
           interval: zoom.interval
         }
       }, undefined, 'DataViewer/zoom_graph'),
-      reset_graph: () => set(() => (
-          { 
+      reset_graph: () => set((state) => {
+          const currentSerach = GraphHelper.init_default_search(
+            state.selected_feeds,
+            true,
+            86400
+          )
+          return {
+            ...currentSerach,
             selector: initialSelector,
-            nav_graph: initialNavGaph,
-            time_start: 0,
-            time_window: 0,
-            interval: 0
+            nav_graph: initialNavGaph
           }
-      ), undefined, 'DataViewer/reset_graph'),
+      }, undefined, 'DataViewer/reset_graph'),
       zoom_view: (data: LineChartDataProps) => set((state) => {
         let { refAreaLeft, refAreaRight } = state.selector;
         if (refAreaLeft === refAreaRight || refAreaRight === 0) {
@@ -224,7 +227,7 @@ DataViewerStore
         )
         return {
           is_view_zoomed: true,
-          nav_view: {
+          nav_graph: {
             can_reload: true,
             can_go_back: true,
             can_go_after: true,
@@ -232,6 +235,8 @@ DataViewerStore
             can_zoom_out: true,
             can_go_start: true,
             can_go_end: true,
+            zoom_level: state.nav_graph.zoom_level,
+            move_level: state.nav_graph.move_level,
           },
           selector: {
             refAreaLeft: 0,
@@ -310,13 +315,15 @@ DataViewerStore
             const nexts = state.selected_feeds.filter(item => item.meta.start_time !== state.time_start)
             if(nexts.length > 0){
               return {
-                time_start: nexts[0].meta.start_time
+                time_start: nexts[0].meta.start_time,
+                selector: initialSelector,
               }
             }
             return {}
           }
           return {
-            time_start: state.selected_feeds[0].meta.start_time
+            time_start: state.selected_feeds[0].meta.start_time,
+            selector: initialSelector,
           }
         }
         return {}
@@ -328,13 +335,15 @@ DataViewerStore
             const nexts = state.selected_feeds.filter(item => item.meta.end_time !== state.time_start + state.time_window)
             if(nexts.length > 0){
               return {
-                time_start: nexts[0].meta.end_time - state.time_window
+                time_start: nexts[0].meta.end_time - state.time_window,
+                selector: initialSelector,
               }
             }
             return {}
           }
           return {
-            time_start: state.selected_feeds[0].meta.end_time - state.time_window
+            time_start: state.selected_feeds[0].meta.end_time - state.time_window,
+            selector: initialSelector,
           }
         }
         return {}
@@ -348,6 +357,7 @@ DataViewerStore
             can_zoom_in: GraphHelper.zoom_in(zoom.time_window).time_window != zoom.time_window,
             can_zoom_out: true
           },
+          selector: initialSelector,
           time_window: zoom.time_window,
           interval: zoom.interval,
           
@@ -362,6 +372,7 @@ DataViewerStore
             can_zoom_out: GraphHelper.zoom_out(zoom.time_window).time_window != zoom.time_window,
             can_zoom_in: true
           },
+          selector: initialSelector,
           time_window: zoom.time_window,
           interval: zoom.interval
         })
