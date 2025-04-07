@@ -125,7 +125,7 @@ export function ChartFeedPane({
   if (!slug) {
     return (
       <div className='flex items-center justify-center h-full'>
-        <h1 className='text-2xl font-bold'>Invalid host slug</h1>
+        <h1 className='text-2xl font-bold'>Please chose Emoncms Instance.</h1>
       </div>
     )
   }
