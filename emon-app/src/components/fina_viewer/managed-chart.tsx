@@ -16,15 +16,6 @@ import { useDataViewer } from '@/stores/dataViewerStore';
 import { ContentType } from 'recharts/types/component/Tooltip';
 import { scaleTime } from 'd3-scale';
 import { utcFormat } from 'd3-time-format';
-import {
-  utcHour,
-  utcSecond,
-  utcMinute,
-  utcDay,
-  utcMonth,
-  utcYear,
-  utcWeek,
-} from 'd3-time';
 import { GraphDataProps, LineChartDataProps } from '@/lib/graphTypes';
 import ChartInfo from '@/components/fina_viewer/chartInfo';
 export type GraphLocationProps = 'left' | 'right';
@@ -66,64 +57,50 @@ const getTicks = (data: GraphDataProps[], left: string | number, right: string |
   return ticks.map((entry: Date) => entry.getTime() / 1000);
 };
 
-const formatMillisecond = utcFormat('.%L'),
-  formatSecond = utcFormat('%I:%M:%S'),
-  formatMinute = utcFormat('%a %d %I:%M:%S'),
-  formatHour = utcFormat('%a %d %H:%M'),
-  formatDay = utcFormat('%b %a %d %H'),
-  formatWeek = utcFormat('%b %d'),
-  formatMonth = utcFormat('%B %d'),
-  formatYear = utcFormat('%Y %b %d');
-const dateFormat = (time: number, minTime?: number, maxTime?: number) => {
+const dateFormat = (time: number, minTime?: number, maxTime?: number): string[] => {
   const date = new Date(time > 9999999999 ? time : time * 1000);
-  if (minTime !== undefined && maxTime !== undefined) {
-    // Calculate overall range in milliseconds.
-    const diffMs = (maxTime - minTime) * 1000;
-    const onehour = 60 * 60 * 1000;
-    const oneday = 24 * 60 * 60 * 1000;
-    const oneWeek = 7 * 24 * 60 * 60 * 1000;
-    const oneMonth = 30 * 24 * 60 * 60 * 1000;
-    const oneYear = 365 * 24 * 60 * 60 * 1000;
+  const diffMs = (maxTime! - minTime!) * 1000;
 
-    let formatter;
-    if (diffMs <= onehour) {
-      // For day or week ranges, show detailed day-level info.
-      formatter = formatMinute;
-    } else if (diffMs <= oneday) {
-      // For day or week ranges, show detailed day-level info.
-      formatter = formatHour;
-    } else if (diffMs <= oneWeek) {
-      // For day or week ranges, show detailed day-level info.
-      formatter = formatDay;
-    } else if (diffMs <= oneMonth) {
-      // For month-range data, use a concise week-level format.
-      formatter = formatWeek;
-    } else if (diffMs <= oneYear) {
-      // For year-range data, display the month.
-      formatter = formatMonth;
-    } else {
-      // For ranges wider than a year, display the year.
-      formatter = formatYear;
-    }
-    return formatter(date);
+  const oneHour = 60 * 60 * 1000;
+  const oneDay = 24 * 60 * 60 * 1000;
+  const oneWeek = 7 * oneDay;
+  const oneMonth = 30 * oneDay;
+  const oneYear = 365 * oneDay;
+
+  if (diffMs <= oneHour) {
+    return [utcFormat('%H:%M:%S s')(date)];
+  } else if (diffMs <= oneDay) {
+    return [utcFormat('%a %H:%M:%S')(date)];
+  } else if (diffMs <= oneWeek) {
+    return [utcFormat('%a %d')(date), utcFormat('%H:%M')(date)];
+  } else if (diffMs <= oneMonth) {
+    return [utcFormat('%b %d')(date)];
+  } else if (diffMs <= oneYear) {
+    return [utcFormat('%Y')(date), utcFormat('%b %d')(date)];
+  } else {
+    return [utcFormat('%Y')(date), utcFormat('%b %d')(date)];
   }
-  return (
-    utcSecond(date) < date
-      ? formatMillisecond
-      : utcMinute(date) < date
-        ? formatSecond
-        : utcHour(date) < date
-          ? formatMinute
-          : utcDay(date) < date
-            ? formatHour
-            : utcMonth(date) < date
-              ? utcWeek(date) < date
-                ? formatDay
-                : formatWeek
-              : utcYear(date) < date
-                ? formatMonth
-                : formatYear
-  )(date);
+};
+
+const createMultiLineTick = (minDate: number, maxDate: number) => {
+  return function MultiLineTick({
+    x,
+    y,
+    payload
+  }: { x: number; y: number; payload: { value: number } }) {
+    const lines: string[] = dateFormat(payload.value, minDate, maxDate);
+    return (
+      <g transform={`translate(${x},${y})`}>
+        <text textAnchor="middle" fill="#888" fontSize="12">
+          {lines.map((line, index) => (
+            <tspan x="0" dy={index === 0 ? 0 : 14} key={index}>
+              {line}
+            </tspan>
+          ))}
+        </text>
+      </g>
+    );
+  };
 };
 
 export function FeedLineChart({
@@ -171,9 +148,9 @@ export function FeedLineChart({
         name: 'null',
         location: 'left',
         db_data: [{
-            datapath_id: 0,
-            emonhost_id: 0,
-            feed_id: 0,
+          datapath_id: 0,
+          emonhost_id: 0,
+          feed_id: 0,
         }]
       });
       for (const x of Array(nb_points).keys()) {
@@ -201,6 +178,14 @@ export function FeedLineChart({
   const min_date = data_points?.data[0]?.date ?? undefined;
   const max_date =
     data_points?.data[data_points?.data.length - 1]?.date ?? undefined;
+  
+  const getTootltipValue = (value: number | undefined, key: number) => {
+    if (Ut.isArray(value)) {
+      const nb_items = value.length
+      return nb_items > key + 1 ? value[key] : '';
+    }
+    return '';
+  }
   const CustomTooltip: ContentType<number, string> = ({
     active,
     payload,
@@ -214,7 +199,7 @@ export function FeedLineChart({
         range_index = 0;
       }
       return (
-        <div className="custom-tooltip">
+        <div className="custom-tooltip bg-foreground text-background p-2 rounded-md opacity-90">
           <p className="label">{`Feed: ${payload[valueIndex].name}`}</p>
           <p className="intro">{`Date: ${Ut.toLocaleDateFromTime(label)}`}</p>
           <p className="desc">{`Value : ${Ut.isNumber(payload[valueIndex].value)
@@ -228,14 +213,11 @@ export function FeedLineChart({
               <p
                 key={`${payload[valueIndex].name}_min`}
                 className="desc"
-              >{`Min : ${payload[range_index].value[0]
-                ? payload[range_index].value[0]
-                : ''
-                }`}</p>,
+              >{`Min : ${getTootltipValue(payload[range_index].value, 0)}`}</p>,
               <p
                 key={`${payload[valueIndex].name}_max`}
                 className="desc"
-              >{`Max : ${payload[range_index].value[1]}`}</p>,
+              >{`Max : ${getTootltipValue(payload[range_index].value, 1)}`}</p>,
             ]
             : null}
         </div>
@@ -279,14 +261,12 @@ export function FeedLineChart({
                 allowDataOverflow
                 includeHidden
                 height={220}
-                angle={45}
                 scale={'time'}
                 ticks={getTicks(data_points?.data, left, right)} ///data_points?.data, interval)}
                 interval={5}
                 textAnchor="start"
-                tickFormatter={(value: number) => {
-                  return dateFormat(value, min_date, max_date);
-                }}
+                tick={createMultiLineTick(min_date, max_date)}
+                tickMargin={12}
               />
               <YAxis
                 yAxisId="left"
