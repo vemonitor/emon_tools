@@ -94,6 +94,38 @@ def read_item(
         )
 
 
+@router.get(
+    "/get-path/{item_id}/",
+    response_model=ResponseModelBase,
+    responses=BaseController.get_error_responses()
+)
+def get_data_path(
+    session: SessionDep,
+    current_user: CurrentUser,
+    item_id: int
+) -> ResponseModelBase:
+    """
+    Get item by ID.
+    """
+    try:
+        item = session.get(ArchiveFile, item_id)
+        if not item:
+            raise HTTPException(
+                status_code=404, detail="Item not found")
+        if not current_user.is_superuser\
+                and (item.owner_id != current_user.id):
+            raise HTTPException(
+                status_code=400, detail="Not enough permissions")
+        return ResponseModelBase(
+            success=True,
+            data=dict(item.datapath)
+        )
+    except Exception as ex:
+        BaseController.handle_exception(
+            ex=ex,
+            session=session
+        )
+
 @router.post(
     "/add/",
     response_model=ResponseModelBase,

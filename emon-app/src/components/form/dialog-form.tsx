@@ -16,6 +16,7 @@ type DialogFormProps = {
     form: ReactNode;
     footer?: ReactNode;
     dialogOpen: boolean;
+    disabled?: boolean;
     dialogSetOpen: (value: boolean) => void
 }
 
@@ -26,11 +27,15 @@ export default function DialogForm({
     form,
     footer,
     dialogOpen,
+    disabled,
     dialogSetOpen
 }: DialogFormProps) {
     return (
         <Dialog open={dialogOpen} onOpenChange={dialogSetOpen}>
-            <DialogTrigger asChild>
+            <DialogTrigger
+                disabled={disabled && disabled === true}
+                asChild
+            >
                 {trigger}
             </DialogTrigger>
             <DialogContent className="sm:max-w-[425px]">

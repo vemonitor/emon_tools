@@ -10,7 +10,7 @@ from sqlalchemy.exc import IntegrityError
 from emon_tools.emon_api.api_utils import Utils as Ut
 from backend.controllers.data_path import DataPathController
 from backend.core.deps import CurrentUser
-from backend.models.db import ArchiveFile
+from backend.models.db import ArchiveFile, DataPathType
 from backend.models.db import DataPath
 from backend.utils.emon_fina_helper import EmonFinaHelper
 from backend.utils.errors_parser import parse_integrity_error
@@ -179,7 +179,8 @@ class FilesController:
             to_add = [
                 x
                 for x in files.get('files')
-                if x.get('file_db') is None
+                if x.get('file_db') is None\
+                and Ut.is_dict(x.get('meta'), not_empty=True)
             ]
             if len(to_add) > 0:
                 owner_id = current_user.id
@@ -191,14 +192,14 @@ class FilesController:
                         datapath_id=files.get('file_path').id,
                         owner_id=owner_id,
                         start_time=dt.datetime.fromtimestamp(
-                            item['meta'].get('start_time'),
+                            item['meta'].get('start_time', 0),
                             dt.timezone.utc),
                         end_time=dt.datetime.fromtimestamp(
-                            item['meta'].get('end_time'),
+                            item['meta'].get('end_time', 0),
                             dt.timezone.utc),
-                        interval=item['meta'].get('interval'),
-                        npoints=item['meta'].get('npoints'),
-                        size=item['meta'].get('size'),
+                        interval=item['meta'].get('interval', 0),
+                        npoints=item['meta'].get('npoints', 0),
+                        size=item['meta'].get('size', 0),
                     )
                     session.add(item_in)
                     result += 1
@@ -268,4 +269,30 @@ class FilesController:
             result['msg'] = "Unable to get archived files list from data base."
             result['error'] = parse_integrity_error(ex)
 
+        return result
+
+    @staticmethod
+    def get_files_by_host(
+        *,
+        session: Session,
+        current_user: CurrentUser,
+        host_id: int
+    ) -> list[ArchiveFile]:
+        """
+        Retrieve a data path from the database by their id.
+
+        Args:
+            session (Session): The database session to use for the query.
+            email (str): The email address of the user to retrieve.
+
+        Returns:
+            User | None: The user object if found, otherwise None.
+        """
+        statement = select(
+            ArchiveFile).where(
+                ArchiveFile.emonhost_id == host_id
+            )
+        if not current_user.is_superuser:
+            statement.where(ArchiveFile.owner_id == current_user.id)
+        result = session.exec(statement).all()
         return result

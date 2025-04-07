@@ -1,5 +1,5 @@
 import {
-  Bot,
+  //Bot,
   Boxes,
   ChartSpline,
   FileArchive,
@@ -7,7 +7,7 @@ import {
   Gauge,
   Globe,
   House,
-  Settings2,
+  //Settings2,
 } from "lucide-react"
 
 import { NavMain } from "@/components/nav_sidebar/nav-main"
@@ -43,19 +43,19 @@ const navMain = [
   },
   {
     key_group: "dataViewer",
-    title: "PhpFina Viewer",
+    title: "Data Viewer",
     icon: ChartSpline,
     isActive: false,
     isPublic: false,
     items: [
       {
-        title: "Archived",
-        url: "/dataViewer/archive",
+        title: "Hosted",
+        url: "/dataViewer/hosted",
         icon: FileArchive,
       },
       {
-        title: "Emoncms",
-        url: "/dataViewer/emoncms",
+        title: "PhpFina",
+        url: "/dataViewer/fina",
         icon: Globe,
       }
     ],
@@ -128,7 +128,7 @@ const navMain = [
       }
     ],
   },
-  {
+  /*{
     key_group: "emonApi",
     title: "Emoncms Api",
     url: "#",
@@ -172,7 +172,7 @@ const navMain = [
         url: "#",
       },
     ],
-  },
+  },*/
 ]
 
 type AppSidebarProps = ComponentProps<typeof Sidebar>

@@ -14,7 +14,6 @@ class ResponseError(BaseModel):
     error: Optional[str] = None
 
 
-# Properties to return via API, id is always required
 class ResponseModelBase(BaseModel):
     """
     Public item model for API responses.

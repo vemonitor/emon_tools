@@ -11,7 +11,7 @@ import { Input } from "@/components/ui/input";
 import { z } from 'zod';
 import { PromiseFormActionType, EmonHostEdit } from "@/lib/types";
 import { ComponentPropsWithoutRef } from "react";
-import ComboBox from "@/components/form/combo-box";
+import ComboBox from "@/components/form/combo-box-form";
 import { CrudForm } from "@/components/form/crud-form";
 
 export const FormScheme = z.object({

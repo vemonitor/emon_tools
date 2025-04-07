@@ -2,6 +2,7 @@ import {
   FullGraphZoom,
   GraphDataProps,
   LineChartDataProps,
+  SelectedToGraph,
   VerticalRange
 } from "@/lib/graphTypes";
 import Ut from "./utils";
@@ -108,6 +109,37 @@ export class GraphHelper {
     return closest || zooms[12];
   }
 
+  static init_default_search(
+    selected_feeds: SelectedToGraph[],
+    from_start: boolean,
+    default_window: number = 86400
+  ): { time_start: number, time_window: number, interval: number } {
+    // Determine the minimum and maximum start_time and end_time values from selected_feeds meta values
+    const minStartTime = Math.min(...selected_feeds.map(feed => feed.meta.start_time));
+    const maxEndTime = Math.max(...selected_feeds.map(feed => feed.meta.end_time));
+
+    let search_time_start: number;
+
+    if (from_start) {
+      // Use the minimum start_time value
+      search_time_start = minStartTime;
+    } else {
+      // Calculate as meta.time_end - (search_time_start + window)
+      search_time_start = maxEndTime - default_window;
+    }
+
+    // Set the default window
+    const window = default_window;
+
+    // Calculate the interval (assuming it's a fixed value or derived from the window)
+    const zoom = GraphHelper.get_interval_by_window(default_window); // Example calculation, adjust as needed
+    const interval = zoom.interval;
+    return {
+      time_start: search_time_start,
+      time_window: window,
+      interval: interval
+    };
+  }
   /**
    * Finds the next zoom configuration that is larger than the current time window.
    * @param time_window - The current time window.
@@ -205,7 +237,7 @@ export class GraphHelper {
           data.data,
           refAreaLeft,
           refAreaRight,
-          `${item.feed_id}`
+          `${item.id}`
         );
 
         if (item.location === "left") {

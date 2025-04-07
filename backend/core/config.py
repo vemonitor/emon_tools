@@ -20,7 +20,7 @@ from pydantic_settings import SettingsConfigDict
 # pylint: disable=invalid-name
 # ✅ Define the base directory as the root of the `emon_tools/` package
 # Moves up to `emon_tools/`
-BASE_DIR = Path(__file__).resolve().resolve().parents[3]
+BASE_DIR = Path(__file__).resolve().resolve().parents[2]
 
 # ✅ Ensure `.env` is correctly detected in `emon_tools/`
 env_file_path = join_path(BASE_DIR, ".env")

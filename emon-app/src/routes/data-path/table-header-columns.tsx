@@ -6,6 +6,10 @@ import { DataPathList } from "@/lib/types"
 export type DataPath = {
   id: number
   name: string
+  slug: string
+  path_type: string
+  file_type: string
+  path: string
 }
 
 export const columns: ColumnDef<DataPathList>[] = [
@@ -17,7 +21,7 @@ export const columns: ColumnDef<DataPathList>[] = [
   },
  {
     id: "actions",
-    cell: ({ row }) => <CrudIconRowActions row={row} base_path="/data-path/" />,
+    cell: ({ row }) => <CrudIconRowActions row={row} base_path="/data-path/" by_slug={true} />,
   },
   {
     accessorKey: "path_type",

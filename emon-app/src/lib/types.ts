@@ -1,4 +1,11 @@
 // Type definitions for the emon-app
+export type urlSearchParamsType = string[][] | Record<string, string> | string | URLSearchParams
+
+export type Status = {
+    value: string
+    label: string
+}
+
 export type BaseActionErrorType = {
     table?: string,
     field_name?: string,
@@ -123,13 +130,13 @@ export interface DataPathEdit extends DataPathBase{
 export interface ArchiveFileBase {
     name: string;
     file_name: string;
-    start_time: string;
-    end_time: string;
+    start_time?: string;
+    end_time?: string;
     interval?: number;
     size?: number;
     npoints?: number;
     feed_id?: number;
-    sha_256: string;
+    sha_256?: string;
 }
 
 export interface ArchiveFileList extends ArchiveFileBase{

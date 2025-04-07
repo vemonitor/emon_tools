@@ -1,25 +1,16 @@
 import { useQueries } from '@tanstack/react-query';
 import {
-  combineResults,
-  execFinaDataQueries,
   format_datas
 } from '@/emon-tools-api/dataViewerApi';
 import { useDataViewer } from '@/stores/dataViewerStore';
 import clsx from 'clsx';
-import { FeedLineChart } from '@/components/fina_viewer/feedChart';
-import { ChartTopMenu } from './chartTopMenu';
-import Ut from '@/helpers/utils';
 import { Skeleton } from '@/components/ui/skeleton';
-import { useShallow } from 'zustand/react/shallow'
 import { Suspense } from 'react';
-import { SelectedFileItem } from '@/lib/graphTypes';
+import { SelectedToGraph } from '@/lib/graphTypes';
 import { useAuth } from '@/hooks/use-auth';
-
-type FinaChartViewerProps = {
-  path_id: number,
-  selected_feeds: SelectedFileItem[]
-  classBody?: string;
-}
+import { validateSlug } from '@/lib/utils';
+import { FeedLineChart } from '@/components/fina_viewer/managed-chart';
+import { ChartTopMenu } from '@/components/fina_viewer/chartTopMenu';
 
 const GraphLoader = () => {
   return(
@@ -34,10 +25,44 @@ const GraphLoader = () => {
   )
 }
 
+const execFinaDataQueries = (
+  item: SelectedToGraph,
+  path_slug: string,
+  time_start: number,
+  window: number,
+  interval: number,
+  fetchWithAuth: (input: RequestInfo, init?: RequestInit) => Promise<Response>
+) => {
+  const file_id = item.id;
+  const searchParams = new URLSearchParams({
+    start: time_start.toString(),
+    window: window.toString(),
+    interval: interval.toString(),
+  });
+  const url = `/api/v1/fina_data/data/${file_id}/?${searchParams.toString()}`;
+  return {
+    queryKey: ['emoncms_datas', file_id, time_start, window, interval],
+    retry: false,
+    enabled: path_slug && file_id ? true : false,
+    queryFn: async () => {
+      const response = await fetchWithAuth(url, { method: 'GET' });
+      if (!response.ok) {
+        throw new Error('Network response was not ok');
+      }
+      const json = await response.json();
+      return json || {};
+    },
+  };
+};
 
+type FinaChartViewerProps = {
+  path_slug: string;
+  selected_feeds: SelectedToGraph[]
+  classBody?: string;
+}
 
 export function FinaChartViewer({
-  path_id,
+  path_slug,
   selected_feeds
 }: FinaChartViewerProps){
     const { fetchWithAuth } = useAuth();
@@ -45,7 +70,7 @@ export function FinaChartViewer({
     const time_start = useDataViewer((state) => state.time_start)
     const time_window = useDataViewer((state) => state.time_window)
     const interval = useDataViewer((state) => state.interval)
-    const set_data_points = useDataViewer(useShallow((state) => state.set_data_points))
+    
 
     // Ensure selected_feeds is always an array.
     const feeds = Array.isArray(selected_feeds) ? selected_feeds : [];
@@ -55,31 +80,21 @@ export function FinaChartViewer({
     // Always call useQueries, even if the feed arrays are empty.
     const leftQueries = useQueries({
       queries: leftFeeds.map((feed) =>
-        execFinaDataQueries(feed, time_start, time_window, interval, fetchWithAuth)
+        execFinaDataQueries(feed, path_slug, time_start, time_window, interval, fetchWithAuth)
       ),
     });
     const rightQueries = useQueries({
       queries: rightFeeds.map((feed) =>
-        execFinaDataQueries(feed, time_start, time_window, interval, fetchWithAuth)
+        execFinaDataQueries(feed, path_slug, time_start, time_window, interval, fetchWithAuth)
       ),
     });
 
-    // Determine loading state based on queries.
-    const isLoading =
-      leftQueries.some((query) => query.isLoading) ||
-      rightQueries.some((query) => query.isLoading);
 
     // Combine query results.
     const leftData = leftQueries.flatMap((query) => query.data || []);
     const rightData = rightQueries.flatMap((query) => query.data || []);
-    const data_points = format_datas(leftData, rightData);
+    const data_points = format_datas(leftData, rightData, "files");
 
-    // Always call useEffect, but conditionally perform an action inside it.
-    /*useEffect(() => {
-      if (!isLoading) {
-        set_data_points(data_points);
-      }
-    }, [isLoading, data_points, set_data_points]);*/
     return (
       <>
         <div className='w-full h-full'>
@@ -88,7 +103,6 @@ export function FinaChartViewer({
             time_start={time_start}
             time_window={time_window}
             interval={interval}
-            selected_feeds={selected_feeds}
           />
         </div>
         <div className="w-full h-20">
@@ -100,16 +114,23 @@ export function FinaChartViewer({
 }
 
 type ChartPaneProps = {
-  path_id: number
+  path_slug?: string;
   classBody?: string;
 }
 
 export function ChartPane({
-  path_id,
+  path_slug,
   classBody
 }: ChartPaneProps) {
   const selected_feeds = useDataViewer((state) => state.selected_feeds)
-
+  const slug = validateSlug(path_slug);
+  if (!slug) {
+    return (
+      <div className='flex items-center justify-center h-full'>
+        <h1 className='text-2xl font-bold'>Please chose phpfina path.</h1>
+      </div>
+    )
+  }
   return (
   <div
     className={clsx('w-full flex flex-col items-center gap-2 h-full', classBody)}
@@ -119,7 +140,7 @@ export function ChartPane({
     </div>
     <Suspense fallback={<GraphLoader />}>
       <FinaChartViewer
-        path_id={path_id}
+        path_slug={slug}
         selected_feeds={selected_feeds}
       />
     </Suspense>

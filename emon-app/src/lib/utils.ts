@@ -1,6 +1,6 @@
 import { clsx, type ClassValue } from "clsx"
 import { twMerge } from "tailwind-merge"
-import { idSchemeIn, idSchemeOut } from "./comon-schemas"
+import { idSchemeIn, idSchemeOut, KeyString } from "./comon-schemas"
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
@@ -20,6 +20,11 @@ export const validateStringId = (item_id?: string) => {
   const validateIn = idSchemeIn.safeParse(item_id);
   const validateOut = idSchemeOut.safeParse(Number(item_id));
   return validateIn.success === true && validateOut.success === true ? Number(item_id) : 0;
+}
+
+export const validateSlug = (slug?: string) => {
+  const validateIn = KeyString.safeParse(slug);
+  return validateIn.success === true ? slug : undefined;
 }
 
 export const validateId = (item_id?: string) => {
