@@ -2,6 +2,7 @@ import { Row } from "@tanstack/react-table"
 import { Link } from "react-router"
 import { Button } from "@/components/ui/button"
 import { Eye, Pencil, Trash2 } from "lucide-react"
+import { validateSlug } from "@/lib/utils"
 
 interface CrudIconRowActionsProps<TData extends { id: string | number }> {
   row: Row<TData>,
@@ -14,8 +15,8 @@ export function CrudIconRowActions<TData extends { id: string | number, slug?: s
   base_path,
   by_slug = false
 }: CrudIconRowActionsProps<TData>) {
-  const row_id = row.original.id
-  const row_slug = row.original.slug
+  const row_id = Number(row.original.id)
+  const row_slug = validateSlug(row.original.slug)
   return (
     <div className="flex items-center space-x-2">
       <Button
