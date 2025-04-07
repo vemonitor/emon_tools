@@ -1,15 +1,19 @@
 """
 EmonFina Helper utils module.
 
-This module provides helper functions for managing file sources and 
-file structures for EmonFina data. It includes utilities to retrieve 
-file source paths based on the given source type, validate source 
+This module provides helper functions for managing file sources and
+file structures for EmonFina data. It includes utilities to retrieve
+file source paths based on the given source type, validate source
 directories, scan directories for files, and analyze file structures.
 """
+import logging
 from emon_tools.emon_fina.emon_fina import FinaData
-from backend.utils.files import FilesHelper
 from emon_tools.emon_api.api_utils import Utils as Ut
+from backend.utils.files import FilesHelper
 from backend.core.config import settings
+
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 
 class EmonFinaHelper:
@@ -17,7 +21,7 @@ class EmonFinaHelper:
     Helper class for EmonFina file operations.
 
     This class provides static methods to retrieve file source paths,
-    validate directories, scan directories, and determine file 
+    validate directories, scan directories, and determine file
     structures for EmonFina data.
     """
     @staticmethod
@@ -57,8 +61,8 @@ class EmonFinaHelper:
 
         Returns:
             dict:
-                A dictionary with a 'success' key indicating whether 
-                the directory is valid and a 'message' key providing 
+                A dictionary with a 'success' key indicating whether
+                the directory is valid and a 'message' key providing
                 additional information.
         """
         result = {
@@ -118,7 +122,7 @@ class EmonFinaHelper:
         file_path: str
     ):
         """
-        Scan the file source directory for files and determine their 
+        Scan the file source directory for files and determine their
         structure.
 
         Parameters:
@@ -128,13 +132,13 @@ class EmonFinaHelper:
         Returns:
             dict:
                 A dictionary containing the scan results with the keys:
-                - "success": A boolean indicating if scanning was 
+                - "success": A boolean indicating if scanning was
                   successful.
                 - "file_path": The path that was scanned.
                 - "files": A list of '.dat' files found.
-                - "invalid": A list of files that are invalid based on 
+                - "invalid": A list of files that are invalid based on
                   the expected structure.
-                If scanning fails, returns a dictionary with 'success' 
+                If scanning fails, returns a dictionary with 'success'
                 set to False and an error 'message'.
         """
         result = None
@@ -186,7 +190,11 @@ class EmonFinaHelper:
                             "file_db": file_item.get('file_db'),
                         })
                 except (ValueError, TypeError, OSError) as ex:
-                    pass
+                    logging.error(
+                        "Error processing file %s: %s",
+                        file_item.get('file_name'),
+                        ex
+                    )
             files['files'] = sorted(output_files, key=lambda d: d['name'])
             result = files
         return result
@@ -196,7 +204,7 @@ class EmonFinaHelper:
         source: str
     ):
         """
-        Scan the file source directory for files and determine their 
+        Scan the file source directory for files and determine their
         structure.
 
         Parameters:
@@ -206,13 +214,13 @@ class EmonFinaHelper:
         Returns:
             dict:
                 A dictionary containing the scan results with the keys:
-                - "success": A boolean indicating if scanning was 
+                - "success": A boolean indicating if scanning was
                   successful.
                 - "file_path": The path that was scanned.
                 - "files": A list of '.dat' files found.
-                - "invalid": A list of files that are invalid based on 
+                - "invalid": A list of files that are invalid based on
                   the expected structure.
-                If scanning fails, returns a dictionary with 'success' 
+                If scanning fails, returns a dictionary with 'success'
                 set to False and an error 'message'.
         """
         file_path = EmonFinaHelper.get_files_source(
@@ -227,7 +235,7 @@ class EmonFinaHelper:
         files: list
     ) -> tuple[list[str], list[str], set[str]]:
         """
-        Separate files into '.dat' and '.meta' files based on their 
+        Separate files into '.dat' and '.meta' files based on their
         extensions.
 
         Parameters:
@@ -262,7 +270,7 @@ class EmonFinaHelper:
         meta_files: list
     ):
         """
-        Determine invalid files based on the pairing of '.dat' and 
+        Determine invalid files based on the pairing of '.dat' and
         '.meta' files.
 
         Parameters:
@@ -274,9 +282,9 @@ class EmonFinaHelper:
         Returns:
             list:
                 A list of filenames that do not have a matching pair.
-                If both lists are present, returns files from the list 
-                with the greater count that do not have a corresponding 
-                pair in the other list. If only one type is present, 
+                If both lists are present, returns files from the list
+                with the greater count that do not have a corresponding
+                pair in the other list. If only one type is present,
                 returns a copy of that list.
         """
         is_dat = Ut.is_list(dat_files, not_empty=True)
