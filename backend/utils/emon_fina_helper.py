@@ -186,7 +186,7 @@ class EmonFinaHelper:
                             "file_db": file_item.get('file_db'),
                         })
                 except (ValueError, TypeError, OSError) as ex:
-                    pass
+                    logging.error(f"Error processing file {file_item.get('file_name')}: {ex}")
             files['files'] = sorted(output_files, key=lambda d: d['name'])
             result = files
         return result
