@@ -19,8 +19,6 @@ import {
   ArrowLeftToLine,
   ArrowRightFromLine,
   ArrowRightToLine,
-  ChartSpline,
-  Eye,
   RotateCw, 
   Unplug,
   ZoomIn,
@@ -166,10 +164,7 @@ type ChartTopMenuProps = {
 
 export function ChartTopMenu({
   classBody
-}: ChartTopMenuProps) { //can_zoom_in
-  const can_zoom_view = useDataViewer((state) => state.can_zoom_view)
-  const toggle_can_zoom_view = useDataViewer((state) => state.toggle_can_zoom_view)
-
+}: ChartTopMenuProps) {
   return (
   <div
     className={clsx(
@@ -184,12 +179,6 @@ export function ChartTopMenu({
       )}
     >
       <div className="flex flex-row items-center">
-        <Toggle
-          id='zoom_graph_status'
-          aria-label="Graph/View Zoom Status" 
-          defaultPressed={can_zoom_view}
-          onPressedChange={()=>toggle_can_zoom_view()}
-        >Nav : {can_zoom_view === true ? <Eye /> : <ChartSpline />}</Toggle>
         <Separator orientation='vertical' decorative={true} className='w-1'></Separator>
         <NavGraphMenu
         />
