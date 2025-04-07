@@ -26,7 +26,7 @@ export default function Layout({
           <div className="flex items-center gap-4">
             <SidebarTrigger className="text-primary" />
             <div className="hidden md:flex items-center gap-2">
-              <img src="/public/emon_tools_logo.png" width={40} alt="Emon Tools Logo" className="h-8 w-auto" />
+              <img src="/emon_tools_logo.png" width={40} alt="Emon Tools Logo" className="h-8 w-auto" />
             </div>
             <Separator orientation="vertical" className="h-6" />
             <Breadcrumbs />
