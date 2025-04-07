@@ -127,7 +127,7 @@ export function ChartPane({
   if (!slug) {
     return (
       <div className='flex items-center justify-center h-full'>
-        <h1 className='text-2xl font-bold'>Invalid path slug</h1>
+        <h1 className='text-2xl font-bold'>Please chose phpfina path.</h1>
       </div>
     )
   }
