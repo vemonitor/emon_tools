@@ -1,177 +1,143 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
- 
+
+/* ------------------------------------------------------------------
+   Combined Variables and Mode Definitions (only updated colors)
+------------------------------------------------------------------- */
 @layer base {
   :root {
-    --background: 0 0% 3.9%;
-    --foreground: 0 0% 98%;
- 
-    --card: 0 0% 3.9%;
-    --card-foreground: 0 0% 98%;
- 
-    --popover: 0 0% 3.9%;
-    --popover-foreground: 0 0% 98%;
- 
-    --primary: 0 0% 98%;
-    --primary-foreground: 0 0% 9%;
- 
-    --secondary: 0 0% 14.9%;
-    --secondary-foreground: 0 0% 98%;
- 
-    --muted: 0 0% 14.9%;
-    --muted-foreground: 0 0% 63.9%;
-
-    --text-foreground: 0 0% 98%;
-    --text-muted-foreground: 0 0% 63.9%;
- 
-    --accent: 0 0% 14.9%;
-    --accent-foreground: 0 0% 98%;
- 
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 0 0% 98%;
- 
-    --border: 0 0% 14.9%;
-    --input: 0 0% 14.9%;
-    --ring: 0 0% 83.1%;
-     
+    /* Default (Dark mode values by default) – Modern Dark Palette */
+    --background: 210 30% 8%;             /* Deep blue-gray background */
+    --foreground: 210 15% 90%;            /* Soft, light text */
+    
+    --card: 210 30% 12%;                 /* Slightly lighter card background */
+    --card-foreground: 210 15% 90%;
+    
+    --popover: 210 30% 12%;
+    --popover-foreground: 210 15% 90%;
+    
+    --primary: 200 80% 50%;              /* Vivid blue accent */
+    --primary-foreground: 0 0% 100%;
+    
+    --secondary: 210 30% 20%;            /* Muted secondary */
+    --secondary-foreground: 210 15% 90%;
+    
+    --muted: 210 25% 15%;                /* Subtle muted background */
+    --muted-foreground: 210 20% 70%;
+    
+    --text-foreground: 210 15% 90%;
+    --text-muted-foreground: 210 20% 70%;
+    
+    --accent: 340 70% 50%;               /* Vibrant magenta accent */
+    --accent-foreground: 0 0% 100%;
+    
+    --destructive: 0 80% 60%;            /* Bold red for destructive actions */
+    --destructive-foreground: 0 0% 100%;
+    
+    --border: 210 20% 25%;               /* Consistent border */
+    --input: 210 20% 25%;
+    --ring: 220 70% 50%;
+    
     --radius: 0.5rem;
-
-    --banner-color: rgba(119, 11, 0, 0.74);
+    
+    --banner-color: rgba(255, 69, 58, 0.8); /* Modern red banner */
   }
-  .light {
-    --background: 0 0% 100%;
-    --foreground: 0 0% 3.9%;
 
-    --card: 0 0% 100%;
-    --card-foreground: 0 0% 3.9%;
- 
+  /* Light mode overrides (Modern Light Palette) */
+  .light {
+    --background: 0 0% 98%;              /* Crisp white background */
+    --foreground: 210 20% 20%;           /* Dark text for legibility */
+    
+    --card: 0 0% 100%;                  /* White card background */
+    --card-foreground: 210 20% 20%;
+    
     --popover: 0 0% 100%;
-    --popover-foreground: 0 0% 3.9%;
- 
-    --primary: 0 0% 9%;
-    --primary-foreground: 0 0% 98%;
- 
-    --secondary: 0 0% 96.1%;
-    --secondary-foreground: 0 0% 9%;
- 
-    --muted: 0 0% 96.1%;
-    --muted-foreground: 0 0% 45.1%;
- 
-    --accent: 0 0% 96.1%;
-    --accent-foreground: 0 0% 9%;
- 
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 0 0% 98%;
-
-    --border: 0 0% 89.8%;
-    --input: 0 0% 89.8%;
-    --ring: 0 0% 3.9%;
- 
+    --popover-foreground: 210 20% 20%;
+    
+    --primary: 210 80% 40%;             /* Refined blue accent */
+    --primary-foreground: 0 0% 100%;
+    
+    --secondary: 210 30% 75%;           /* Soft secondary */
+    --secondary-foreground: 210 20% 20%;
+    
+    --muted: 210 20% 90%;               /* Very light muted background */
+    --muted-foreground: 210 20% 30%;
+    
+    --text-foreground: 210 20% 20%;
+    --text-muted-foreground: 210 20% 30%;
+    
+    --accent: 340 70% 50%;
+    --accent-foreground: 0 0% 100%;
+    
+    --destructive: 0 80% 60%;
+    --destructive-foreground: 0 0% 100%;
+    
+    --border: 210 10% 80%;
+    --input: 210 10% 80%;
+    --ring: 220 70% 50%;
+    
     --radius: 0.5rem;
+    
+    --banner-color: rgba(255, 69, 58, 0.8);
 
-    --banner-color: rgba(119, 11, 0, 0.74);
-  }
-  .dark {
-    --background: 0 0% 3.9%;
-    --foreground: 0 0% 98%;
- 
-    --card: 0 0% 3.9%;
-    --card-foreground: 0 0% 98%;
- 
-    --popover: 0 0% 3.9%;
-    --popover-foreground: 0 0% 98%;
- 
-    --primary: 0 0% 98%;
-    --primary-foreground: 0 0% 9%;
- 
-    --secondary: 0 0% 14.9%;
-    --secondary-foreground: 0 0% 98%;
- 
-    --muted: 0 0% 14.9%;
-    --muted-foreground: 0 0% 63.9%;
- 
-    --accent: 0 0% 14.9%;
-    --accent-foreground: 0 0% 98%;
- 
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 0 0% 98%;
- 
-    --border: 0 0% 14.9%;
-    --input: 0 0% 14.9%;
-    --ring: 0 0% 83.1%;
-  }
-}
- 
-@layer base {
-  * {
-    @apply border-border;
-  }
-  body {
-    @apply bg-background text-foreground;
-  }
-  .border-b-red-theme{
-    border-bottom-color: rgba(119, 11, 0, 0.74);
-  }
-  .title-article{
-    @apply uppercase border-b-2 border-spacing-2 border-b-red-theme pb-1 mb-3;
-  }
-  .title-article-rose{
-    @apply uppercase border-b-2 border-spacing-2 border-rose-500 pb-1 mb-3;
-  }
-}
-
-@layer base {
-  :root {
-    --chart-1: 220 70% 50%;
-    --chart-2: 160 60% 45%;
-    --chart-3: 30 80% 55%;
-    --chart-4: 280 65% 60%;
-    --chart-5: 340 75% 55%;
-  }
-
-  .light {
+    /* Chart colors for light mode remain as before */
     --chart-1: 12 76% 61%;
     --chart-2: 173 58% 39%;
     --chart-3: 197 37% 24%;
     --chart-4: 43 74% 66%;
     --chart-5: 27 87% 67%;
   }
- 
+
+  /* Dark mode overrides remain same as :root (modern dark palette applied above) */
   .dark {
-    --chart-1: 220 70% 50%;
-    --chart-2: 160 60% 45%;
-    --chart-3: 30 80% 55%;
-    --chart-4: 280 65% 60%;
-    --chart-5: 340 75% 55%;
+    /* Inherits the :root values */
   }
 }
 
-@media (prefers-reduced-motion: no-preference) {
-  a:nth-of-type(2) .logo {
-    animation: logo-spin infinite 20s linear;
+/* ------------------------------------------------------------------
+   Combined Base Layer Styles (unchanged layout and borders)
+------------------------------------------------------------------- */
+@layer base {
+  /* Keep existing universal border and outline rules */
+  * {
+    @apply border-border outline-ring/50;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+  }
+
+  .border-b-red-theme {
+    border-bottom-color: rgba(255, 69, 58, 0.8);
+  }
+
+  .title-article {
+    @apply uppercase border-b-2 border-spacing-2 pb-1 mb-3;
+    border-bottom-color: rgba(255, 69, 58, 0.8);
+  }
+
+  .title-article-rose {
+    @apply uppercase border-b-2 border-spacing-2 pb-1 mb-3;
+    border-bottom-color: theme('colors.rose.500');
   }
 }
 
+/* ------------------------------------------------------------------
+   Additional Component & Utility Styles (unchanged)
+------------------------------------------------------------------- */
+
+/* Card Component */
 .card {
   padding: 2em;
 }
 
+/* Read the Docs Text */
 .read-the-docs {
   color: #888;
 }
 
-
-
-@layer base {
-  * {
-    @apply border-border outline-ring/50;
-  }
-  body {
-    @apply bg-background text-foreground;
-  }
-}
-
+/* Remove spin buttons from number inputs */
 @layer base {
   input[type='number']::-webkit-outer-spin-button,
   input[type='number']::-webkit-inner-spin-button,
@@ -179,5 +145,12 @@
     -webkit-appearance: none;
     margin: 0;
     -moz-appearance: textfield !important;
+  }
+}
+
+/* Logo animation for non-reduced motion preferences */
+@media (prefers-reduced-motion: no-preference) {
+  a:nth-of-type(2) .logo {
+    animation: logo-spin infinite 20s linear;
   }
 }
