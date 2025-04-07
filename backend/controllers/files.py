@@ -180,7 +180,7 @@ class FilesController:
                 x
                 for x in files.get('files')
                 if x.get('file_db') is None\
-                and Ut.is_dict('meta', not_empty=True)
+                and Ut.is_dict(x.get('meta'), not_empty=True)
             ]
             if len(to_add) > 0:
                 owner_id = current_user.id
