@@ -17,13 +17,8 @@ from pydantic import (
 from typing_extensions import Self
 from pydantic_settings import BaseSettings
 from pydantic_settings import SettingsConfigDict
+from backend.utils.paths import ENV_PATH
 # pylint: disable=invalid-name
-# ✅ Define the base directory as the root of the `emon_tools/` package
-# Moves up to `emon_tools/`
-BASE_DIR = Path(__file__).resolve().resolve().parents[2]
-
-# ✅ Ensure `.env` is correctly detected in `emon_tools/`
-env_file_path = join_path(BASE_DIR, ".env")
 
 
 def parse_cors(v: Any) -> list[str] | str:
@@ -39,11 +34,11 @@ class Settings(BaseSettings):
     """Settings class for the FastAPI application."""
     model_config = SettingsConfigDict(
         # Use top level .env file (one level above ./fastapi/)
-        env_file=env_file_path,
+        env_file=ENV_PATH,
         env_ignore_empty=True,
         extra="ignore",
     )
-    print("Env file path: %s", model_config)
+    print("Env file path: ", model_config)
     API_V1_STR: str = "/api/v1"
     SECRET_KEY: str = secrets.token_urlsafe(32)
     TOKEN_ALGORITHM: str = "HS256"
