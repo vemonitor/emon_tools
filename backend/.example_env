@@ -6,14 +6,10 @@ DOMAIN="localhost"
 # To test the local Traefik config
 # DOMAIN=localhost.tiangolo.com
 
-# Used by the backend to generate links in emails to the frontend
-FRONTEND_HOST="http://localhost:5173"
-# In staging and production, set this env var to the frontend host, e.g.
-# FRONTEND_HOST=https://dashboard.example.com
-
 # Environment: local, staging, production
 ENVIRONMENT="local"
 
+API_V1_STR="/api/v1"
 PROJECT_NAME="EmonTools"
 STACK_NAME="full-stack-emontools-project"
 
@@ -22,24 +18,19 @@ DATA_BASE_PATH="/opt/emon_tools/data"
 STATIC_BASE_PATH="/opt/emon_tools/static"
 
 # Backend
+# Used by the backend to generate links in emails to the frontend
+FRONTEND_HOST="http://localhost:5173"
+# In staging and production, set this env var to the frontend host, e.g.
+# FRONTEND_HOST=https://dashboard.example.com
 BACKEND_CORS_ORIGINS="http://localhost,http://localhost:5173,https://localhost,https://localhost:5173"
-SECRET_KEY= 
-FIRST_SUPERUSER=admin@example.com
+
+SECRET_KEY=changethis
+FIRST_SUPERUSER=changethis
 FIRST_SUPERUSER_PASSWORD=changethis
 
 # Mysql
-MYSQL_SERVER="127.0.0.1"
+MYSQL_HOST="127.0.0.1"
 MYSQL_PORT=3306
-MYSQL_DB="app"
+MYSQL_DB="emontools"
 MYSQL_USER="emontools"
 MYSQL_PASSWORD=changethis
-
-# EmonCms envs
-# local emoncms instance
-EMONCMS_URL="http://127.0.0.1:8080"
-# emoncms apikey
-API_KEY=changethis
-# local phpfina paths
-EMON_FINA_PATH="/var/lib/phpfina"
-# phpfina archives directory
-ARCHIVE_FINA_PATH="./datas"
