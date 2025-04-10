@@ -1,0 +1,7 @@
+# all those values must same as .env.docker
+MYSQL_HOST="changethis"
+MYSQL_PORT=3306
+MYSQL_DB="changethis"
+MYSQL_USER="changethis"
+MYSQL_PASSWORD="changethis"
+MYSQL_ROOT_PASSWORD="changethis"

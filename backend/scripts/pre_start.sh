@@ -1,13 +1,19 @@
-#! /usr/bin/env bash
-
+#!/bin/sh
 set -e
 set -x
-# export PYTHONPATH="$(pwd)/..:$PYTHONPATH"
-# Let the DB start conda run -n emon-tools-dev-fast 
-python -m backend.fastapi_pre_start
+
+# Ensure PYTHONPATH is set correctly
+export PYTHONPATH=/opt/emon_tools
+
+echo "Current working directory: $(pwd)"
+
+echo "Initialysing DB..."
+python -m backend.fastapi_pre_start || { echo "Failed to initialise DB"; exit 1; }
 
 # Run migrations
-alembic -c emon_tools/fastapi/alembic.ini upgrade head
+echo "Run Migrations"
+alembic -c ./backend/alembic.ini upgrade head || { echo "Migration failed"; exit 1; }
 
-# Create initial data in DB conda run -n emon-tools-dev-fast 
-python -m backend.initial_data
+# Create initial data in DB
+echo "Create initial data in DB"
+python -m backend.initial_data || { echo "Failed to create initial data"; exit 1; }

@@ -1,0 +1,48 @@
+services:
+  emon_api_db:
+    image: bitnami/mariadb:latest
+    volumes:
+      - ./mysql_data:/bitnami/mariadb
+    environment:
+      - ALLOW_EMPTY_PASSWORD=no
+      - MARIADB_PORT_NUMBER=${MYSQL_PORT}
+      - MARIADB_ROOT_PASSWORD=${MYSQL_ROOT_PASSWORD}
+      - MARIADB_USER=${MYSQL_USER}
+      - MARIADB_PASSWORD=${MYSQL_PASSWORD}
+      - MARIADB_DATABASE=${MYSQL_DB}
+    networks:
+      - emon_tools_network
+
+  emon_api:
+    build:
+      context: ../../backend
+      dockerfile: Dockerfile
+    volumes:
+      - ../../backend:/opt/emon_tools/backend
+      - ./alembic:/opt/emon_tools/backend/alembic/versions
+      - ../../datas:/opt/emon_tools/datas
+      - ../../static:/opt/emon_tools/static
+    ports:
+      - "8000:8000"
+    depends_on:
+      - emon_api_db
+    networks:
+      - emon_tools_network
+
+  emon_app:
+    build:
+      context: ../../emon-app
+      dockerfile: Dockerfile
+    # Bind mount the source so that changes reflect immediately in the container.
+    volumes:
+      - ../../emon-app:/opt/app
+      # Optionally, add an anonymous volume to prevent overwriting container's node_modules:
+      - /opt/app/node_modules
+    ports:
+      - "5173:5173"
+    depends_on:
+      - emon_api
+
+networks:
+  emon_tools_network:
+    driver: bridge

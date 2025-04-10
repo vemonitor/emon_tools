@@ -1,0 +1,38 @@
+# This file is used to set up the environment variables for the backend
+# This file should be copied to .env.docker and edited with the correct values
+
+# Domain
+# This would be set to the production domain with an env var on deployment
+# used by Traefik to transmit traffic and aqcuire TLS certificates
+DOMAIN="localhost"
+# To test the local Traefik config
+# DOMAIN=localhost.tiangolo.com
+
+# Environment: local, staging, production
+ENVIRONMENT="local"
+
+API_V1_STR="/api/v1"
+PROJECT_NAME="EmonTools"
+STACK_NAME="full-stack-emontools-project"
+
+# Data Path
+DATA_BASE_PATH="/opt/emon_tools/data"
+STATIC_BASE_PATH="/opt/emon_tools/static"
+
+# Backend
+# Used by the backend to generate links in emails to the frontend
+FRONTEND_HOST="http://localhost:5173"
+# In staging and production, set this env var to the frontend host, e.g.
+# FRONTEND_HOST=https://dashboard.example.com
+BACKEND_CORS_ORIGINS="http://localhost,http://localhost:5173,https://localhost,https://localhost:5173"
+
+SECRET_KEY=changethis
+FIRST_SUPERUSER=changethis
+FIRST_SUPERUSER_PASSWORD=changethis
+
+# Mysql
+MYSQL_HOST="127.0.0.1"
+MYSQL_PORT=3306
+MYSQL_DB="emontools"
+MYSQL_USER="emontools"
+MYSQL_PASSWORD=changethis

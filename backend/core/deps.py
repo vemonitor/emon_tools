@@ -64,7 +64,8 @@ def get_current_user(
     """
     try:
         payload = jwt.decode(
-            token, settings.SECRET_KEY, algorithms=[settings.TOKEN_ALGORITHM]
+            token, settings.SECRET_KEY.get_secret_value(),
+            algorithms=[settings.TOKEN_ALGORITHM]
         )
         token_data = TokenPayload(**payload)
     except (InvalidTokenError, ValidationError) as ex:
