@@ -22,7 +22,7 @@ until mysqladmin ping --host="${DB_HOST}" --port="${DB_PORT}" --user="${DB_USER}
         echo "Database ${DB_HOST}:${DB_PORT} did not become available after ${MAX_ATTEMPTS} attempts."
         exit 1
     fi
-    echo "Attempt ${attempt_num}/${MAX_ATTEMPTS}: Database is not available yet. Waiting ${SLEEP_SECONDS} seconds..."
+    echo "Attempt ${attempt_num}/${MAX_ATTEMPTS}: Database ${DB_HOST}:${DB_PORT} is not available yet. Waiting ${SLEEP_SECONDS} seconds..."
     attempt_num=$((attempt_num + 1))
     sleep ${SLEEP_SECONDS}
 done
