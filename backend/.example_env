@@ -1,4 +1,6 @@
-# project envs
+# This file is used to set up the environment variables for the backend
+# This file should be copied to .env and edited with the correct values
+
 # Domain
 # This would be set to the production domain with an env var on deployment
 # used by Traefik to transmit traffic and aqcuire TLS certificates
