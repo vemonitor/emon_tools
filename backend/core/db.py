@@ -47,7 +47,7 @@ def init_db(session: Session) -> None:
     if not user:
         user_in = UserCreate(
             email=settings.FIRST_SUPERUSER,
-            password=settings.FIRST_SUPERUSER_PASSWORD,
+            password=settings.FIRST_SUPERUSER_PASSWORD.get_secret_value(),
             is_superuser=True,
         )
         user = UserController.create_user(session=session, user_create=user_in)
