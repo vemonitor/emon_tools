@@ -29,8 +29,8 @@ def parse_cors(value: str) -> List[str]:
     
     Each origin is stripped of extra whitespace and trailing slashes.
     """
-    # Note: Here, you may reuse the HOST_REGEX from ValidationConstants.
-    host_pattern = ValidationConstants.HOST_REGEX
+    # Note: Here, you may reuse the HTTP_HOST_REGEX from ValidationConstants.
+    host_pattern = ValidationConstants.HTTP_HOST_REGEX
     origins = []
     for origin in value.split(","):
         origin = origin.strip().rstrip("/")
@@ -85,7 +85,8 @@ class Settings(BaseSettings):
     # Frontend and CORS configuration
     FRONTEND_HOST: HttpUrl
     # BACKEND_CORS_ORIGINS should be provided as a comma-separated string in the env file.
-    BACKEND_CORS_ORIGINS: List[str]
+    BACKEND_CORS_ORIGINS: str
+    # ALLOWED_ORIGINS: List[str]
 
     @classmethod
     @field_validator("BACKEND_CORS_ORIGINS", mode="before")
@@ -96,19 +97,18 @@ class Settings(BaseSettings):
         """
         if not isinstance(v, str):
             raise ValueError("BACKEND_CORS_ORIGINS must be a comma-separated string.")
-        return parse_cors(v)
+        return isinstance(parse_cors(v), list)
 
+    @computed_field
     @property
-    def all_cors_origins(self) -> List[str]:
+    def ALLOWED_ORIGINS(self) -> List[str]:
         """
         Combine validated BACKEND_CORS_ORIGINS (as a list)
         with FRONTEND_HOST (host only, without scheme).
         FRONTEND_HOST is stripped of its scheme and trailing slash.
         """
-        # Extract host from FRONTEND_HOST:
-        # e.g., from "http://localhost:5173", extract "localhost:5173".
         frontend = self.FRONTEND_HOST
-        origins = list(self.BACKEND_CORS_ORIGINS)
+        origins = parse_cors(self.BACKEND_CORS_ORIGINS)
         if frontend not in origins:
             origins.append(frontend)
         return origins
@@ -257,7 +257,7 @@ except Exception as e:
 
 if __name__ == "__main__":
     # For debugging, print out public settings without exposing secrets.
-    public_settings = settings.dict()
+    public_settings = settings.model_dump()
     for field in ["SECRET_KEY", "MYSQL_PASSWORD", "FIRST_SUPERUSER_PASSWORD"]:
         public_settings.pop(field, None)
     print(public_settings)
