@@ -34,9 +34,6 @@ RUN mkdir -p /opt/emon_tools/datas /opt/emon_tools/static  /opt/emon_tools/backe
 # Switch to the non-root user
 USER appuser
 
-# Upgrade pip
-Run python3.11 -m pip install --no-cache-dir --user --upgrade pip
-
 # Install Python dependencies
 # Use --no-cache-dir to avoid caching the packages in the image
 # Use --user to install packages in the user's home directory
@@ -46,16 +43,17 @@ RUN pip install --no-cache-dir --user --upgrade pip && \
 # Copy the backend source code
 COPY --chown=appuser:appuser . ./backend
 
+# Replace env file with the one for Docker
 COPY --chown=appuser:appuser .env.docker ./backend/.env
 
 RUN dos2unix /opt/emon_tools/backend/scripts/docker_start.sh
 RUN dos2unix /opt/emon_tools/backend/scripts/pre_start.sh
-RUN dos2unix /opt/emon_tools/backend/scripts/wait-for-db.sh
+RUN dos2unix /opt/emon_tools/backend/scripts/wait_for_db.sh
 
 # Ensure scripts have execution permission
 RUN chmod +x /opt/emon_tools/backend/scripts/docker_start.sh \
     && chmod +x /opt/emon_tools/backend/scripts/pre_start.sh \
-    && chmod +x /opt/emon_tools/backend/scripts/wait-for-db.sh
+    && chmod +x /opt/emon_tools/backend/scripts/wait_for_db.sh
 
 # Set the PYTHONPATH to ensure the backend module is found
 ENV PYTHONPATH=/opt/emon_tools
