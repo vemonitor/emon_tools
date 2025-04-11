@@ -180,6 +180,20 @@ class Settings(BaseSettings):
             raise ValueError("MYSQL_PORT must be between 1 and 65535")
         return v
 
+    @staticmethod
+    def _validate_password(field_name: str, secret: SecretStr) -> SecretStr:
+        """
+        Shared validator for password fields.
+        """
+        raw = secret.get_secret_value()
+        if not ValidationConstants.PASSWORD_REGEX.match(raw):
+            raise ValueError(
+                f"{field_name} must be at least 8 characters "
+                "and include at least one lowercase letter, "
+                "one uppercase letter, one digit, and one special character."
+            )
+        return secret
+
     @classmethod
     @field_validator("MYSQL_PASSWORD", mode="before")
     def validate_mysql_password(cls, v: SecretStr) -> SecretStr:
@@ -187,26 +201,18 @@ class Settings(BaseSettings):
         Validate the MYSQL_PASSWORD environment variable.
         Ensure it meets the password policy.
         """
-        raw = v.get_secret_value()
-        # Enforce a password policy similar to FIRST_SUPERUSER_PASSWORD
-        if not ValidationConstants.PASSWORD_REGEX.match(raw):
-            raise ValueError(
-                "MYSQL_PASSWORD must be at least 8 characters "
-                "and include at least one lowercase letter, "
-                "one uppercase letter, one digit, and one special character."
-            )
-        return v
+        return cls._validate_password("MYSQL_PASSWORD", v)
 
-    # type: ignore[prop-decorator, C0103]
     @computed_field
     @property
     # Union[PostgresDsn, MySQLDsn]:
     def SQLALCHEMY_DATABASE_URI(self) -> MySQLDsn:
         """Set SqlAlchemy db url"""
-        encoded_password = quote_plus(self.MYSQL_PASSWORD)
+        validated_password = self._validate_password("MYSQL_PASSWORD", self.MYSQL_PASSWORD)
+        encoded_password = quote_plus(validated_password)
         return (
             f"mysql+pymysql://{self.MYSQL_USER}:{encoded_password}@"
-            f"{self.MYSQL_SERVER}:{self.MYSQL_PORT}/{self.MYSQL_DB}"
+            f"{self.MYSQL_HOST}:{self.MYSQL_PORT}/{self.MYSQL_DB}"
         )
 
     @computed_field  # type: ignore[prop-decorator]
