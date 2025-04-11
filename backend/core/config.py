@@ -209,7 +209,7 @@ class Settings(BaseSettings):
     def SQLALCHEMY_DATABASE_URI(self) -> MySQLDsn:
         """Set SqlAlchemy db url"""
         validated_password = self._validate_password("MYSQL_PASSWORD", self.MYSQL_PASSWORD)
-        encoded_password = quote_plus(validated_password)
+        encoded_password = quote_plus(validated_password.get_secret_value())
         return (
             f"mysql+pymysql://{self.MYSQL_USER}:{encoded_password}@"
             f"{self.MYSQL_HOST}:{self.MYSQL_PORT}/{self.MYSQL_DB}"
