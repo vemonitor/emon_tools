@@ -1,9 +1,10 @@
+"""
+Utility functions for handling file paths in the backend.
+"""
 # backend/utils/paths.py
-
 from pathlib import Path
 from os.path import join as join_path
 
-# This assumes `backend/` is your top-level package
 ROOT_DIR = Path(__file__).resolve()
 
 
