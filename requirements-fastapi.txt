@@ -10,3 +10,4 @@ email-validator>=2.2.0
 PyJWT>=2.10.1
 passlib>=1.7.4
 python-multipart>=0.0.20
+pymysql>=1.1.1

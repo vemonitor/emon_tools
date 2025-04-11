@@ -48,7 +48,7 @@ def create_access_token(
     }
     encoded_jwt = jwt.encode(
         to_encode,
-        settings.SECRET_KEY,
+        settings.SECRET_KEY.get_secret_value(),
         algorithm=settings.TOKEN_ALGORITHM
     )
     return encoded_jwt
@@ -79,7 +79,7 @@ def create_refresh_token(
     }
     encoded_jwt = jwt.encode(
         to_encode,
-        settings.SECRET_KEY,
+        settings.SECRET_KEY.get_secret_value(),
         algorithm=settings.TOKEN_ALGORITHM
     )
     return encoded_jwt
@@ -91,7 +91,8 @@ def decode_refresh_token(token: str) -> uuid.UUID:
     """
     try:
         payload = jwt.decode(
-            token, settings.SECRET_KEY, algorithms=[settings.TOKEN_ALGORITHM])
+            token, settings.SECRET_KEY.get_secret_value(),
+            algorithms=[settings.TOKEN_ALGORITHM])
         if payload.get("type") != "refresh":
             raise InvalidToken("Not a refresh token")
         user_id = uuid.UUID(payload.get("sub"))

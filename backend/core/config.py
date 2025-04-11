@@ -24,9 +24,9 @@ from backend.utils.paths import ENV_PATH
 
 def parse_cors(value: str) -> List[str]:
     """
-    Convert a comma-separated string into a list of CORS origins, 
+    Convert a comma-separated string into a list of CORS origins,
     ensuring that each origin is valid (using a simplified host pattern).
-    
+
     Each origin is stripped of extra whitespace and trailing slashes.
     """
     # Note: Here, you may reuse the HTTP_HOST_REGEX from ValidationConstants.
@@ -37,11 +37,21 @@ def parse_cors(value: str) -> List[str]:
         if not origin:
             continue
         if not host_pattern.match(origin):
-            raise ValueError(f"Invalid host in BACKEND_CORS_ORIGINS: '{origin}'")
+            raise ValueError(
+                f"Invalid host in BACKEND_CORS_ORIGINS: '{origin}'"
+            )
         origins.append(origin)
     if not origins:
-        raise ValueError("BACKEND_CORS_ORIGINS must contain at least one valid origin")
+        raise ValueError(
+            "BACKEND_CORS_ORIGINS must contain at least one valid origin"
+        )
     return origins
+
+
+REQUIRE_UPDATE_FIELDS = [
+    "SECRET_KEY", "FIRST_SUPERUSER", "FIRST_SUPERUSER_PASSWORD",
+    "MYSQL_PASSWORD"
+]
 
 
 class Settings(BaseSettings):
@@ -84,7 +94,8 @@ class Settings(BaseSettings):
 
     # Frontend and CORS configuration
     FRONTEND_HOST: HttpUrl
-    # BACKEND_CORS_ORIGINS should be provided as a comma-separated string in the env file.
+    # BACKEND_CORS_ORIGINS should be provided
+    # as a comma-separated string in the env file.
     BACKEND_CORS_ORIGINS: str
     # ALLOWED_ORIGINS: List[str]
 
@@ -96,7 +107,9 @@ class Settings(BaseSettings):
         If it's a string, parse it into a list of valid origins.
         """
         if not isinstance(v, str):
-            raise ValueError("BACKEND_CORS_ORIGINS must be a comma-separated string.")
+            raise ValueError(
+                "BACKEND_CORS_ORIGINS must be a comma-separated string."
+            )
         return isinstance(parse_cors(v), list)
 
     @computed_field
@@ -132,7 +145,8 @@ class Settings(BaseSettings):
         raw = v.get_secret_value()
         if not ValidationConstants.SECRET_KEY_REGEX.match(raw):
             raise ValueError(
-                "SECRET_KEY must be at least 32 characters and include uppercase, lowercase, "
+                "SECRET_KEY must be at least 32 characters "
+                "and include uppercase, lowercase, "
                 "digit, and special character."
             )
         return v
@@ -146,8 +160,9 @@ class Settings(BaseSettings):
         raw = v.get_secret_value()
         if not ValidationConstants.PASSWORD_REGEX.match(raw):
             raise ValueError(
-                "FIRST_SUPERUSER_PASSWORD must be at least 8 characters and include at least one "
-                "lowercase letter, one uppercase letter, one digit, and one special character."
+                "FIRST_SUPERUSER_PASSWORD must be at least 8 characters "
+                "and include at least one lowercase letter, "
+                "one uppercase letter, one digit, and one special character."
             )
         return v
 
@@ -213,6 +228,7 @@ class Settings(BaseSettings):
         return (
             f"mysql+pymysql://{self.MYSQL_USER}:{encoded_password}@"
             f"{self.MYSQL_HOST}:{self.MYSQL_PORT}/{self.MYSQL_DB}"
+            f"{self.MYSQL_HOST}:{self.MYSQL_PORT}/{self.MYSQL_DB}"
         )
 
     @computed_field  # type: ignore[prop-decorator]
@@ -235,24 +251,32 @@ class Settings(BaseSettings):
             "DOMAIN", "API_V1_STR", "PROJECT_NAME", "STACK_NAME",
             "DATA_BASE_PATH", "STATIC_BASE_PATH", "FRONTEND_HOST",
             "MYSQL_HOST", "MYSQL_DB", "MYSQL_USER",
-            "SECRET_KEY", "FIRST_SUPERUSER", "FIRST_SUPERUSER_PASSWORD", "MYSQL_PASSWORD"
+            "SECRET_KEY", "FIRST_SUPERUSER", "FIRST_SUPERUSER_PASSWORD",
+            "MYSQL_PASSWORD"
         ]
         for field_item in required_fields:
             if not values.get(field_item)\
-                    or (isinstance(values.get(field_item), str) and not values[field_item].strip()):
+                    or (isinstance(values.get(field_item), str)
+                        and not values[field_item].strip()):
                 raise ValueError(
-                    f"The environment variable '{field_item}' must be provided and not be empty."
+                    f"The environment variable '{field_item}' "
+                    "must be provided and not be empty."
                 )
         # Enforce that secret values are changed.
-        for field_item in ["SECRET_KEY", "MYSQL_PASSWORD", "FIRST_SUPERUSER_PASSWORD"]:
+        for field_item in REQUIRE_UPDATE_FIELDS:
             val = values[field_item]
-            raw_val = val.get_secret_value() if hasattr(val, "get_secret_value") else val
+            if hasattr(val, "get_secret_value"):
+                raw_val = val.get_secret_value()
+            else:
+                raw_val = val
             if raw_val.strip().lower() == insecure_default:
                 raise ValueError(
-                    f"Insecure value for '{field_item}' (found '{insecure_default}'). "
+                    "Insecure value for '{field_item}' "
+                    f"(found '{insecure_default}'). "
                     f"Please set a strong, unique value for {field_item}."
                 )
         return values
+
 
 try:
     settings = Settings()
@@ -264,6 +288,6 @@ except Exception as e:
 if __name__ == "__main__":
     # For debugging, print out public settings without exposing secrets.
     public_settings = settings.model_dump()
-    for field in ["SECRET_KEY", "MYSQL_PASSWORD", "FIRST_SUPERUSER_PASSWORD"]:
+    for field in REQUIRE_UPDATE_FIELDS:
         public_settings.pop(field, None)
     print(public_settings)
