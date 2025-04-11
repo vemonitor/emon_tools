@@ -43,9 +43,6 @@ RUN pip install --no-cache-dir --user --upgrade pip && \
 # Copy the backend source code
 COPY --chown=appuser:appuser . ./backend
 
-# Replace env file with the one for Docker
-COPY --chown=appuser:appuser .env.docker ./backend/.env
-
 RUN dos2unix /opt/emon_tools/backend/scripts/docker_start.sh
 RUN dos2unix /opt/emon_tools/backend/scripts/pre_start.sh
 RUN dos2unix /opt/emon_tools/backend/scripts/wait_for_db.sh
