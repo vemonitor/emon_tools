@@ -1,2 +1,3 @@
 Dockerfile
 /alembic/versions/*
+.env*
