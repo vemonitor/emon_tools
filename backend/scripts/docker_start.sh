@@ -2,7 +2,7 @@
 set -e
 
 # wait for the database service to be available
-./backend/scripts/wait_for_db.sh "${MYSQL_SERVER}" "${MYSQL_PORT}" "${MYSQL_USER}" "${MYSQL_PASSWORD}"
+./backend/scripts/wait_for_db.sh "${MYSQL_HOST}" "${MYSQL_PORT}" "${MYSQL_USER}" "${MYSQL_PASSWORD}"
 
 # Run migrations
 # Check if alembic/versions is empty
