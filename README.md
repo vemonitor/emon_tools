@@ -25,11 +25,13 @@ Explore the project Wiki for detailed documentation and guides: [emon_tools Wiki
 
     - [emon_api](https://github.com/vemonitor/emon_tools/blob/main/README.md#emon_api)
 
-3. [Running Tests](https://github.com/vemonitor/emon_tools/blob/main/README.md#running-tests)
-
-4. [Contributing](https://github.com/vemonitor/emon_tools/blob/main/README.md#contributing)
-
-5. [License](https://github.com/vemonitor/emon_tools/blob/main/README.md#license)
+3. [Optional Full-Stack Visualization App](#optional-full-stack-visualization-app)
+    - [Overview](#overview)
+    - [Local Development Setup](#local-development-setup)
+    - [Docker Compose Deployment](#docker-compose-deployment)
+4. [Running Tests](#running-tests)
+5. [Contributing](#contributing)
+6. [License](#license)
 
 ## Installation
 
@@ -44,10 +46,10 @@ The `emon-tools` package offers flexible installation options tailored to variou
 3. **Check Requirements**: Review the module's requirements in the `setup.cfg` file or on the PyPI page to ensure compatibility with your system.
 
 ### Global Installation
-To install the entire emon-tools package along with all dependencies, run the following command:
+To install the entire emon-tools package along with all dependencies—and to ensure you get the latest version—run:
 
 ```
-pip install emon-tools["all"]
+pip install emon-tools["all"] --upgrade
 ```
 
 Included Dependencies:
@@ -64,31 +66,31 @@ You can install specific modules and their dependencies as needed. For example:
 - To enable `emon_fina` module:
 
 ```
-pip install emon-tools["fina"]
+pip install emon-tools["fina"] --upgrade
 ```
 
 - To enable pandas time-series output functionality:
 
 ```
-pip install emon-tools["fina, time_series"]
+pip install emon-tools["fina, time_series"] --upgrade
 ```
 
 - To include graph plotting capabilities:
 
 ```
-pip install emon-tools["fina, plot"]
+pip install emon-tools["fina, plot"] --upgrade
 ```
 
 - To enable `emon_api` module:
 
 ```
-pip install emon-tools["api"]
+pip install emon-tools["api"] --upgrade
 ```
 
 - To enable `emon_fina` and `emon_api` modules:
 
 ```
-pip install emon-tools["api, fina"]
+pip install emon-tools["api, fina"] --upgrade
 ```
 
 ## Modules
@@ -165,6 +167,102 @@ print("Feeds: ", feeds)
 
 - **Wiki**: See `emon_api` module [wiki](https://github.com/vemonitor/emon_tools/wiki/emon_api) section.
 - **Examples**: Explore [api_bulk_structure](https://github.com/vemonitor/emon_tools/blob/main/examples/emon_api.py) for input and feed supervision, as well as posting bulk dummy data.
+
+## 🚀 Full-Stack Visualization App Deployment
+
+This optional full-stack application offers a graphical interface to visualize data from any EmonCMS instance and explore archived PhpFina file backups. It comprises:
+
+- FastAPI Backend: Exposes the `emon-tools` functionalities via a RESTful API.
+- Vite React Frontend: A modern dashboard built using React, TypeScript, and Tailwind CSS.
+
+### Overview
+
+The full-stack app enables users to:
+
+- Interactively browse and monitor live data from EmonCMS instances.
+- Visualize historical time-series data from archived PhpFina files.
+- Manage EmonCMS feeds and inputs via an intuitive web interface.
+
+### 🧰 Prerequisites
+
+Ensure the following are installed on your system:
+- Docker
+- Docker Compose
+
+### 📦 Deployment Steps
+This repository now includes a Docker Compose example that leverages the provided Dockerfiles for both backend and frontend. This approach is ideal for quickly deploying the full-stack app in a containerized environment.
+
+1. Clone the Repository
+
+```bash
+git clone https://github.com/vemonitor/emon_tools.git
+cd emon_tools
+```
+
+2. Set Up Environment Variables
+
+Navigate to the Docker Compose development directory and create a `.env` file by copying the provided example:
+
+```bash
+cd docker-compose\dev
+copy .example_env .env
+```
+
+Edit the .env file to replace placeholder values (changethis) with your actual configuration:
+
+```env
+MYSQL_HOST=your_mysql_host
+MYSQL_PORT=3306
+MYSQL_DB=your_database_name
+MYSQL_USER=your_username
+MYSQL_PASSWORD=your_password
+MYSQL_ROOT_PASSWORD=your_root_password
+```
+
+> Note: The `.env` file is utilized by Docker Compose for variable substitution in the `docker-compose.yml` file. Ensure all required variables are defined to prevent runtime errors. 
+
+3. Build containers and start the containers:
+
+From the `docker-compose/dev` directory, execute:
+
+```bash
+docker-compose up --build
+```
+
+This command builds the Docker images and starts the containers as defined in the `docker-compose.yml` file.
+
+4. Access the Application
+
+Once the containers are running:
+
+- Frontend: Access the React dashboard at http://localhost:3000
+- Backend: Access the FastAPI backend at http://localhost:8000
+    - Swagger UI: http://localhost:8000/docs
+    - ReDoc: http://localhost:8000/redoc
+
+### 🪟 Accessing from Windows Host (WSL2 Users)
+
+If you're running Docker within WSL2 and need to access the application from your Windows host:
+
+ 1. Determine the IP address of your WSL2 instance:
+
+    ```bash
+    ip addr show eth0 | grep inet
+    ```
+
+    Look for an output similar to:
+
+    ```ccp
+    inet 172.20.39.89/20 brd 172.20.47.255 scope global eth0
+    ```
+
+ 2. Use the extracted IP address to access the application from your Windows browser:
+
+ - Frontend: http://172.20.39.89:3000​
+
+ - Backend: http://172.20.39.89:8000
+
+ > Note: WSL2 has a separate network interface, so `localhost` on Windows does not directly map to `localhost` within WSL2. Using the WSL2 IP address bridges this gap. ​
 
 ## Running Tests
 
