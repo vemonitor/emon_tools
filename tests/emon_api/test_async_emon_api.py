@@ -72,11 +72,11 @@ class TestAsyncEmonRequest:
         return web.json_response({"success": True, "message": "Mock response"})
 
     @pytest.fixture
-    def aiohttp_server_mock(self, event_loop, aiohttp_server):
+    async def aiohttp_server_mock(self, aiohttp_server):
         """Fixture to mock an aiohttp server."""
         app = web.Application()
         app.router.add_get("/valid-path", self.mock_handler)
-        return event_loop.run_until_complete(aiohttp_server(app))
+        return await aiohttp_server(app)
 
     @pytest.mark.asyncio
     async def test_async_request_success(
