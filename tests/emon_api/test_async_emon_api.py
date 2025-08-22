@@ -2,6 +2,7 @@
 from unittest.mock import AsyncMock, patch
 from aiohttp import web, ClientSession
 from aiohttp.client_exceptions import ClientError
+import pytest_asyncio
 import pytest
 from emon_tools.emon_api.emon_api_core import InputGetType
 from emon_tools.emon_api.emon_api_core import RequestType
@@ -60,7 +61,7 @@ MOCK_INPUT_DETAILS = {
 
 class TestAsyncEmonRequest:
     """AsyncEmonRequest unit test class"""
-    @pytest.fixture
+    @pytest_asyncio.fixture
     def mock_emon_request(self):
         """Fixture for creating a mock EmonRequest instance."""
         return AsyncEmonRequest(url=VALID_URL, api_key=API_KEY)
@@ -71,12 +72,12 @@ class TestAsyncEmonRequest:
             raise web.HTTPUnauthorized(text="Invalid API key")
         return web.json_response({"success": True, "message": "Mock response"})
 
-    @pytest.fixture
-    def aiohttp_server_mock(self, event_loop, aiohttp_server):
+    @pytest_asyncio.fixture
+    async def aiohttp_server_mock(self, aiohttp_server):
         """Fixture to mock an aiohttp server."""
         app = web.Application()
         app.router.add_get("/valid-path", self.mock_handler)
-        return event_loop.run_until_complete(aiohttp_server(app))
+        return await aiohttp_server(app)
 
     @pytest.mark.asyncio
     async def test_async_request_success(
@@ -161,7 +162,7 @@ MOCK_INPUTS = [{"id": 1, "name": "input1"}, {"id": 2, "name": "input2"}]
 class TestAsyncEmonInputs:
     """AsyncEmonInputs unit test class"""
 
-    @pytest.fixture
+    @pytest_asyncio.fixture
     def emon_inputs(self):
         """Fixture to initialize an AsyncEmonInputs instance."""
         return AsyncEmonInputs(VALID_URL, API_KEY)
@@ -322,7 +323,8 @@ class TestAsyncEmonInputs:
                 path='/input/bulk',
                 params={},
                 data={
-                    'data': '[[1, "test_node", {"temp": 21.2}, {"humidity": 54}]]'},
+                    'data': '[[1, "test_node", {"temp": 21.2}, {"humidity": 54}]]'
+                },
                 msg="input_bulk",
                 request_type=RequestType.POST
             )
@@ -330,7 +332,7 @@ class TestAsyncEmonInputs:
 
 class TestAsyncEmonFeeds:
     """AsyncEmonFeeds unit test class"""
-    @pytest.fixture
+    @pytest_asyncio.fixture
     def emon_feeds(self):
         """Fixture to initialize an EmonReader instance."""
         return AsyncEmonFeeds(VALID_URL, API_KEY)
