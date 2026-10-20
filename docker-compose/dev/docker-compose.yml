@@ -1,6 +1,6 @@
 services:
   emon_api_db:
-    image: bitnami/mariadb:latest
+    image: soldevelo/mariadb:latest
     volumes:
       - ./mysql_data:/bitnami/mariadb
     environment:
